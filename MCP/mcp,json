@@ -1,0 +1,17 @@
+{
+    "mcpServers": {
+        "n8n-mcp": {
+            "command": "npx",
+            "args": [
+                "n8n-mcp"
+            ],
+            "env": {
+                "MCP_MODE": "stdio",
+                "LOG_LEVEL": "error",
+                "DISABLE_CONSOLE_OUTPUT": "true",
+                "N8N_API_URL": "https://n8n.agentsai.aram-services.cloud",
+                "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkYTY3ODc5YS1mODVmLTQyMjItODI0MS04ODVmZmEyOWEwOGUiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzYyODA3MTM0fQ.FCKS0EWVnT7jbIKrf7OaoVkJr7wQNOVrajTTs6X817s"
+            }
+        }
+    }
+}

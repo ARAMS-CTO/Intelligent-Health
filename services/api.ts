@@ -1,17 +1,13 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { User, Role, Case, Comment, AnonymisedPatientProfile, TreatmentOption, PatientProfile, PatientFile, DiagnosisSuggestion, AIInsights, Medication, PatientIntakeData, AIAgentStats, AIActionItem, DiagnosisSuggestionFeedback, ExtractedCaseData, SymptomAnalysisResult, AIContextualSuggestion, DoctorProfile, Certification, UnratedSuggestion } from '../types/index';
 import { appEvents } from './events';
 
 // --- CONFIGURATION ---
-const API_KEY = process.env.API_KEY;
-if (!API_KEY) {
-    console.warn("Missing API_KEY environment variable. AI features will not function.");
-}
-const ai = new GoogleGenAI({ apiKey: API_KEY || "DUMMY_KEY" });
+// API_KEY is no longer needed on the client side
+
 
 // TOGGLE THIS FOR REAL BACKEND INTEGRATION
-const USE_MOCK_DATA = true; 
+const USE_MOCK_DATA = false;
 const API_BASE_URL = '/api'; // Base URL for your future backend
 
 // --- MOCK DATA STORE (Internal use only) ---
@@ -38,7 +34,7 @@ let internalMockDoctorProfiles: DoctorProfile[] = [
             { id: 'cert-1', name: 'Board Certified in Cardiology', issuingBody: 'American Board of Internal Medicine', year: 2012, url: '#' },
             { id: 'cert-2', name: 'Advanced Cardiac Life Support (ACLS)', issuingBody: 'American Heart Association', year: 2023, url: '#' },
         ],
-        profilePictureUrl: '', 
+        profilePictureUrl: '',
     },
     {
         id: 'doc-profile-sanati',
@@ -90,8 +86,8 @@ let internalMockCases: Case[] = [
         tags: ['PE', 'Cardiology', 'Pulmonology', 'CTPA', 'Emergency'],
         files: [{ id: 'file-2', name: 'ctpa_report.pdf', type: 'CT', url: '#' }, { id: 'file-3', name: 'ecg.jpg', type: 'ECG', url: '#' }],
         status: 'Open',
-        specialistId: 'user-spec-1', 
-        specialistAssignmentTimestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), 
+        specialistId: 'user-spec-1',
+        specialistAssignmentTimestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     }
 ];
 
@@ -178,23 +174,23 @@ export class DataService {
     // --- User & Auth ---
     static async login(email: string, role: Role): Promise<User | null> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 500));
-             if (email === 'h.sanati@google.com') {
-                 const googleUser = internalMockUsers.find(u => u.email === 'h.sanati@google.com');
-                 return googleUser || null;
-             }
-             const foundUser = internalMockUsers.find(u => u.role === role);
-             if (foundUser) {
-                 return { ...foundUser, email, name: foundUser.name || email.split('@')[0] };
-             }
-             return {
-                 id: `user-${Date.now()}`,
-                 name: email.split('@')[0],
-                 email: email,
-                 role: role,
-                 level: 1,
-                 credits: 100,
-             };
+            await new Promise(r => setTimeout(r, 500));
+            if (email === 'h.sanati@google.com') {
+                const googleUser = internalMockUsers.find(u => u.email === 'h.sanati@google.com');
+                return googleUser || null;
+            }
+            const foundUser = internalMockUsers.find(u => u.role === role);
+            if (foundUser) {
+                return { ...foundUser, email, name: foundUser.name || email.split('@')[0] };
+            }
+            return {
+                id: `user-${Date.now()}`,
+                name: email.split('@')[0],
+                email: email,
+                role: role,
+                level: 1,
+                credits: 100,
+            };
         } else {
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
@@ -208,8 +204,8 @@ export class DataService {
 
     static async getUsers(): Promise<User[]> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 300));
-             return internalMockUsers;
+            await new Promise(r => setTimeout(r, 300));
+            return internalMockUsers;
         }
         const res = await fetch(`${API_BASE_URL}/users`);
         return res.json();
@@ -227,14 +223,14 @@ export class DataService {
     static async updateDoctorProfile(profileId: string, updates: Partial<DoctorProfile>): Promise<DoctorProfile | undefined> {
         if (USE_MOCK_DATA) {
             await new Promise(r => setTimeout(r, 800));
-             const index = internalMockDoctorProfiles.findIndex(p => p.id === profileId);
+            const index = internalMockDoctorProfiles.findIndex(p => p.id === profileId);
             if (index !== -1) {
                 internalMockDoctorProfiles[index] = { ...internalMockDoctorProfiles[index], ...updates };
                 return internalMockDoctorProfiles[index];
             }
             return undefined;
         }
-         const res = await fetch(`${API_BASE_URL}/doctors/${profileId}`, {
+        const res = await fetch(`${API_BASE_URL}/doctors/${profileId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates)
@@ -245,7 +241,7 @@ export class DataService {
     // --- Cases ---
     static async getCases(): Promise<Case[]> {
         if (USE_MOCK_DATA) {
-            await new Promise(r => setTimeout(r, 600)); 
+            await new Promise(r => setTimeout(r, 600));
             return [...internalMockCases];
         }
         const res = await fetch(`${API_BASE_URL}/cases`);
@@ -263,7 +259,7 @@ export class DataService {
     }
 
     static async createCase(caseData: Omit<Case, 'id' | 'createdAt' | 'status' | 'files'>): Promise<Case> {
-         if (USE_MOCK_DATA) {
+        if (USE_MOCK_DATA) {
             const newCase: Case = {
                 id: `case-${Date.now()}`,
                 createdAt: new Date().toISOString(),
@@ -290,13 +286,13 @@ export class DataService {
             }
             return;
         }
-         await fetch(`${API_BASE_URL}/cases/${caseId}`, {
+        await fetch(`${API_BASE_URL}/cases/${caseId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates)
         });
     }
-    
+
     static async updateCaseStatus(caseId: string, newStatus: Case['status']): Promise<void> {
         if (USE_MOCK_DATA) {
             const caseIndex = internalMockCases.findIndex(c => c.id === caseId);
@@ -312,10 +308,10 @@ export class DataService {
             }
             return;
         }
-        await fetch(`${API_BASE_URL}/cases/${caseId}/status`, { 
-            method: 'PUT', 
+        await fetch(`${API_BASE_URL}/cases/${caseId}/status`, {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus }) 
+            body: JSON.stringify({ status: newStatus })
         });
     }
 
@@ -326,7 +322,7 @@ export class DataService {
             if (caseToUpdate && specialist) {
                 caseToUpdate.specialistId = specialistId;
                 caseToUpdate.specialistAssignmentTimestamp = new Date().toISOString();
-                 appEvents.emit('notification', {
+                appEvents.emit('notification', {
                     type: 'success',
                     title: 'Specialist Assigned',
                     message: `${specialist.name} has been assigned to "${caseToUpdate.title}".`,
@@ -345,22 +341,22 @@ export class DataService {
     // --- Comments ---
     static async getAllComments(): Promise<Comment[]> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 300));
-             return internalMockComments;
+            await new Promise(r => setTimeout(r, 300));
+            return internalMockComments;
         }
-         const res = await fetch(`${API_BASE_URL}/comments`);
-         return res.json();
+        const res = await fetch(`${API_BASE_URL}/comments`);
+        return res.json();
     }
 
     static async getCaseComments(caseId: string): Promise<Comment[]> {
-         if (USE_MOCK_DATA) {
-             // await new Promise(r => setTimeout(r, 200)); 
-             return internalMockComments
+        if (USE_MOCK_DATA) {
+            // await new Promise(r => setTimeout(r, 200)); 
+            return internalMockComments
                 .filter(c => c.caseId === caseId)
                 .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-         }
-         const res = await fetch(`${API_BASE_URL}/cases/${caseId}/comments`);
-         return res.json();
+        }
+        const res = await fetch(`${API_BASE_URL}/cases/${caseId}/comments`);
+        return res.json();
     }
 
     static async addComment(comment: Comment): Promise<void> {
@@ -376,7 +372,7 @@ export class DataService {
         }
         await fetch(`${API_BASE_URL}/comments`, {
             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(comment)
         });
     }
@@ -403,7 +399,7 @@ export class DataService {
                 c.specialistAssignmentTimestamp &&
                 new Date(c.specialistAssignmentTimestamp) > twentyFourHoursAgo
             ).length;
-            
+
             return { overdue, updates, assignments };
         }
         const res = await fetch(`${API_BASE_URL}/dashboard/stats`);
@@ -412,8 +408,8 @@ export class DataService {
 
     static async getRecentActivity(): Promise<Comment[]> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 300));
-             return internalMockComments
+            await new Promise(r => setTimeout(r, 300));
+            return internalMockComments
                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                 .slice(0, 5);
         }
@@ -424,7 +420,7 @@ export class DataService {
     // --- Patients ---
     static async getPatientProfile(id: string): Promise<PatientProfile | undefined> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 400));
+            await new Promise(r => setTimeout(r, 400));
             return internalMockPatientProfiles.find(p => p.id === id);
         }
         const res = await fetch(`${API_BASE_URL}/patients/${id}`);
@@ -433,10 +429,10 @@ export class DataService {
 
     static async addPatientMedication(profileId: string, medication: Medication): Promise<void> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 300));
-             const profile = internalMockPatientProfiles.find(p => p.id === profileId);
-             if (profile) profile.medications.push(medication);
-             return;
+            await new Promise(r => setTimeout(r, 300));
+            const profile = internalMockPatientProfiles.find(p => p.id === profileId);
+            if (profile) profile.medications.push(medication);
+            return;
         }
         await fetch(`${API_BASE_URL}/patients/${profileId}/medications`, {
             method: 'POST',
@@ -447,24 +443,24 @@ export class DataService {
 
     static async addPatientFile(profileId: string, file: PatientFile): Promise<void> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 300));
-             const profile = internalMockPatientProfiles.find(p => p.id === profileId);
-             if (profile) profile.files.push(file);
-             return;
+            await new Promise(r => setTimeout(r, 300));
+            const profile = internalMockPatientProfiles.find(p => p.id === profileId);
+            if (profile) profile.files.push(file);
+            return;
         }
-         await fetch(`${API_BASE_URL}/patients/${profileId}/files`, {
+        await fetch(`${API_BASE_URL}/patients/${profileId}/files`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(file)
         });
     }
 
-     static async searchPatients(query: string): Promise<PatientProfile[]> {
+    static async searchPatients(query: string): Promise<PatientProfile[]> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 300));
-             if (!query) return [];
-             return internalMockPatientProfiles.filter(p => 
-                p.name.toLowerCase().includes(query.toLowerCase()) || 
+            await new Promise(r => setTimeout(r, 300));
+            if (!query) return [];
+            return internalMockPatientProfiles.filter(p =>
+                p.name.toLowerCase().includes(query.toLowerCase()) ||
                 p.identifier?.toLowerCase().includes(query.toLowerCase())
             );
         }
@@ -474,12 +470,12 @@ export class DataService {
 
     static async addPatientIntake(data: Omit<PatientIntakeData, 'id'>): Promise<PatientIntakeData> {
         if (USE_MOCK_DATA) {
-             await new Promise(r => setTimeout(r, 500));
-             const newPatient = { id: `patient-${Date.now()}`, ...data };
-             internalMockIntakeData.push(newPatient);
-             return newPatient;
+            await new Promise(r => setTimeout(r, 500));
+            const newPatient = { id: `patient-${Date.now()}`, ...data };
+            internalMockIntakeData.push(newPatient);
+            return newPatient;
         }
-         const res = await fetch(`${API_BASE_URL}/patients/intake`, {
+        const res = await fetch(`${API_BASE_URL}/patients/intake`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -501,7 +497,7 @@ export const updateCaseStatus = DataService.updateCaseStatus;
 export const assignSpecialist = DataService.assignSpecialist;
 
 // Wrappers to maintain old sync signature if needed, but preferably usage should switch to async await
-export const addCaseComment = DataService.addComment; 
+export const addCaseComment = DataService.addComment;
 export const getCaseComments = DataService.getCaseComments;
 
 export const getPatientProfileById = DataService.getPatientProfile;
@@ -580,11 +576,11 @@ export class GeminiService {
 
     static async getRecentUnratedSuggestion(userId: string): Promise<UnratedSuggestion | null> {
         if (mockUnratedSuggestionForDashboard) {
-             return new Promise(resolve => setTimeout(() => resolve(mockUnratedSuggestionForDashboard), 500));
+            return new Promise(resolve => setTimeout(() => resolve(mockUnratedSuggestionForDashboard), 500));
         }
         return null;
     }
-    
+
     static async submitAIFeedback(caseId: string, suggestionName: string, feedback: DiagnosisSuggestionFeedback): Promise<void> {
         if (mockUnratedSuggestionForDashboard && mockUnratedSuggestionForDashboard.caseId === caseId && mockUnratedSuggestionForDashboard.suggestion.name === suggestionName) {
             mockUnratedSuggestionForDashboard = null;
@@ -595,79 +591,73 @@ export class GeminiService {
 
     static async getCaseInsights(caseData: Case): Promise<AIInsights> {
         try {
-            const model = "gemini-2.5-flash";
-            const prompt = `Analyze this clinical case.
-            Patient: ${caseData.patientProfile.age}y ${caseData.patientProfile.sex}.
-            Complaint: ${caseData.complaint}. History: ${caseData.history}. Findings: ${caseData.findings}.
-            Return JSON: { "diagnosisConfidence": number (0-1), "patientRisks": string[], "keySymptoms": string[] }`;
-
-            const response = await ai.models.generateContent({
-                model: model,
-                contents: prompt,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            diagnosisConfidence: { type: Type.NUMBER },
-                            patientRisks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                            keySymptoms: { type: Type.ARRAY, items: { type: Type.STRING } }
-                        }
-                    }
-                }
+            const response = await fetch(`${API_BASE_URL}/ai/insights`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(caseData)
             });
-            return response.text ? JSON.parse(response.text) : { diagnosisConfidence: 0, patientRisks: [], keySymptoms: [] };
+            return await response.json();
         } catch (error) {
-             console.error("AI Service Error:", error);
-             return { diagnosisConfidence: 0.85, patientRisks: ["API Error - Mock Data", "Risk of recurrence"], keySymptoms: ["Pain", "Swelling"] };
+            console.error("AI Service Error:", error);
+            return { diagnosisConfidence: 0.0, patientRisks: ["API Error"], keySymptoms: [] };
         }
     }
 
     static async getClinicalGuidelines(diagnosis: string): Promise<string> {
-         try {
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: `Summarize clinical guidelines for ${diagnosis} in markdown.`,
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/clinical_guidelines`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: diagnosis })
             });
-            return response.text || "No guidelines found.";
+            const data = await response.json();
+            return data.response;
         } catch (error) {
-            return "Service unavailable. Please check your connection or API key.";
+            return "Service unavailable. Please check your connection.";
         }
     }
 
     static async getAIChatResponse(caseData: Case, history: any[], newMessage: string): Promise<string> {
         try {
-            const chat = ai.chats.create({
-                model: "gemini-2.5-flash",
-                config: { systemInstruction: `Medical Assistant for case: ${caseData.title}. Be concise.` }
+            const response = await fetch(`${API_BASE_URL}/ai/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    history: history,
+                    message: newMessage,
+                    context: `Medical Assistant for case: ${caseData.title}. Be concise.`
+                })
             });
-            const response = await chat.sendMessage({ message: newMessage });
-            return response.text || "I didn't understand that.";
+            const data = await response.json();
+            return data.response;
         } catch (error) {
             return "AI Service unavailable.";
         }
     }
-    
+
     static async explainToPatient(query: string, profile: PatientProfile): Promise<string> {
-         try {
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: `Explain this medical query to patient ${profile.name}: "${query}". Use simple language.`,
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/explain_patient`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, patient_name: profile.name })
             });
-            return response.text || "I couldn't generate an explanation.";
+            const data = await response.json();
+            return data.response;
         } catch (error) {
             return "Service unavailable.";
         }
     }
 
     static async getGeneralChatResponse(history: any[], newMessage: string): Promise<string> {
-         try {
-            const chat = ai.chats.create({
-                model: "gemini-2.5-flash",
-                config: { systemInstruction: "Helpful AI health assistant. General info only." }
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/general_chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history, message: newMessage })
             });
-            const response = await chat.sendMessage({ message: newMessage });
-            return response.text || "I didn't understand.";
+            const data = await response.json();
+            return data.response;
         } catch (error) {
             return "Service unavailable.";
         }
@@ -675,57 +665,59 @@ export class GeminiService {
 
     static async extractCaseDetailsFromTranscript(transcript: string): Promise<ExtractedCaseData> {
         try {
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: `Extract case details from: "${transcript}". Return JSON: { "complaint": string, "history": string, "findings": string, "diagnosis": string, "missing_information": string[] }`,
-                config: { responseMimeType: "application/json" }
+            const response = await fetch(`${API_BASE_URL}/ai/extract_case`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: transcript })
             });
-            return response.text ? JSON.parse(response.text) : {};
-        } catch(e) {
+            return await response.json();
+        } catch (e) {
             return { complaint: transcript, history: "", findings: "", diagnosis: "", missing_information: ["Extraction failed"] };
         }
     }
 
     static async augmentCaseDetailsFromHistory(data: ExtractedCaseData, patient: PatientProfile): Promise<AIContextualSuggestion[]> {
         try {
-             const response = await ai.models.generateContent({
-                 model: "gemini-2.5-flash",
-                 contents: `Given extracted data ${JSON.stringify(data)} and patient history ${JSON.stringify(patient.baselineIllnesses)}, suggest checks. Return JSON array: [{ "suggestion": string, "rationale": string }]`,
-                 config: { responseMimeType: "application/json" }
-             });
-             return response.text ? JSON.parse(response.text) : [];
-        } catch(e) { return []; }
+            const response = await fetch(`${API_BASE_URL}/ai/augment_case`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ extracted_data: data, baseline_illnesses: patient.baselineIllnesses })
+            });
+            return await response.json();
+        } catch (e) { return []; }
     }
 
     static async analyzeSymptoms(input: string): Promise<SymptomAnalysisResult[]> {
         try {
-             const response = await ai.models.generateContent({
-                 model: "gemini-2.5-flash",
-                 contents: `Analyze symptoms: "${input}". Suggest 3 conditions. Return JSON array: [{ "condition": string, "confidence": number, "explanation": string }]`,
-                 config: { responseMimeType: "application/json" }
-             });
-             return response.text ? JSON.parse(response.text) : [];
-        } catch(e) { throw new Error("Analysis failed."); }
+            const response = await fetch(`${API_BASE_URL}/ai/analyze_symptoms`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: input })
+            });
+            return await response.json();
+        } catch (e) { throw new Error("Analysis failed."); }
     }
 
     static async analyzeImage(image: { data: string, mimeType: string }, prompt: string): Promise<string> {
         try {
-             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{ inlineData: { mimeType: image.mimeType, data: image.data } }, { text: prompt }]
-             });
-             return response.text || "No analysis provided.";
-        } catch(e) { throw new Error("Image analysis failed."); }
+            const response = await fetch(`${API_BASE_URL}/ai/analyze_image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_data: image.data, mime_type: image.mimeType, prompt })
+            });
+            const data = await response.json();
+            return data.response;
+        } catch (e) { throw new Error("Image analysis failed."); }
     }
 
     static async searchICD10Codes(query: string): Promise<{ code: string; description: string }[]> {
         try {
-            const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: `Find 5 relevant ICD-10 codes for: "${query}". Return JSON array: [{ "code": string, "description": string }]`,
-                config: { responseMimeType: "application/json" }
+            const response = await fetch(`${API_BASE_URL}/ai/search_icd10`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: query })
             });
-            return response.text ? JSON.parse(response.text) : [];
+            return await response.json();
         } catch (error) { return []; }
     }
 }
