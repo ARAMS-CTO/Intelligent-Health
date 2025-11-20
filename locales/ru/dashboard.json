@@ -1,0 +1,48 @@
+{
+  "pageTitle": "[ru] Dashboard",
+  "newPatientIntake": "[ru] New Patient Intake",
+  "createCaseVoice": "[ru] Create Case by Voice",
+  "createNewCase": "[ru] Create New Case",
+  "myDayWidget": {
+    "title": "[ru] My Day at a Glance",
+    "overdue": "[ru] Overdue Cases",
+    "updates": "[ru] New Updates",
+    "assignments": "[ru] New Assignments"
+  },
+  "teamActivityWidget": {
+    "title": "[ru] Recent Team Activity"
+  },
+  "searchPlaceholder": "[ru] Search by title, complaint, or tag...",
+  "statusFilter": "[ru] Status:",
+  "sort": {
+    "newest": "[ru] Newest First",
+    "oldest": "[ru] Oldest First",
+    "title": "[ru] Title (A-Z)",
+    "specialist": "[ru] Specialist (A-Z)"
+  },
+  "caseCard": {
+    "patient": "[ru] Patient",
+    "comorbidities": "[ru] Comorbidities",
+    "assign": "[ru] Assign",
+    "lastActivity": "[ru] Last Activity",
+    "totalComments": "[ru] Total Comments",
+    "viewCase": "[ru] View Case",
+    "viewPatientProfile": "[ru] View Patient Profile",
+    "editCase": "[ru] Edit Case"
+  },
+  "aiAgentCard": {
+    "title": "[ru] My AI Agent",
+    "description": "[ru] Your personalized assistant learns from your feedback to provide better support.",
+    "accuracy": "[ru] Suggestion Accuracy",
+    "personalization": "[ru] Personalization Level",
+    "casesAnalyzed": "[ru] Cases Analyzed",
+    "feedbackProvided": "[ru] Feedback Provided",
+    "reviewSuggestion": "[ru] Review a Recent Suggestion",
+    "fromCase": "[ru] From case",
+    "aiSuggestedDiagnosis": "[ru] AI Suggested Diagnosis:",
+    "wasHelpful": "[ru] Was this suggestion helpful?",
+    "good": "[ru] Good",
+    "bad": "[ru] Bad",
+    "allReviewed": "[ru] All recent suggestions reviewed!"
+  }
+}

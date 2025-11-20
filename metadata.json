@@ -1,0 +1,7 @@
+{
+  "name": "Intelligent Hospital",
+  "description": "A collaborative knowledge-sharing platform for medical professionals, powered by AI to improve patient health outcomes. It facilitates case discussions, provides AI-assisted diagnostic and treatment options, and empowers patients with understandable health information.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

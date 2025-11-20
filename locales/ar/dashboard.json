@@ -1,0 +1,48 @@
+{
+  "pageTitle": "[ar] Dashboard",
+  "newPatientIntake": "[ar] New Patient Intake",
+  "createCaseVoice": "[ar] Create Case by Voice",
+  "createNewCase": "[ar] Create New Case",
+  "myDayWidget": {
+    "title": "[ar] My Day at a Glance",
+    "overdue": "[ar] Overdue Cases",
+    "updates": "[ar] New Updates",
+    "assignments": "[ar] New Assignments"
+  },
+  "teamActivityWidget": {
+    "title": "[ar] Recent Team Activity"
+  },
+  "searchPlaceholder": "[ar] Search by title, complaint, or tag...",
+  "statusFilter": "[ar] Status:",
+  "sort": {
+    "newest": "[ar] Newest First",
+    "oldest": "[ar] Oldest First",
+    "title": "[ar] Title (A-Z)",
+    "specialist": "[ar] Specialist (A-Z)"
+  },
+  "caseCard": {
+    "patient": "[ar] Patient",
+    "comorbidities": "[ar] Comorbidities",
+    "assign": "[ar] Assign",
+    "lastActivity": "[ar] Last Activity",
+    "totalComments": "[ar] Total Comments",
+    "viewCase": "[ar] View Case",
+    "viewPatientProfile": "[ar] View Patient Profile",
+    "editCase": "[ar] Edit Case"
+  },
+  "aiAgentCard": {
+    "title": "[ar] My AI Agent",
+    "description": "[ar] Your personalized assistant learns from your feedback to provide better support.",
+    "accuracy": "[ar] Suggestion Accuracy",
+    "personalization": "[ar] Personalization Level",
+    "casesAnalyzed": "[ar] Cases Analyzed",
+    "feedbackProvided": "[ar] Feedback Provided",
+    "reviewSuggestion": "[ar] Review a Recent Suggestion",
+    "fromCase": "[ar] From case",
+    "aiSuggestedDiagnosis": "[ar] AI Suggested Diagnosis:",
+    "wasHelpful": "[ar] Was this suggestion helpful?",
+    "good": "[ar] Good",
+    "bad": "[ar] Bad",
+    "allReviewed": "[ar] All recent suggestions reviewed!"
+  }
+}
