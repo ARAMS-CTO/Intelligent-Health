@@ -86,14 +86,19 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscript, onListeningChange
       type="button"
       onClick={toggleListening}
       disabled={disabled}
-      className={`p-2 rounded-full transition-colors ${
-        isListening 
-          ? 'bg-danger text-white animate-pulse' 
-          : 'text-text-muted hover:bg-slate-100'
-      } disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed`}
+      className={`relative p-3 rounded-full transition-all duration-300 flex items-center justify-center overflow-hidden ${isListening
+          ? 'bg-red-500 text-white hover:bg-red-600'
+          : 'text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'
+        } disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed`}
       title={isListening ? "Stop listening" : "Start voice input"}
     >
-      {ICONS.microphone}
+      {isListening && (
+        <>
+          <span className="absolute inset-0 rounded-full bg-white opacity-20 animate-ping"></span>
+          <span className="absolute inset-0 rounded-full bg-white opacity-10 animate-pulse delay-75"></span>
+        </>
+      )}
+      <span className="relative z-10">{ICONS.microphone}</span>
     </button>
   );
 };

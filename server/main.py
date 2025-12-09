@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import auth_router, cases_router, patients_router, ai_router, comments_router
+from .routes import auth_router, cases_router, patients_router, ai_router, comments_router, users_router, dashboard_router
 
 app = FastAPI(title="Intelligent Health API", version="0.1.0")
 
@@ -21,11 +21,14 @@ app.add_middleware(
 )
 
 # Include Routers
+# Include Routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(cases_router, prefix="/api/cases", tags=["Cases"])
 app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
 app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
 app.include_router(comments_router, prefix="/api/comments", tags=["Comments"])
+app.include_router(users_router, prefix="/api", tags=["Users"]) # Note: prefix is /api because routes are /users and /doctors
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse

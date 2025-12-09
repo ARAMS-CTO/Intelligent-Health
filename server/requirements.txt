@@ -1,6 +1,9 @@
 fastapi
 uvicorn
 google-genai
-pydantic
 python-multipart
+sqlalchemy
+psycopg2-binary
 python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]

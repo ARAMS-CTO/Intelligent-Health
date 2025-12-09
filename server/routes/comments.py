@@ -1,22 +1,30 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from ..schemas import Comment
+from sqlalchemy.orm import Session
+from ..schemas import Comment as CommentSchema
+from ..database import get_db
+from ..models import Comment as CommentModel
+from datetime import datetime
+import uuid
 
 router = APIRouter()
 
-# Shared mock comments (in a real app, this would be a DB)
-# We need to import MOCK_COMMENTS from cases to share state if we want consistency in this mock setup
-# For now, I'll just define a list here, but in a real DB this isn't an issue.
-# To make it work with the 'cases' route mock data, we should probably move MOCK_DATA to a shared module.
-# But for this step, I'll just create a simple endpoint.
+@router.get("", response_model=List[CommentSchema])
+async def get_all_comments(db: Session = Depends(get_db)):
+    return db.query(CommentModel).all()
 
-MOCK_COMMENTS_STORE = []
-
-@router.get("", response_model=List[Comment])
-async def get_all_comments():
-    return MOCK_COMMENTS_STORE
-
-@router.post("", response_model=Comment)
-async def add_comment(comment: Comment):
-    MOCK_COMMENTS_STORE.append(comment.dict())
-    return comment
+@router.post("", response_model=CommentSchema)
+async def add_comment(comment: CommentSchema, db: Session = Depends(get_db)):
+    new_comment = CommentModel(
+        id=str(uuid.uuid4()),
+        case_id=comment.caseId,
+        user_id=comment.userId,
+        user_name=comment.userName,
+        user_role=comment.userRole,
+        timestamp=datetime.utcnow().isoformat(),
+        text=comment.text
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    return new_comment

@@ -1,27 +1,41 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
-  --color-primary: 37 99 235; /* blue-600 */
-  --color-primary-hover: 29 78 216; /* blue-700 */
-  --color-accent: 5 150 105; /* emerald-600 */
-  --color-accent-hover: 4 120 87; /* emerald-700 */
-  --color-surface: 255 255 255; /* white */
-  --color-background: 226 232 240; /* slate-200 */
-  --color-text-main: 15 23 42; /* slate-900 */
-  --color-text-muted: 51 65 85; /* slate-700 */
+  --color-primary: 37 99 235;
+  /* blue-600 */
+  --color-primary-hover: 29 78 216;
+  /* blue-700 */
+  --color-accent: 5 150 105;
+  /* emerald-600 */
+  --color-accent-hover: 4 120 87;
+  /* emerald-700 */
+  --color-surface: 255 255 255;
+  /* white */
+  --color-background: 226 232 240;
+  /* slate-200 */
+  --color-text-main: 15 23 42;
+  /* slate-900 */
+  --color-text-muted: 51 65 85;
+  /* slate-700 */
 }
 
 html.dark {
-  --color-primary: 59 130 246; /* blue-500 */
-  --color-primary-hover: 37 99 235; /* blue-600 */
-  --color-accent: 16 185 129; /* emerald-500 */
-  --color-accent-hover: 5 150 105; /* emerald-600 */
-  --color-surface: 30 41 59; /* slate-800 */
-  --color-background: 15 23 42; /* slate-900 */
-  --color-text-main: 241 245 249; /* slate-100 */
-  --color-text-muted: 148 163 184; /* slate-400 */
+  --color-primary: 59 130 246;
+  /* blue-500 */
+  --color-primary-hover: 37 99 235;
+  /* blue-600 */
+  --color-accent: 16 185 129;
+  /* emerald-500 */
+  --color-accent-hover: 5 150 105;
+  /* emerald-600 */
+  --color-surface: 30 41 59;
+  /* slate-800 */
+  --color-background: 15 23 42;
+  /* slate-900 */
+  --color-text-main: 241 245 249;
+  /* slate-100 */
+  --color-text-muted: 148 163 184;
+  /* slate-400 */
 }
 
 body {

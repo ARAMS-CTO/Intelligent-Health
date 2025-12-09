@@ -43,7 +43,7 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
 
   useEffect(() => {
     if (!searchQuery) { // Only auto-scroll when not searching
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, searchQuery]);
 
@@ -56,7 +56,7 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
     setIsLoading(true);
 
     try {
-      const aiResponse = await GeminiService.getAIChatResponse(caseData, newMessages, userInput);
+      const aiResponse = await GeminiService.getAIChatResponse(caseData, newMessages, userInput, user?.id);
       setMessages([...newMessages, { author: 'ai', content: aiResponse }]);
     } catch (error: any) {
       console.error("Failed to get AI response:", error);
@@ -76,7 +76,7 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
         url: URL.createObjectURL(file), // Temporary URL
       };
       onAddFile(newFile);
-      
+
       const uploadMessage: Message = { author: 'system', content: `File uploaded: ${file.name}` };
       const newMessages: Message[] = [...messages, uploadMessage];
       setMessages(newMessages);
@@ -84,9 +84,9 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
       setIsLoading(true);
 
       const summaryRequest = `A new file named "${file.name}" has been uploaded. Acknowledge this and ask if I would like a summary.`;
-      
+
       try {
-        const aiResponse = await GeminiService.getAIChatResponse(caseData, newMessages, summaryRequest);
+        const aiResponse = await GeminiService.getAIChatResponse(caseData, newMessages, summaryRequest, user?.id);
         setMessages([...newMessages, { author: 'ai', content: aiResponse }]);
       } catch (error: any) {
         console.error("Failed to get AI response for file upload:", error);
@@ -110,9 +110,9 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
     if (author === 'ai') return { name: 'AI Assistant', color: 'bg-slate-700 dark:bg-slate-600', align: 'items-start' };
     return { name: 'System', color: 'bg-gray-400', align: 'items-center' };
   };
-  
+
   const hasLabResults = caseData.labResults && caseData.labResults.length > 0;
-  
+
   let placeholderText = "e.g., 'Summarize the history' or 'What are the key findings?'";
   if (isOffline) {
     placeholderText = "Chat is disabled while offline.";
@@ -143,14 +143,14 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
   return (
     <div className="bg-surface p-6 rounded-lg shadow-md flex flex-col h-[600px] max-h-[80vh]">
       <h2 className="text-2xl font-bold text-text-main mb-4">AI Case Discussion</h2>
-       <div className="mb-4">
-          <input
-              type="text"
-              placeholder="Search conversation..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full border dark:border-slate-600 bg-inherit rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary"
-          />
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search conversation..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full border dark:border-slate-600 bg-inherit rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
       </div>
       <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4">
         {filteredMessages.map((msg, index) => {

@@ -6,6 +6,7 @@ import { GeminiService } from '../services/api';
 import { ICONS } from '../constants/index';
 import VoiceInput from './VoiceInput';
 import { SymptomAnalysisResult } from '../types/index';
+import { useAuth } from './Auth';
 
 interface Message {
   author: 'user' | 'ai';
@@ -20,6 +21,7 @@ interface AIChatbotProps {
 type Mode = 'chat' | 'symptom-checker';
 
 const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     { author: 'ai', content: 'Hello! How can I help you today? Remember, I can provide general health information but not medical advice.' }
   ]);
@@ -61,7 +63,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
     setIsLoading(true);
 
     try {
-      const aiResponse = await GeminiService.getGeneralChatResponse(newMessages, currentInput);
+      const aiResponse = await GeminiService.getGeneralChatResponse(newMessages, currentInput, user?.id);
       setMessages(prev => [...prev, { author: 'ai', content: aiResponse }]);
     } catch (error: any) {
       console.error("Failed to get AI response:", error);
@@ -78,17 +80,17 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
     setSymptomError('');
 
     try {
-        const results = await GeminiService.analyzeSymptoms(symptomsInput);
-        setAnalysisResult(results);
-    } catch(e: any) {
-        setSymptomError(e.message || "An unexpected error occurred.");
+      const results = await GeminiService.analyzeSymptoms(symptomsInput);
+      setAnalysisResult(results);
+    } catch (e: any) {
+      setSymptomError(e.message || "An unexpected error occurred.");
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
   if (!isOpen) return null;
-  
+
   const ChatView = () => (
     <>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -104,14 +106,14 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
         ))}
         {isLoading && (
           <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">AI</div>
-              <div className="p-3 rounded-2xl bg-slate-200 text-text-main dark:bg-slate-700 rounded-bl-none">
-                <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                    <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
-                </div>
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">AI</div>
+            <div className="p-3 rounded-2xl bg-slate-200 text-text-main dark:bg-slate-700 rounded-bl-none">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
               </div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -141,33 +143,33 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
     <>
       <div className="flex-1 overflow-y-auto p-4">
         <div className="p-4 bg-info-light dark:bg-blue-900/50 border-l-4 border-info rounded-r-md mb-4">
-            <h3 className="font-bold text-info-text dark:text-blue-300">Symptom Checker</h3>
-            <p className="text-sm text-info-text dark:text-blue-300 mt-1">
-                Enter your symptoms below to see a list of potential conditions. This tool is for informational purposes only and is not a substitute for professional medical advice.
-            </p>
+          <h3 className="font-bold text-info-text dark:text-blue-300">Symptom Checker</h3>
+          <p className="text-sm text-info-text dark:text-blue-300 mt-1">
+            Enter your symptoms below to see a list of potential conditions. This tool is for informational purposes only and is not a substitute for professional medical advice.
+          </p>
         </div>
 
         {analysisResult ? (
-            <div className="space-y-3 animate-fade-in">
-                <h4 className="font-bold text-text-main">Potential Conditions:</h4>
-                {analysisResult.map((result, index) => (
-                    <div key={index} className="p-4 border dark:border-slate-700 rounded-lg bg-surface">
-                        <div className="flex justify-between items-center mb-2">
-                            <h5 className="font-bold text-primary">{result.condition}</h5>
-                            <span className="font-semibold text-sm text-text-main">{ (result.confidence * 100).toFixed(0) }% Likelihood</span>
-                        </div>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-2">
-                            <div className="bg-primary h-2.5 rounded-full" style={{ width: `${result.confidence * 100}%` }}></div>
-                        </div>
-                        <p className="text-sm text-text-muted">{result.explanation}</p>
-                    </div>
-                ))}
-            </div>
+          <div className="space-y-3 animate-fade-in">
+            <h4 className="font-bold text-text-main">Potential Conditions:</h4>
+            {analysisResult.map((result, index) => (
+              <div key={index} className="p-4 border dark:border-slate-700 rounded-lg bg-surface">
+                <div className="flex justify-between items-center mb-2">
+                  <h5 className="font-bold text-primary">{result.condition}</h5>
+                  <span className="font-semibold text-sm text-text-main">{(result.confidence * 100).toFixed(0)}% Likelihood</span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-2">
+                  <div className="bg-primary h-2.5 rounded-full" style={{ width: `${result.confidence * 100}%` }}></div>
+                </div>
+                <p className="text-sm text-text-muted">{result.explanation}</p>
+              </div>
+            ))}
+          </div>
         ) : (
-            <div className="text-center text-text-muted py-8">
-                {ICONS.symptomCheck}
-                <p className="mt-2">Results will appear here.</p>
-            </div>
+          <div className="text-center text-text-muted py-8">
+            {ICONS.symptomCheck}
+            <p className="mt-2">Results will appear here.</p>
+          </div>
         )}
         {symptomError && <p className="text-danger-text bg-danger-light dark:bg-red-900/50 dark:text-red-300 p-2 rounded-md mt-4">{symptomError}</p>}
       </div>
@@ -189,7 +191,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center sm:items-center" onClick={onClose}>
-      <div 
+      <div
         className="bg-surface w-full max-w-lg h-[80vh] max-h-[600px] rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col animate-slide-up-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
@@ -197,22 +199,22 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between p-4 border-b dark:border-slate-700">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-text-main flex items-center gap-2">
-                {ICONS.ai}
-                AI Health Assistant
+              {ICONS.ai}
+              AI Health Assistant
             </h2>
             <div className="bg-slate-100 dark:bg-slate-800 rounded-full p-1 flex text-sm">
-                <button
-                    onClick={() => setMode('chat')}
-                    className={`px-3 py-1 rounded-full ${mode === 'chat' ? 'bg-primary text-white shadow' : 'text-text-muted'}`}
-                >
-                    Chat
-                </button>
-                <button
-                    onClick={() => setMode('symptom-checker')}
-                    className={`px-3 py-1 rounded-full ${mode === 'symptom-checker' ? 'bg-primary text-white shadow' : 'text-text-muted'}`}
-                >
-                    Symptoms
-                </button>
+              <button
+                onClick={() => setMode('chat')}
+                className={`px-3 py-1 rounded-full ${mode === 'chat' ? 'bg-primary text-white shadow' : 'text-text-muted'}`}
+              >
+                Chat
+              </button>
+              <button
+                onClick={() => setMode('symptom-checker')}
+                className={`px-3 py-1 rounded-full ${mode === 'symptom-checker' ? 'bg-primary text-white shadow' : 'text-text-muted'}`}
+              >
+                Symptoms
+              </button>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">

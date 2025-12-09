@@ -85,7 +85,7 @@ export interface CostItem {
 }
 
 export interface TreatmentOption {
-  id:string;
+  id: string;
   name: string;
   description: string;
   probabilityOfSuccess: number; // 0-1
@@ -114,9 +114,9 @@ export interface DiagnosisSuggestion {
 }
 
 export interface UnratedSuggestion {
-    caseId: string;
-    caseTitle: string;
-    suggestion: DiagnosisSuggestion;
+  caseId: string;
+  caseTitle: string;
+  suggestion: DiagnosisSuggestion;
 }
 
 export interface AIAgentStats {
@@ -135,11 +135,11 @@ export interface AIInsights {
 }
 
 export interface PatientFile {
-    id: string;
-    name: string;
-    type: 'Lab Test' | 'Radiology Report' | 'Discharge Summary' | 'Prescription';
-    uploadDate: string;
-    url: string; // placeholder
+  id: string;
+  name: string;
+  type: 'Lab Test' | 'Radiology Report' | 'Discharge Summary' | 'Prescription';
+  uploadDate: string;
+  url: string; // placeholder
 }
 
 export interface Medication {
@@ -150,26 +150,26 @@ export interface Medication {
 }
 
 export interface VisitHistory {
-    id: string;
-    date: string;
-    doctor: string;
-    reason: string;
-    summary: string;
+  id: string;
+  date: string;
+  doctor: string;
+  reason: string;
+  summary: string;
 }
 
 export interface PatientProfile {
-    id: string;
-    identifier?: string;
-    name: string;
-    personalDetails: {
-        dob: string;
-        bloodType: string;
-    };
-    allergies: string[];
-    baselineIllnesses: string[];
-    medications: Medication[];
-    files: PatientFile[];
-    visitHistory: VisitHistory[];
+  id: string;
+  identifier?: string;
+  name: string;
+  personalDetails: {
+    dob: string;
+    bloodType: string;
+  };
+  allergies: string[];
+  baselineIllnesses: string[];
+  medications: Medication[];
+  files: PatientFile[];
+  visitHistory: VisitHistory[];
 }
 
 export interface PatientIntakeData {
@@ -179,7 +179,10 @@ export interface PatientIntakeData {
     lastName: string;
   };
   dob: string;
-  sex: 'Male' | 'Female' ;
+  sex: 'Male' | 'Female';
+  bloodType?: string;
+  allergies: string[];
+  baselineIllnesses: string[];
   contact: {
     phone: string;
     email: string;
@@ -219,7 +222,7 @@ export interface ExtractedCaseData {
   findings?: string;
   diagnosis?: string;
   patient_age?: number;
-  patient_sex?: 'Male' | 'Female' ;
+  patient_sex?: 'Male' | 'Female';
   missing_information?: string[];
 }
 
@@ -230,8 +233,8 @@ export interface SymptomAnalysisResult {
 }
 
 export interface AIContextualSuggestion {
-    suggestion: string;
-    rationale: string;
+  suggestion: string;
+  rationale: string;
 }
 
 export interface Certification {
