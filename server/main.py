@@ -36,7 +36,7 @@ import os
 
 # ... (previous code)
 
-app.include_router(comments.router, prefix="/api/comments", tags=["Comments"])
+
 
 # Serve Static Files (React App)
 # Ensure 'static' directory exists or handle it gracefully

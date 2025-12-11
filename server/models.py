@@ -17,7 +17,9 @@ class User(Base):
     # Relationships
     doctor_profile = relationship("DoctorProfile", back_populates="user", uselist=False)
     comments = relationship("Comment", back_populates="user")
-    cases = relationship("Case", back_populates="creator")
+    cases = relationship("Case", back_populates="creator", foreign_keys="[Case.creator_id]")
+    assigned_cases = relationship("Case", back_populates="specialist", foreign_keys="[Case.specialist_id]")
+    knowledge_items = relationship("KnowledgeItem", back_populates="user")
 
 class DoctorProfile(Base):
     __tablename__ = "doctor_profiles"
@@ -31,6 +33,17 @@ class DoctorProfile(Base):
     profile_picture_url = Column(String)
 
     user = relationship("User", back_populates="doctor_profile")
+    
+class KnowledgeItem(Base):
+    __tablename__ = "knowledge_items"
+    
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    content = Column(String)
+    metadata_ = Column(JSON) # 'metadata' is reserved in SQLAlchemy sometimes, using metadata_
+    created_at = Column(String, default=datetime.utcnow().isoformat)
+
+    user = relationship("User", back_populates="knowledge_items")
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -93,6 +106,7 @@ class Case(Base):
     specialist_assignment_timestamp = Column(String, nullable=True)
     
     creator = relationship("User", foreign_keys=[creator_id], back_populates="cases")
+    specialist = relationship("User", foreign_keys=[specialist_id], back_populates="assigned_cases")
     patient = relationship("Patient", back_populates="cases")
     comments = relationship("Comment", back_populates="case")
     files = relationship("CaseFile", back_populates="case")

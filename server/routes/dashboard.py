@@ -13,41 +13,27 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
     now = datetime.utcnow()
     three_days_ago = now - timedelta(days=3)
     twenty_four_hours_ago = now - timedelta(hours=24)
+    
+    # ISO Format Strings for comparison (Assumes DB stores ISO strings)
+    # Note: DB strings might not have timezone info, matching default isoformat()
+    three_days_ago_iso = three_days_ago.isoformat()
+    twenty_four_hours_ago_iso = twenty_four_hours_ago.isoformat()
 
     # Calculate Overdue (Open/Under Review & > 3 days old)
-    cases = db.query(CaseModel).filter(CaseModel.status.in_(["Open", "Under Review"])).all()
-    overdue_count = 0
-    for c in cases:
-        try:
-            # created_at is string ISO. Handle potential Z or no Z.
-            # Ideally use a robust parser or store as datetime in DB.
-            ts_str = c.created_at.replace("Z", "+00:00")
-            # If no timezone, assume UTC
-            created_at = datetime.fromisoformat(ts_str)
-            if created_at.tzinfo is None:
-                created_at = created_at.replace(tzinfo=None) # Compare naive-to-naive or aware-to-aware
-                # actually three_days_ago is naive (utcnow). So let's make created_at naive if needed or both aware.
-                # utcnow returns naive.
-            
-            # Simplest: compare timestamps
-            if created_at.timestamp() < three_days_ago.timestamp():
-                overdue_count += 1
-        except ValueError:
-            pass 
+    # Using SQL filtering for efficiency
+    overdue_count = db.query(CaseModel).filter(
+        CaseModel.status.in_(["Open", "Under Review"]),
+        CaseModel.created_at < three_days_ago_iso
+    ).count()
 
-    # Calculate Updates (Comments > 24h ago)
-    comments = db.query(CommentModel).all()
-    updates_count = 0
-    for c in comments:
-        try:
-            ts_str = c.timestamp.replace("Z", "+00:00")
-            timestamp = datetime.fromisoformat(ts_str)
-            if timestamp.timestamp() > twenty_four_hours_ago.timestamp():
-                updates_count += 1
-        except ValueError:
-            pass
+    # Calculate Updates (Comments > 24h ago... wait, logic says "Updates" usually means RECENT updates)
+    # If the user wants "Updates", they likely mean NEW updates (last 24h), not OLD updates.
+    # The original logic was `timestamp > twenty_four_hours_ago.timestamp()`, which means NEWER than 24h.
+    updates_count = db.query(CommentModel).filter(
+        CommentModel.timestamp > twenty_four_hours_ago_iso
+    ).count()
 
-    # Assignments (Mock logic)
+    # Assignments (Mock logic for now, or count cases assigned to user if auth user passed)
     assignments_count = 5 
 
     return {
@@ -58,7 +44,6 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
 
 @router.get("/activity", response_model=List[Comment])
 async def get_recent_activity(db: Session = Depends(get_db)):
-    comments = db.query(CommentModel).all()
-    # Sort by timestamp desc
-    sorted_comments = sorted(comments, key=lambda x: x.timestamp, reverse=True)
-    return sorted_comments[:5]
+    # Use SQL Order By and Limit for efficiency
+    recent_comments = db.query(CommentModel).order_by(CommentModel.timestamp.desc()).limit(5).all()
+    return recent_comments

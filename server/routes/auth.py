@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from ..schemas import User as UserSchema, Role
 from ..database import get_db
-from ..models import User as UserModel
+from ..models import User as UserModel, DoctorProfile
 import os
 
 router = APIRouter()
@@ -119,6 +119,19 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
     )
     
     db.add(new_user)
+    db.flush() # ID generation
+
+    if request.role == Role.Doctor or request.role == "Doctor":
+         new_profile = DoctorProfile(
+             id=f"profile-{new_user.id}",
+             user_id=new_user.id,
+             specialty=request.specialty or "General Practice",
+             years_of_experience=0,
+             bio="",
+             certifications=[],
+             profile_picture_url=""
+         )
+         db.add(new_profile)
     db.commit()
     db.refresh(new_user)
     

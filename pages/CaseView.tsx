@@ -744,28 +744,28 @@ const CaseView: React.FC = () => {
 
                 <div className="flex flex-col lg:flex-row gap-6">
                     {/* Sidebar / Tabs */}
-                    <div className="lg:w-1/4 space-y-2">
+                    <div className="lg:w-1/4 flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
                         <button
                             onClick={() => setActiveTab('details')}
-                            className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'details' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'details' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                         >
                             {ICONS.case} Details
                         </button>
                         <button
                             onClick={() => setActiveTab('chat')}
-                            className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'chat' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'chat' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                         >
                             {ICONS.ai} AI Chat
                         </button>
                         <button
                             onClick={() => setActiveTab('discussion')}
-                            className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'discussion' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'discussion' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                         >
                             {ICONS.chat} Discussion
                         </button>
                         <button
                             onClick={() => setActiveTab('guidelines')}
-                            className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 ${activeTab === 'guidelines' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'guidelines' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                         >
                             {ICONS.guidelines} Guidelines
                         </button>

@@ -6,7 +6,8 @@ import { ICONS } from '../constants/index';
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, role: Role) => Promise<void>;
+    login: (email: string, role: Role, password?: string) => Promise<void>;
+    register: (email: string, role: Role, password?: string, name?: string) => Promise<void>;
     logout: () => void;
 }
 
@@ -15,9 +16,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
 
-    const login = useCallback(async (email: string, role: Role) => {
+    const login = useCallback(async (email: string, role: Role, password?: string) => {
         try {
-            const loggedInUser = await DataService.login(email, role);
+            const loggedInUser = await DataService.login(email, role, password);
             if (loggedInUser) {
                 setUser(loggedInUser);
             } else {
@@ -25,6 +26,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         } catch (error) {
             console.error("Login error:", error);
+            alert("Login failed. Please check credentials.");
+        }
+    }, []);
+
+    const register = useCallback(async (email: string, role: Role, password?: string, name?: string) => {
+        try {
+            const newUser = await DataService.register(email, role, password, name);
+            if (newUser) {
+                setUser(newUser);
+            }
+        } catch (error) {
+            console.error("Registration error:", error);
+            alert("Registration failed.");
         }
     }, []);
 
@@ -33,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={{ user, login, logout, register }}>
             {children}
         </AuthContext.Provider>
     );
@@ -54,17 +68,20 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
     const [name, setName] = useState('');
     const [role, setRole] = useState<Role>(Role.Doctor);
     const [isLoading, setIsLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, register } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        // In a real app, we would call register() here if isRegistering is true
-        // For now, our login logic handles implicit registration or we can add explicit call
-        // But to keep it simple and smooth as requested, we'll stick to the login flow which auto-creates
-        // However, if we want to use the name, we should ideally pass it.
-        // For this demo, we'll just proceed with login which works for both.
-        await login(email, role);
+        try {
+            if (isRegistering) {
+                await register(email, role, password, name);
+            } else {
+                await login(email, role, password);
+            }
+        } catch (e) {
+            console.error(e);
+        }
         setIsLoading(false);
         onLogin();
     };
@@ -72,7 +89,9 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
     const handleGoogleLogin = async () => {
         setIsLoading(true);
         const googleUserEmail = "h.sanati@google.com";
-        await login(googleUserEmail, Role.Doctor);
+        // Google login flow might need special handling in backend or use Firebase Auth
+        // For now, mapping to existing mock user logic or basic login
+        await login(googleUserEmail, Role.Doctor, "password");
         setIsLoading(false);
         onLogin();
     };

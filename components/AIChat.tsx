@@ -56,7 +56,7 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
     setIsLoading(true);
 
     try {
-      const aiResponse = await GeminiService.getAIChatResponse(caseData, newMessages, userInput, user?.id);
+      const aiResponse = await GeminiService.getAIChatResponse(caseData, newMessages, userInput, user?.id, user?.role);
       setMessages([...newMessages, { author: 'ai', content: aiResponse }]);
     } catch (error: any) {
       console.error("Failed to get AI response:", error);

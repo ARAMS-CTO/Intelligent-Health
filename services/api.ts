@@ -14,35 +14,21 @@ const getAuthHeader = () => {
 // --- DATA SERVICE LAYER ---
 export class DataService {
     // --- User & Auth ---
-    static async login(email: string, role: Role): Promise<User | null> {
-        // Note: Frontend currently only asks for email/role in some flows. 
-        // We need to update the UI to ask for password.
-        // For now, we'll assume a default password "password" for demo if not provided, 
-        // OR we should update the UI. 
-        // Since I cannot update UI in this step easily without seeing it, I'll assume the UI sends password or we default it.
-        // Actually, the LoginRequest in backend now requires password.
-        // I will assume the UI will be updated or I should send a dummy password for now to unblock, 
-        // BUT the backend requires registration with password.
-
-        // Let's try to login. If it fails, we might need to register.
-        // Ideally, the UI should have a register flow.
-
+    static async login(email: string, role: Role, password?: string): Promise<User | null> {
+        const pwd = password || "password"; // Fallback for dev ease, but UI should promote input
         try {
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, role, password: "password" }) // TEMPORARY: Hardcoded password for demo migration
+                body: JSON.stringify({ email, role, password: pwd })
             });
 
             if (!response.ok) {
-                // If login fails, maybe user doesn't exist? 
-                // In the old app, it auto-registered.
-                // Let's try to register if login fails with 401 and we are in "demo" mode mental model.
-                // But for security, we should just fail.
-                // However, to keep the app usable without UI changes:
                 if (response.status === 401) {
-                    // Try registering with default password
-                    return await this.register(email, role, "password");
+                    // Implicit registration fallback for demo smoothness (optional, can be removed for strict auth)
+                    // If we want strict auth, we should return null or throw.
+                    // return await this.register(email, role, pwd);
+                    throw new Error('Login failed: Invalid credentials');
                 }
                 throw new Error('Login failed');
             }
@@ -56,15 +42,18 @@ export class DataService {
         }
     }
 
-    static async register(email: string, role: Role, password: string = "password"): Promise<User> {
+    static async register(email: string, role: Role, password?: string, name?: string): Promise<User> {
+        const pwd = password || "password";
+        const userName = name || email.split('@')[0];
+
         const response = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 email,
                 role,
-                password,
-                name: email.split('@')[0]
+                password: pwd,
+                name: userName
             })
         });
         if (!response.ok) throw new Error('Registration failed');
@@ -293,7 +282,7 @@ export class GeminiService {
         }
     }
 
-    static async getAIChatResponse(caseData: Case, history: any[], newMessage: string, userId: string = 'anonymous'): Promise<string> {
+    static async getAIChatResponse(caseData: Case, history: any[], newMessage: string, userId: string = 'anonymous', userRole: string = 'User'): Promise<string> {
         try {
             const response = await fetch(`${API_BASE_URL}/ai/chat`, {
                 method: 'POST',
@@ -302,7 +291,8 @@ export class GeminiService {
                     history: history,
                     message: newMessage,
                     context: `Medical Assistant for case: ${caseData.title}. Be concise.`,
-                    userId: userId
+                    userId: userId,
+                    userRole: userRole
                 })
             });
             const data = await response.json();

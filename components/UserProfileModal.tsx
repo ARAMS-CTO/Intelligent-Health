@@ -19,9 +19,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, us
 
     useEffect(() => {
         const fetchProfile = async () => {
-            if (isOpen && user && user.role === Role.Doctor && user.doctorProfileId) {
+            if (isOpen && user && user.role === Role.Doctor) {
                 setIsLoading(true);
-                const doctorProfile = await getDoctorProfileById(user.doctorProfileId);
+                const profileId = user.doctorProfileId || user.id;
+                const doctorProfile = await getDoctorProfileById(profileId);
                 if (doctorProfile) {
                     setProfile(doctorProfile);
                     setEditedProfile(doctorProfile);
@@ -43,14 +44,14 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, us
         newCertifications[index][field] = value;
         setEditedProfile(prev => ({ ...prev, certifications: newCertifications }));
     };
-    
+
     const addCertification = () => {
         const newCert: Certification = { id: `new-${Date.now()}`, name: '', issuingBody: '', year: new Date().getFullYear(), url: '' };
-        setEditedProfile(prev => ({...prev, certifications: [...(prev.certifications || []), newCert]}));
+        setEditedProfile(prev => ({ ...prev, certifications: [...(prev.certifications || []), newCert] }));
     };
-    
+
     const removeCertification = (id: string) => {
-        setEditedProfile(prev => ({...prev, certifications: prev.certifications?.filter(c => c.id !== id) }));
+        setEditedProfile(prev => ({ ...prev, certifications: prev.certifications?.filter(c => c.id !== id) }));
     }
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +79,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, us
         setIsLoading(false);
         setIsEditing(false);
     };
-    
+
     const handleCancel = () => {
         setEditedProfile(profile || {});
         setIsEditing(false);
@@ -107,35 +108,35 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, us
                 </div>
                 {isEditing ? (
                     <div className="mt-5 space-y-4">
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium text-text-muted mb-2">Profile Picture</label>
-                             <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4">
                                 <div className="relative w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-600 overflow-hidden group cursor-pointer" onClick={triggerFileInput}>
-                                     {editedProfile.profilePictureUrl ? (
+                                    {editedProfile.profilePictureUrl ? (
                                         <img src={editedProfile.profilePictureUrl} alt="Preview" className="w-full h-full object-cover" />
-                                     ) : (
-                                         <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300">
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300">
                                             {ICONS.user}
-                                         </div>
-                                     )}
-                                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-all">
-                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white opacity-0 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-all">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white opacity-0 group-hover:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                     </div>
+                                    </div>
                                 </div>
                                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                                 <div className="text-xs text-text-muted">
                                     <p>Click image to change</p>
                                     <p>JPG, PNG or GIF. Max 2MB.</p>
                                 </div>
-                             </div>
+                            </div>
                             {/* Hidden text input for fallback or manual URL entry if needed, though file upload is preferred */}
                             <input type="text" name="profilePictureUrl" value={editedProfile.profilePictureUrl || ''} onChange={handleInputChange} className={`${inputFieldClasses} mt-2 text-xs`} placeholder="Or enter image URL..." />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                             <div>
+                            <div>
                                 <label className="block text-sm font-medium text-text-muted">Specialty</label>
                                 <input type="text" name="specialty" value={editedProfile.specialty || ''} onChange={handleInputChange} className={inputFieldClasses} />
                             </div>
@@ -177,7 +178,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, us
                             <dt className="text-sm font-medium text-text-muted">Bio</dt>
                             <dd className="mt-1 text-sm text-text-main">{profile?.bio}</dd>
                         </div>
-                         <div className="sm:col-span-2">
+                        <div className="sm:col-span-2">
                             <dt className="text-sm font-medium text-text-muted">Certifications</dt>
                             <dd className="mt-1 text-sm text-text-main">
                                 <ul className="border border-gray-200 dark:border-slate-700 rounded-md divide-y divide-gray-200 dark:divide-slate-700">
@@ -217,7 +218,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose, us
                 ) : (
                     <div>
                         <div className="p-6 border-b dark:border-slate-700 flex items-center gap-4">
-                             <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white font-bold text-4xl overflow-hidden">
+                            <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-white font-bold text-4xl overflow-hidden">
                                 {profile?.profilePictureUrl ? (
                                     <img src={profile.profilePictureUrl} alt={user.name} className="w-full h-full object-cover" />
                                 ) : (

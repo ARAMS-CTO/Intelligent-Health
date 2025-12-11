@@ -85,7 +85,7 @@ class ChatRequest(BaseModel):
 @router.post("/chat")
 async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     # Get personalized system instruction
-    system_instruction = agent_service.get_system_instruction(request.userId, request.userRole, db)
+    system_instruction = agent_service.get_system_instruction(request.userId, request.userRole, db, context_query=request.message)
     
     if request.context:
         system_instruction += f"\n\nContext: {request.context}"
