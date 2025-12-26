@@ -7,6 +7,10 @@ export default {
     darkMode: 'class',
     theme: {
         extend: {
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+                heading: ['Outfit', 'sans-serif'],
+            },
             colors: {
                 'primary': 'rgb(var(--color-primary) / <alpha-value>)',
                 'primary-hover': 'rgb(var(--color-primary-hover) / <alpha-value>)',
@@ -17,8 +21,8 @@ export default {
                 'text-main': 'rgb(var(--color-text-main) / <alpha-value>)',
                 'text-muted': 'rgb(var(--color-text-muted) / <alpha-value>)',
                 'danger': {
-                    DEFAULT: '#dc2626', // red-600
-                    light: '#fef2f2', // red-50
+                    DEFAULT: '#ef4444', // red-500
+                    light: '#fee2e2', // red-100
                     text: '#991b1b', // red-800
                     border: '#fca5a5' // red-300
                 },
@@ -35,16 +39,16 @@ export default {
                     border: '#fcd34d' // amber-300
                 },
                 'success': {
-                    DEFAULT: '#16a34a', // green-600
-                    light: '#f0fdf4', // green-50
-                    text: '#14532d', // green-900
-                    border: '#86efac' // green-300
+                    DEFAULT: '#10b981', // emerald-500
+                    light: '#ecfdf5', // emerald-50
+                    text: '#064e3b', // emerald-900
+                    border: '#6ee7b7' // emerald-300
                 },
             },
             keyframes: {
                 'fade-in': {
-                    '0%': { opacity: '0' },
-                    '100%': { opacity: '1' },
+                    '0%': { opacity: '0', transform: 'translateY(10px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
                 'slide-up-fade-in': {
                     '0%': { opacity: '0', transform: 'translateY(20px)' },
@@ -54,11 +58,16 @@ export default {
                     '0%, 100%': { backgroundColor: 'var(--tw-colors-danger-light)' },
                     '50%': { backgroundColor: '#fee2e2' }, // red-100
                 },
+                'float': {
+                    '0%, 100%': { transform: 'translateY(0)' },
+                    '50%': { transform: 'translateY(-5px)' },
+                }
             },
             animation: {
-                'fade-in': 'fade-in 0.5s ease-in-out',
-                'slide-up-fade-in': 'slide-up-fade-in 0.3s ease-out',
+                'fade-in': 'fade-in 0.4s ease-out',
+                'slide-up-fade-in': 'slide-up-fade-in 0.5s ease-out',
                 'pulse-bg-critical': 'pulse-bg-critical 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'float': 'float 3s ease-in-out infinite',
             },
         },
     },

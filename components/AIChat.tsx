@@ -106,9 +106,9 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
   };
 
   const getAuthorDisplay = (author: Message['author']) => {
-    if (author === 'user') return { name: user?.name || 'You', color: 'bg-primary', align: 'items-end' };
-    if (author === 'ai') return { name: 'AI Assistant', color: 'bg-slate-700 dark:bg-slate-600', align: 'items-start' };
-    return { name: 'System', color: 'bg-gray-400', align: 'items-center' };
+    if (author === 'user') return { name: user?.name || 'You', color: 'bg-gradient-to-br from-primary to-indigo-600 text-white', align: 'items-end', shadow: 'shadow-primary/20' };
+    if (author === 'ai') return { name: 'AI Assistant', color: 'bg-white/80 dark:bg-slate-700/80 text-text-main border border-slate-200 dark:border-slate-600', align: 'items-start', shadow: 'shadow-sm' };
+    return { name: 'System', color: 'bg-slate-100 dark:bg-slate-800 text-text-muted text-xs italic border border-slate-200 dark:border-slate-700', align: 'items-center', shadow: 'shadow-none' };
   };
 
   const hasLabResults = caseData.labResults && caseData.labResults.length > 0;
@@ -141,42 +141,65 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
   };
 
   return (
-    <div className="bg-surface p-6 rounded-lg shadow-md flex flex-col h-[600px] max-h-[80vh]">
-      <h2 className="text-2xl font-bold text-text-main mb-4">AI Case Discussion</h2>
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search conversation..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full border dark:border-slate-600 bg-inherit rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary"
-        />
+    <div className="glass-card rounded-3xl p-6 shadow-2xl flex flex-col h-[650px] max-h-[85vh] antigravity-target border-white/20 dark:border-slate-700 relative overflow-hidden">
+      {/* Header */}
+      <div className="flex flex-col gap-4 mb-6 relative z-10">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-heading font-bold text-text-main flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-primary to-indigo-600 rounded-xl text-white shadow-lg shadow-primary/30">
+              {ICONS.ai}
+            </div>
+            AI Case Discussion
+          </h2>
+          <div className="text-xs font-bold px-3 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
+            Powered by Gemini
+          </div>
+        </div>
+
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Search conversation..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full border-0 bg-white/50 dark:bg-slate-800/50 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm shadow-inner transition-all hover:bg-white/80 dark:hover:bg-slate-800/80 font-medium"
+          />
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4">
+
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto pr-2 space-y-6 mb-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 relative z-10 p-2">
         {filteredMessages.map((msg, index) => {
-          const { name, color, align } = getAuthorDisplay(msg.author);
+          const { name, color, align, shadow } = getAuthorDisplay(msg.author);
           if (msg.author === 'system') {
             const isError = msg.content.toLowerCase().startsWith('error:');
             return (
-              <div key={index} className={`text-center text-sm py-2 ${isError ? 'text-danger font-semibold' : 'text-text-muted'}`}>
-                <em>{highlightText(msg.content, searchQuery)}</em>
+              <div key={index} className={`flex justify-center my-4`}>
+                <span className={`px-4 py-1.5 rounded-full text-xs font-bold backdrop-blur-sm shadow-sm ${isError ? 'bg-red-100/80 text-red-800 border border-red-200' : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 border border-slate-200 dark:border-slate-700'}`}>
+                  {highlightText(msg.content, searchQuery)}
+                </span>
               </div>
             );
           }
           return (
-            <div key={index} className={`flex flex-col ${align}`}>
-              <span className="text-xs font-bold text-text-muted mb-1">{name}</span>
-              <div className={`p-3 rounded-lg max-w-lg text-white ${color}`}>
-                <p className="text-sm whitespace-pre-wrap">{highlightText(msg.content, searchQuery)}</p>
+            <div key={index} className={`flex flex-col ${align} max-w-[85%] animate-fade-in-up`}>
+              <span className={`text-[10px] font-bold text-text-muted mb-1 px-1 uppercase tracking-wider opacity-70`}>{name}</span>
+              <div className={`p-4 rounded-2xl shadow-md backdrop-blur-sm ${color} ${shadow} ${align === 'items-end' ? 'rounded-tr-none' : 'rounded-tl-none'} transition-all duration-300 hover:shadow-lg`}>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{highlightText(msg.content, searchQuery)}</p>
               </div>
             </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
-      <div className="border-t dark:border-slate-700 pt-4">
-        <div className="flex items-center space-x-2">
-          <button onClick={triggerFileUpload} className="p-2 text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition" disabled={isOffline}>
+
+      {/* Input Area */}
+      <div className="border-t border-white/10 dark:border-slate-700/50 pt-4 mt-1 relative z-10">
+        <div className="flex items-end gap-2 bg-white/60 dark:bg-slate-800/60 p-2 rounded-2xl border border-white/40 dark:border-slate-700/50 focus-within:ring-2 focus-within:ring-primary/30 transition-all shadow-lg backdrop-blur-md">
+          <button onClick={triggerFileUpload} className="p-3 text-text-muted hover:text-primary hover:bg-primary/10 rounded-xl transition-all duration-200" disabled={isOffline} title="Upload File">
             {ICONS.upload}
           </button>
           <input
@@ -186,25 +209,44 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
             className="hidden"
             disabled={isOffline}
           />
-          <input
-            type="text"
+          <textarea
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
             placeholder={placeholderText}
-            className="flex-1 border dark:border-slate-600 bg-inherit rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-3 px-2 placeholder:text-slate-400 font-medium max-h-[120px] resize-none scrollbar-hide"
             disabled={isLoading || isOffline}
+            rows={1}
+            style={{ minHeight: '44px' }}
           />
-          <VoiceInput onTranscript={(transcript) => setUserInput(prev => prev + transcript)} disabled={isLoading || isOffline} />
-          <button onClick={handleSendMessage} disabled={isLoading || userInput.trim() === '' || isOffline} className="bg-primary text-white p-2 rounded-full hover:bg-primary-hover transition disabled:bg-gray-400">
-            {isLoading ? (
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : ICONS.send}
-          </button>
+          <div className="flex items-center gap-1 pb-1">
+            <VoiceInput onTranscript={(transcript) => setUserInput(prev => prev + transcript)} disabled={isLoading || isOffline} />
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || userInput.trim() === '' || isOffline}
+              className="bg-gradient-to-r from-primary to-indigo-600 text-white p-3 rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed group"
+            >
+              {isLoading ? (
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <div className="transform group-hover:translate-x-0.5 transition-transform">
+                  {ICONS.send}
+                </div>
+              )}
+            </button>
+          </div>
         </div>
+        <p className="text-[10px] text-center text-text-muted mt-2 opacity-60">
+          AI can make mistakes. Please verify important information.
+        </p>
       </div>
     </div>
   );

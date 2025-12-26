@@ -1,5 +1,10 @@
 {
-  "appName": "[ar] Intelligent AI Hospital",
-  "credits": "[ar] {{count}} Credits",
-  "loginSignUp": "[ar] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "تسجيل الدخول / الاشتراك",
+  "platform": "المنصة",
+  "company": "الشركة",
+  "intelligenceFeed": "خلاصة المعلومات",
+  "subscribePrompt": "اشترك في نشرتنا الإخبارية للحصول على أحدث المعلومات في الذكاء الاصطناعي السريري.",
+  "newsletterSuccess": "تم الاشتراك بنجاح في خلاصة المعلومات!",
+  "missionStatement": "رائدون في التوليف بين الخبرة البشرية والذكاء الآلي لضمان غدٍ أكثر صحة للجميع."
 }

@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, LoginSignupForm, useAuth } from './components/Auth';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import CaseView from './pages/CaseView';
 import PatientPortal from './pages/PatientPortal';
 import PatientIntake from './pages/PatientIntake';
@@ -22,11 +22,11 @@ const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="relative">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <div className="relative glass-card p-1 rounded-[32px] overflow-hidden animate-fade-in">
                 <LoginSignupForm onLogin={onClose} />
-                <button onClick={onClose} className="absolute top-0 right-0 mt-4 mr-4 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -36,7 +36,7 @@ const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen
 };
 
 // Define role groups for route protection
-const nonPatientRoles = Object.values(Role).filter(r => r !== Role.Patient);
+const nonPatientRoles = [Role.Doctor, Role.Nurse, Role.Specialist, Role.Admin];
 const patientRole = [Role.Patient];
 
 // A component to protect routes based on user authentication and role.
@@ -44,14 +44,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement; allowedRoles: Rol
     const { user } = useAuth();
 
     if (!user) {
-        // If user is not logged in, redirect to the landing page.
-        return <Navigate to="/" />;
+        return <Navigate to="/" replace />;
     }
-    
+
     if (!allowedRoles.includes(user.role)) {
-        // If user's role is not allowed, redirect to their default home page,
-        // which will then redirect them to the correct dashboard/portal.
-        return <Navigate to="/" />;
+        return <Navigate to="/" replace />;
     }
 
     return children;
@@ -70,22 +67,17 @@ const AppLayout: React.FC = () => {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
                     .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        console.log('ServiceWorker registration successful');
                     })
                     .catch(err => {
-                        console.log('ServiceWorker registration failed: ', err);
+                        console.log('ServiceWorker registration failed:', err);
                     });
             });
         }
     }, []);
 
-    const getHomeRoute = () => {
-        if (!user) return <LandingPage onGetStarted={() => setLoginModalOpen(true)} />;
-        if (user.role === Role.Patient) return <Navigate to="/portal" />;
-        return <Navigate to="/dashboard" />;
-    };
-    
-    const showFab = location.pathname !== '/';
+    // Check if we should show the landing page or redirect
+    const isLanding = location.pathname === '/';
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -94,22 +86,28 @@ const AppLayout: React.FC = () => {
             <AntigravityManager />
             <main className="flex-grow">
                 <Routes>
-                    <Route path="/" element={getHomeRoute()} />
-                    <Route 
-                        path="/dashboard" 
+                    <Route path="/" element={
+                        user ? (
+                            user.role === Role.Patient ? <Navigate to="/portal" replace /> : <Navigate to="/dashboard" replace />
+                        ) : (
+                            <LandingPage onGetStarted={() => setLoginModalOpen(true)} />
+                        )
+                    } />
+                    <Route
+                        path="/dashboard"
                         element={
                             <ProtectedRoute allowedRoles={nonPatientRoles}>
                                 <Dashboard />
                             </ProtectedRoute>
-                        } 
+                        }
                     />
-                    <Route 
-                        path="/case/:id" 
+                    <Route
+                        path="/case/:id"
                         element={
                             <ProtectedRoute allowedRoles={nonPatientRoles}>
                                 <CaseView />
                             </ProtectedRoute>
-                        } 
+                        }
                     />
                     <Route
                         path="/patient-intake"
@@ -127,28 +125,38 @@ const AppLayout: React.FC = () => {
                             </ProtectedRoute>
                         }
                     />
-                    <Route 
-                        path="/portal" 
+                    <Route
+                        path="/portal"
                         element={
                             <ProtectedRoute allowedRoles={patientRole}>
                                 <PatientPortal />
                             </ProtectedRoute>
-                        } 
+                        }
                     />
-                    <Route path="*" element={<Navigate to="/" />} />
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Admin]}>
+                                <AdminDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setLoginModalOpen(false)} />
             <UserProfileModal isOpen={isProfileModalOpen} onClose={() => setProfileModalOpen(false)} user={user} />
-            
-            {showFab && (
-              <button
-                onClick={() => setChatbotOpen(true)}
-                className="fixed bottom-6 right-6 md:bottom-8 md:right-8 bg-primary text-white p-4 rounded-full shadow-lg hover:bg-primary-hover transition transform hover:scale-110 z-40 animate-fade-in"
-                aria-label="Open AI health assistant"
-              >
-                {ICONS.voiceChat}
-              </button>
+
+            {!isLanding && (
+                <button
+                    onClick={() => setChatbotOpen(true)}
+                    className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-primary text-white p-5 rounded-3xl shadow-2xl shadow-primary/40 hover:bg-primary-hover transition-all transform hover:scale-110 z-40 active:scale-95 group"
+                    aria-label="Open AI health assistant"
+                >
+                    <div className="group-hover:rotate-12 transition-transform">
+                        {ICONS.voiceChat}
+                    </div>
+                </button>
             )}
             <AIChatbot isOpen={isChatbotOpen} onClose={() => setChatbotOpen(false)} />
         </div>
@@ -156,18 +164,26 @@ const AppLayout: React.FC = () => {
 };
 
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 const App: React.FC = () => {
-  return (
-    <AuthProvider>
-      <ThemeProvider>
-        <HashRouter>
-            <Suspense fallback={<div className="w-full h-screen flex items-center justify-center text-text-main bg-background">Loading...</div>}>
-              <AppLayout />
-            </Suspense>
-        </HashRouter>
-      </ThemeProvider>
-    </AuthProvider>
-  );
+    return (
+        <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+            <AuthProvider>
+                <ThemeProvider>
+                    <BrowserRouter>
+                        <Suspense fallback={
+                            <div className="w-full h-screen flex items-center justify-center text-text-main bg-background font-heading font-bold text-2xl tracking-tighter">
+                                Initializing <span className="text-primary ml-2">Health System...</span>
+                            </div>
+                        }>
+                            <AppLayout />
+                        </Suspense>
+                    </BrowserRouter>
+                </ThemeProvider>
+            </AuthProvider>
+        </GoogleOAuthProvider>
+    );
 };
 
 export default App;

@@ -59,7 +59,7 @@ export const useAuth = () => {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
-};
+}; import { useGoogleLogin } from '@react-oauth/google';
 
 export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
     const [isRegistering, setIsRegistering] = useState(false);
@@ -79,110 +79,122 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
             } else {
                 await login(email, role, password);
             }
+            onLogin();
         } catch (e) {
             console.error(e);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
-        onLogin();
     };
 
-    const handleGoogleLogin = async () => {
-        setIsLoading(true);
-        const googleUserEmail = "h.sanati@google.com";
-        // Google login flow might need special handling in backend or use Firebase Auth
-        // For now, mapping to existing mock user logic or basic login
-        await login(googleUserEmail, Role.Doctor, "password");
-        setIsLoading(false);
-        onLogin();
-    };
+    const handleGoogleLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setIsLoading(true);
+            try {
+                // Mocking user profile retrieval after Google success
+                await login("google-user@intelligent-health.com", Role.Doctor, "google-oauth");
+                onLogin();
+            } catch (error) {
+                console.error('Google Auth Error:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        onError: (error) => console.log('Login Failed:', error)
+    });
 
     return (
-        <div className="bg-surface p-8 rounded-lg shadow-xl w-full max-w-md animate-fade-in">
-            <h2 className="text-3xl font-bold text-center text-text-main mb-6">
+        <div className="glass-card p-6 sm:p-10 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in border border-white/20 dark:border-slate-700">
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-center text-text-main mb-8">
                 {isRegistering ? 'Create Account' : 'Welcome Back'}
             </h2>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="space-y-4">
                 {isRegistering && (
-                    <div className="mb-4 animate-slide-up-fade-in">
-                        <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="name">Full Name</label>
+                    <div className="animate-slide-up-fade-in">
+                        <label className="block text-text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="name">Full Name</label>
                         <input
                             id="name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-slate-200 dark:bg-slate-700 dark:border-slate-600 leading-tight focus:outline-none focus:shadow-outline"
+                            className="block w-full px-4 py-3 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-text-main placeholder-slate-400 font-sans"
                             placeholder="Dr. John Doe"
                             required={isRegistering}
                             disabled={isLoading}
                         />
                     </div>
                 )}
-                <div className="mb-4">
-                    <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="email">Email</label>
+                <div>
+                    <label className="block text-text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="email">Email</label>
                     <input
                         id="email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-slate-200 dark:bg-slate-700 dark:border-slate-600 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="your.email@hospital.com"
+                        className="block w-full px-4 py-3 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-text-main placeholder-slate-400 font-sans"
+                        placeholder="your.email@intelligent-health.com"
                         required
                         disabled={isLoading}
                     />
                 </div>
-                <div className="mb-4">
-                    <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="password">Password</label>
+                <div>
+                    <label className="block text-text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="password">Password</label>
                     <input
                         id="password"
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-slate-200 dark:bg-slate-700 dark:border-slate-600 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-                        placeholder="******************"
+                        className="block w-full px-4 py-3 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-text-main placeholder-slate-400 font-sans"
+                        placeholder="•••••••••••••••••"
                         required
                         disabled={isLoading}
                     />
                 </div>
-                <div className="mb-6">
-                    <label className="block text-text-muted text-sm font-bold mb-2" htmlFor="role">Your Role</label>
-                    <select
-                        id="role"
-                        value={role}
-                        onChange={(e) => setRole(e.target.value as Role)}
-                        className="shadow border rounded w-full py-2 px-3 text-gray-700 dark:text-slate-200 dark:bg-slate-700 dark:border-slate-600 leading-tight focus:outline-none focus:shadow-outline bg-white"
-                        disabled={isLoading}
-                    >
-                        {Object.values(Role).map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                <div>
+                    <label className="block text-text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="role">Your Role</label>
+                    <div className="relative">
+                        <select
+                            id="role"
+                            value={role}
+                            onChange={(e) => setRole(e.target.value as Role)}
+                            className="block w-full px-4 py-3 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-text-main appearance-none font-sans"
+                            disabled={isLoading}
+                        >
+                            {Object.values(Role).map(r => <option key={r} value={r} className="bg-white dark:bg-slate-900">{r}</option>)}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                    </div>
                 </div>
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="w-full bg-gradient-to-r from-primary to-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 focus:outline-none ring-offset-2 focus:ring-2 focus:ring-primary transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center mt-6"
                 >
                     {isLoading ? <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : (isRegistering ? 'Create Account' : 'Sign In')}
                 </button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-6 text-center">
                 <button
                     onClick={() => setIsRegistering(!isRegistering)}
-                    className="text-primary hover:text-primary-hover text-sm font-medium focus:outline-none"
+                    className="text-primary hover:text-primary-hover text-sm font-bold focus:outline-none hover:underline underline-offset-2 transition-all font-sans"
                 >
                     {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
                 </button>
             </div>
 
             <div className="my-6 flex items-center">
-                <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
-                <span className="flex-shrink mx-4 text-gray-400 text-sm">OR</span>
-                <div className="flex-grow border-t border-gray-300 dark:border-slate-600"></div>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                <span className="flex-shrink mx-4 text-slate-500 text-xs font-bold uppercase tracking-wide">OR</span>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
             </div>
             <button
                 type="button"
-                onClick={handleGoogleLogin}
+                onClick={() => handleGoogleLogin()}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300 hover:bg-gray-50 dark:bg-slate-600 dark:border-slate-500 dark:text-slate-200 dark:hover:bg-slate-500 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-text-main font-bold py-3 px-4 rounded-xl shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 transform hover:-translate-y-0.5 disabled:opacity-50 font-sans"
             >
                 {ICONS.google}
                 <span>Sign in with Google</span>

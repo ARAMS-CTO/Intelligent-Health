@@ -1,5 +1,10 @@
 {
-  "appName": "[fa] Intelligent AI Hospital",
-  "credits": "[fa] {{count}} Credits",
-  "loginSignUp": "[fa] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "ورود / ثبت‌نام",
+  "platform": "پلتفرم",
+  "company": "شرکت",
+  "intelligenceFeed": "فید هوشمندی",
+  "subscribePrompt": "برای آخرین اخبار در هوش مصنوعی بالینی در خبرنامه ما مشترک شوید.",
+  "newsletterSuccess": "با موفقیت در فید هوشمندی مشترک شدید!",
+  "missionStatement": "پیشرو در ترکیب تخصص انسانی و هوش ماشینی برای تضمین فردایی سالم‌تر برای همه."
 }

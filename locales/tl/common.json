@@ -1,5 +1,10 @@
 {
-  "appName": "[tl] Intelligent AI Hospital",
-  "credits": "[tl] {{count}} Credits",
-  "loginSignUp": "[tl] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "Mag-login / Mag-sign up",
+  "platform": "Platform",
+  "company": "Kumpanya",
+  "intelligenceFeed": "Feed ng Intelligence",
+  "subscribePrompt": "Mag-subscribe sa aming newsletter para sa pinakabago sa clinical AI.",
+  "newsletterSuccess": "Matagumpay na nag-subscribe sa intelligence feed!",
+  "missionStatement": "Nangunguna sa synthesis ng kadalubhasaan ng tao at intelligence ng makina upang masiguro ang mas malusog na bukas para sa lahat."
 }

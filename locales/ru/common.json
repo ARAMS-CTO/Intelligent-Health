@@ -1,5 +1,10 @@
 {
-  "appName": "[ru] Intelligent AI Hospital",
-  "credits": "[ru] {{count}} Credits",
-  "loginSignUp": "[ru] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "Войти / Регистрация",
+  "platform": "Платформа",
+  "company": "Компания",
+  "intelligenceFeed": "Лента интеллекта",
+  "subscribePrompt": "Подпишитесь на нашу рассылку, чтобы следить за последними новостями в области клинического ИИ.",
+  "newsletterSuccess": "Вы успешно подписались на ленту интеллекта!",
+  "missionStatement": "Пионеры в области синтеза человеческого опыта и машинного интеллекта для обеспечения здорового будущего для всех."
 }

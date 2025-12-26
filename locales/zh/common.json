@@ -1,5 +1,10 @@
 {
-  "appName": "[zh] Intelligent AI Hospital",
-  "credits": "[zh] {{count}} Credits",
-  "loginSignUp": "[zh] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "登录 / 注册",
+  "platform": "平台",
+  "company": "公司",
+  "intelligenceFeed": "智能咨询",
+  "subscribePrompt": "订阅我们的时事通讯，获取临床人工智能的最新动态。",
+  "newsletterSuccess": "成功订阅智能咨询！",
+  "missionStatement": "首创人类专业知识与机器智能的合成，确保所有人拥有更健康的明天。"
 }

@@ -1,5 +1,10 @@
 {
-  "appName": "[hi] Intelligent AI Hospital",
-  "credits": "[hi] {{count}} Credits",
-  "loginSignUp": "[hi] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "लॉग इन / साइन अप",
+  "platform": "प्लेटफ़ॉर्म",
+  "company": "कंपनी",
+  "intelligenceFeed": "इंटेलिजेंस फीड",
+  "subscribePrompt": "क्लिनिकल एआई में नवीनतम जानकारी के लिए हमारे न्यूज़लेटर की सदस्यता लें।",
+  "newsletterSuccess": "इंटेलिजेंस फीड की सफलतापूर्वक सदस्यता ली गई!",
+  "missionStatement": "सभी के लिए एक स्वस्थ कल सुनिश्चित करने के लिए मानव विशेषज्ञता और मशीन इंटेलिजेंस के संश्लेषण में अग्रणी।"
 }

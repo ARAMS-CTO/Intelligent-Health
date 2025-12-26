@@ -3,10 +3,12 @@ uvicorn
 google-genai
 python-multipart
 sqlalchemy
-psycopg2-binary
+# psycopg2-binary
+cloudsql-sqlalchemy
+pg8000
 python-dotenv
 passlib[bcrypt]
 python-jose[cryptography]
-chromadb
-sentence-transformers
+# chromadb
+# sentence-transformers
 pydantic-settings

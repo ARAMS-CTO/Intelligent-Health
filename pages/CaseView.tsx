@@ -17,12 +17,16 @@ import VoiceFormAssistant from '../components/VoiceFormAssistant';
 
 const CollapsibleSection: React.FC<{ title: ReactNode; isOpen: boolean; onToggle: () => void; children: React.ReactNode }> = ({ title, isOpen, onToggle, children }) => {
     return (
-        <div className="border-t">
-            <button onClick={onToggle} className="w-full flex justify-between items-center py-3 px-4 text-left font-semibold text-text-muted hover:bg-slate-50 dark:hover:bg-slate-800/50 focus:outline-none transition-colors">
-                <div className="flex items-center gap-2">{title}</div>
-                <svg className={`w-5 h-5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        <div className="border-b border-white/10 dark:border-slate-700/50 last:border-b-0">
+            <button onClick={onToggle} className="w-full flex justify-between items-center py-5 px-6 text-left font-bold text-text-main hover:bg-white/10 dark:hover:bg-slate-800/30 focus:outline-none transition-all duration-300 group">
+                <div className="flex items-center gap-3 text-lg">{title}</div>
+                <div className={`p-1.5 rounded-full bg-slate-100/50 dark:bg-slate-800/50 group-hover:bg-primary/10 group-hover:text-primary transition-all duration-300 ${isOpen ? 'rotate-180 text-primary' : 'text-text-muted'}`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                </div>
             </button>
-            {isOpen && <div className="p-4 bg-slate-50 dark:bg-slate-800/30 text-sm text-text-muted whitespace-pre-wrap border-t dark:border-slate-700">{children}</div>}
+            <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="p-6 pt-2 bg-transparent text-sm text-text-secondary whitespace-pre-wrap leading-relaxed animate-fade-in">{children}</div>
+            </div>
         </div>
     );
 };
@@ -108,24 +112,24 @@ const LabResultsTable: React.FC<{ results: LabResult[]; onAddResult: (result: La
 
     return (
         <div>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-                    <thead className="bg-gray-50 dark:bg-slate-800">
+            <div className="overflow-x-auto rounded-xl border border-white/10 dark:border-slate-700/50 shadow-inner bg-black/5 dark:bg-black/20">
+                <table className="min-w-full divide-y divide-white/10 dark:divide-slate-700/50">
+                    <thead className="bg-white/10 dark:bg-slate-800/50 backdrop-blur-md">
                         <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Test</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Value</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Range</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Interpretation</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-text-main uppercase tracking-wider">Test</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-text-main uppercase tracking-wider">Value</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Range</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-text-muted uppercase tracking-wider">Interpretation</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-slate-800/50 divide-y divide-gray-200 dark:divide-slate-700">
+                    <tbody className="divide-y divide-white/10 dark:divide-slate-700/50">
                         {results.map((res, idx) => (
-                            <tr key={idx}>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-text-main font-medium">{res.test}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-text-muted">{res.value} <span className="text-xs opacity-70">{res.unit}</span></td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-text-muted">{res.referenceRange}</td>
-                                <td className="px-4 py-2 whitespace-nowrap">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getBadgeColor(res.interpretation)}`}>
+                            <tr key={idx} className="hover:bg-white/5 dark:hover:bg-slate-700/30 transition-colors">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-main font-bold">{res.test}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-main font-medium">{res.value} <span className="text-xs opacity-70 ml-1 text-text-muted">{res.unit}</span></td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-text-muted">{res.referenceRange}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold uppercase tracking-wider rounded-full border ${getBadgeColor(res.interpretation)} shadow-sm backdrop-blur-sm bg-opacity-80`}>
                                         {res.interpretation}
                                     </span>
                                 </td>
@@ -135,21 +139,24 @@ const LabResultsTable: React.FC<{ results: LabResult[]; onAddResult: (result: La
                 </table>
             </div>
             {isAdding ? (
-                <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded border dark:border-slate-700 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                        <input placeholder="Test Name" className="border dark:border-slate-600 bg-inherit rounded p-1 text-sm" value={newResult.test} onChange={e => setNewResult({ ...newResult, test: e.target.value })} />
-                        <input placeholder="Value" className="border dark:border-slate-600 bg-inherit rounded p-1 text-sm" value={newResult.value} onChange={e => setNewResult({ ...newResult, value: e.target.value })} />
-                        <input placeholder="Unit" className="border dark:border-slate-600 bg-inherit rounded p-1 text-sm" value={newResult.unit} onChange={e => setNewResult({ ...newResult, unit: e.target.value })} />
-                        <input placeholder="Ref Range" className="border dark:border-slate-600 bg-inherit rounded p-1 text-sm" value={newResult.referenceRange} onChange={e => setNewResult({ ...newResult, referenceRange: e.target.value })} />
+                <div className="mt-4 p-6 glass-card rounded-xl border border-white/20 dark:border-slate-700 space-y-4 animate-fade-in text-text-main">
+                    <h4 className="font-bold text-sm text-text-muted uppercase tracking-wider">Add New Result</h4>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <input placeholder="Test Name" className="border border-white/10 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all placeholder:text-slate-400" value={newResult.test} onChange={e => setNewResult({ ...newResult, test: e.target.value })} />
+                        <input placeholder="Value" className="border border-white/10 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all placeholder:text-slate-400" value={newResult.value} onChange={e => setNewResult({ ...newResult, value: e.target.value })} />
+                        <input placeholder="Unit" className="border border-white/10 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all placeholder:text-slate-400" value={newResult.unit} onChange={e => setNewResult({ ...newResult, unit: e.target.value })} />
+                        <input placeholder="Ref Range" className="border border-white/10 dark:border-slate-600 bg-white/50 dark:bg-slate-800/50 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all placeholder:text-slate-400" value={newResult.referenceRange} onChange={e => setNewResult({ ...newResult, referenceRange: e.target.value })} />
                     </div>
-                    <div className="flex gap-2">
-                        <button onClick={handleAdd} className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary-hover">Add</button>
-                        <button onClick={() => setIsAdding(false)} className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm rounded hover:bg-slate-300 dark:hover:bg-slate-600">Cancel</button>
+                    <div className="flex gap-3 justify-end">
+                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-slate-200/50 dark:bg-slate-700/50 text-text-main text-sm font-bold rounded-xl hover:bg-slate-300/50 dark:hover:bg-slate-600/50 transition-colors">Cancel</button>
+                        <button onClick={handleAdd} className="px-4 py-2 bg-gradient-to-r from-primary to-indigo-600 text-white text-sm font-bold rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all transform active:scale-95">Add Result</button>
                     </div>
                 </div>
             ) : (
-                <button onClick={() => setIsAdding(true)} disabled={isOffline} className="mt-3 text-sm text-primary hover:underline disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                <button onClick={() => setIsAdding(true)} disabled={isOffline} className="mt-4 text-sm font-bold text-primary hover:text-primary-hover hover:underline disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-2 group transition-all">
+                    <div className="p-1 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                    </div>
                     Add Lab Result
                 </button>
             )}
@@ -173,37 +180,44 @@ const AIClinicalSummarySection: React.FC<{
     }, [insights, isLoading]);
 
     return (
-        <div className="bg-surface rounded-lg shadow-md border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden">
+        <div className="glass-card rounded-2xl shadow-xl border border-white/20 dark:border-slate-700 mb-8 overflow-hidden antigravity-target">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-center p-4 text-left focus:outline-none hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                className="w-full flex justify-between items-center p-5 text-left focus:outline-none hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-all duration-300"
             >
-                <div className="flex items-center gap-2 text-lg font-bold text-text-main">
-                    <span className="text-primary">{ICONS.ai}</span>
+                <div className="flex items-center gap-3 text-xl font-heading font-bold text-text-main">
+                    <div className="p-2 bg-gradient-to-br from-primary to-indigo-600 rounded-lg text-white shadow-lg shadow-primary/20">
+                        {ICONS.ai}
+                    </div>
                     <span>AI Clinical Summary</span>
                 </div>
-                <svg className={`w-5 h-5 text-text-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <div className={`p-2 rounded-full bg-slate-100 dark:bg-slate-700 transition-transform duration-300 ${isOpen ? 'rotate-180 bg-primary/10 text-primary' : 'text-text-muted'}`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
             </button>
 
             {isOpen && (
-                <div className="p-6 border-t dark:border-slate-700 animate-fade-in">
+                <div className="p-6 border-t border-slate-100 dark:border-slate-700/50 animate-fade-in bg-white/30 dark:bg-slate-900/30 backdrop-blur-sm">
                     {!insights ? (
-                        <div className="text-center py-4">
-                            <p className="text-text-muted mb-4">Generate AI insights to analyze the case and identify key risks.</p>
+                        <div className="text-center py-8">
+                            <p className="text-text-muted mb-6 max-w-md mx-auto">Generate AI insights to analyze the case, examine symptoms, and identify key risks with high precision.</p>
                             <button
                                 onClick={onGenerate}
                                 disabled={isLoading || isOffline}
-                                className="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-full hover:bg-indigo-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                                className="bg-gradient-to-r from-primary to-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 transform hover:-translate-y-0.5"
                             >
                                 {isLoading ? (
                                     <>
-                                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         <span>Analyzing Case...</span>
                                     </>
                                 ) : (
-                                    'Generate AI Insights'
+                                    <>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                                        'Generate AI Insights'
+                                    </>
                                 )}
                             </button>
                         </div>
@@ -237,7 +251,7 @@ const AIClinicalSummarySection: React.FC<{
                                         </h4>
                                         <div className="flex flex-wrap gap-2">
                                             {insights.keySymptoms.map((symptom, i) => (
-                                                <span key={i} className="px-2.5 py-1 bg-white dark:bg-slate-700 text-info-text dark:text-blue-300 text-xs font-bold rounded-full border border-info-border dark:border-blue-800 shadow-sm">{symptom}</span>
+                                                <span key={i} className="px-3 py-1.5 bg-white/70 dark:bg-slate-700/70 text-info-text dark:text-blue-300 text-xs font-bold rounded-lg border border-info-border dark:border-blue-800 shadow-sm backdrop-blur-sm">{symptom}</span>
                                             ))}
                                         </div>
                                     </div>
@@ -411,18 +425,31 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
     };
 
     return (
-        <div className="bg-surface rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-            <div className="p-4 border-b dark:border-slate-700">
-                <div className="flex justify-between items-start">
+        <div className="glass-card rounded-3xl shadow-2xl border border-white/20 dark:border-slate-700 overflow-hidden antigravity-target">
+            <div className="p-6 border-b border-white/10 dark:border-slate-700/50 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md">
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
                     <div>
-                        <h2 className="text-xl font-bold text-text-main">Case Details</h2>
-                        <div className="mt-2 text-sm text-text-muted">
-                            <p><strong>Patient:</strong> {caseData.patientProfile.age} y/o {caseData.patientProfile.sex}</p>
-                            <p><strong>Comorbidities:</strong> {caseData.patientProfile.comorbidities.join(', ')}</p>
+                        <h2 className="text-3xl font-heading font-bold text-text-main flex items-center gap-3">
+                            <div className="p-2 bg-gradient-to-br from-primary to-blue-600 rounded-xl text-white shadow-lg shadow-primary/30">
+                                {ICONS.case}
+                            </div>
+                            Case Details
+                        </h2>
+                        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-text-muted">
+                            <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-xl border border-white/20 dark:border-slate-700 backdrop-blur-sm shadow-sm">
+                                {ICONS.user}
+                                <span className="font-bold text-text-main">{caseData.patientProfile.age} y/o {caseData.patientProfile.sex}</span>
+                            </div>
+                            {caseData.patientProfile.comorbidities.length > 0 && (
+                                <div className="flex items-center gap-2 px-2">
+                                    <span className="font-bold text-xs uppercase tracking-widest opacity-60">History:</span>
+                                    <span className="font-medium text-text-main">{caseData.patientProfile.comorbidities.join(', ')}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div>
-                        <button onClick={onOpenAnalysisModal} disabled={isOffline} className="text-sm bg-teal-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-teal-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
+                        <button onClick={onOpenAnalysisModal} disabled={isOffline} className="text-sm bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:shadow-teal-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transform hover:-translate-y-0.5 active:scale-95">
                             {ICONS.imageAnalysis}
                             <span>Analyze Image</span>
                         </button>
@@ -430,17 +457,17 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                 </div>
             </div>
 
-            <div className="divide-y divide-gray-200 dark:divide-slate-700">
+            <div className="divide-y divide-white/10 dark:divide-slate-700/50">
                 <CollapsibleSection title="Presenting Complaint" isOpen={openSections.complaint} onToggle={() => toggleSection('complaint')}>
                     {isEditingComplaint ? (
-                        <div className="p-2">
+                        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl m-2 border border-slate-200 dark:border-slate-700/50">
                             <div className="relative">
-                                <textarea value={complaintInput} onChange={(e) => setComplaintInput(e.target.value)} rows={4} className="w-full border dark:border-slate-600 bg-inherit rounded-md p-2 text-sm pr-10" />
-                                <div className="absolute bottom-2 right-2"><VoiceInput onTranscript={(t) => setComplaintInput(prev => prev + t)} disabled={isOffline} /></div>
+                                <textarea value={complaintInput} onChange={(e) => setComplaintInput(e.target.value)} rows={4} className="w-full border-0 bg-white dark:bg-slate-900/50 rounded-xl p-4 text-sm pr-12 shadow-inner focus:ring-2 focus:ring-primary/50 transition-all font-medium text-text-main" placeholder="Enter complaint..." />
+                                <div className="absolute bottom-3 right-3"><VoiceInput onTranscript={(t) => setComplaintInput(prev => prev + t)} disabled={isOffline} /></div>
                             </div>
-                            <div className="flex justify-end gap-2 mt-2">
-                                <button onClick={() => { setIsEditingComplaint(false); setComplaintInput(caseData.complaint); }} className="bg-slate-200 text-slate-800 font-semibold py-1 px-3 rounded-md text-sm">Cancel</button>
-                                <button onClick={handleSaveComplaint} className="bg-accent text-white font-semibold py-1 px-3 rounded-md text-sm">Save</button>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => { setIsEditingComplaint(false); setComplaintInput(caseData.complaint); }} className="bg-white dark:bg-slate-700 text-text-main font-bold py-2 px-4 rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">Cancel</button>
+                                <button onClick={handleSaveComplaint} className="bg-primary text-white font-bold py-2 px-6 rounded-xl text-xs hover:bg-primary-hover shadow-lg shadow-primary/30 transition-all">Save</button>
                             </div>
                         </div>
                     ) : (
@@ -463,14 +490,14 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
 
                 <CollapsibleSection title="History" isOpen={openSections.history} onToggle={() => toggleSection('history')}>
                     {isEditingHistory ? (
-                        <div className="p-2">
+                        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl m-2 border border-slate-200 dark:border-slate-700/50">
                             <div className="relative">
-                                <textarea value={historyInput} onChange={(e) => setHistoryInput(e.target.value)} rows={5} className="w-full border dark:border-slate-600 bg-inherit rounded-md p-2 text-sm pr-10" />
-                                <div className="absolute bottom-2 right-2"><VoiceInput onTranscript={(t) => setHistoryInput(prev => prev + t)} disabled={isOffline} /></div>
+                                <textarea value={historyInput} onChange={(e) => setHistoryInput(e.target.value)} rows={5} className="w-full border-0 bg-white dark:bg-slate-900/50 rounded-xl p-4 text-sm pr-12 shadow-inner focus:ring-2 focus:ring-primary/50 transition-all font-medium text-text-main" placeholder="Enter history..." />
+                                <div className="absolute bottom-3 right-3"><VoiceInput onTranscript={(t) => setHistoryInput(prev => prev + t)} disabled={isOffline} /></div>
                             </div>
-                            <div className="flex justify-end gap-2 mt-2">
-                                <button onClick={() => { setIsEditingHistory(false); setHistoryInput(caseData.history); }} className="bg-slate-200 text-slate-800 font-semibold py-1 px-3 rounded-md text-sm">Cancel</button>
-                                <button onClick={handleSaveHistory} className="bg-accent text-white font-semibold py-1 px-3 rounded-md text-sm">Save</button>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => { setIsEditingHistory(false); setHistoryInput(caseData.history); }} className="bg-white dark:bg-slate-700 text-text-main font-bold py-2 px-4 rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">Cancel</button>
+                                <button onClick={handleSaveHistory} className="bg-primary text-white font-bold py-2 px-6 rounded-xl text-xs hover:bg-primary-hover shadow-lg shadow-primary/30 transition-all">Save</button>
                             </div>
                         </div>
                     ) : (
@@ -483,14 +510,14 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
 
                 <CollapsibleSection title="Exam Findings" isOpen={openSections.findings} onToggle={() => toggleSection('findings')}>
                     {isEditingFindings ? (
-                        <div className="p-2">
+                        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl m-2 border border-slate-200 dark:border-slate-700/50">
                             <div className="relative">
-                                <textarea value={findingsInput} onChange={(e) => setFindingsInput(e.target.value)} rows={5} className="w-full border dark:border-slate-600 bg-inherit rounded-md p-2 text-sm pr-10" />
-                                <div className="absolute bottom-2 right-2"><VoiceInput onTranscript={(t) => setFindingsInput(prev => prev + t)} disabled={isOffline} /></div>
+                                <textarea value={findingsInput} onChange={(e) => setFindingsInput(e.target.value)} rows={5} className="w-full border-0 bg-white dark:bg-slate-900/50 rounded-xl p-4 text-sm pr-12 shadow-inner focus:ring-2 focus:ring-primary/50 transition-all font-medium text-text-main" placeholder="Enter findings..." />
+                                <div className="absolute bottom-3 right-3"><VoiceInput onTranscript={(t) => setFindingsInput(prev => prev + t)} disabled={isOffline} /></div>
                             </div>
-                            <div className="flex justify-end gap-2 mt-2">
-                                <button onClick={() => { setIsEditingFindings(false); setFindingsInput(caseData.findings); }} className="bg-slate-200 text-slate-800 font-semibold py-1 px-3 rounded-md text-sm">Cancel</button>
-                                <button onClick={handleSaveFindings} className="bg-accent text-white font-semibold py-1 px-3 rounded-md text-sm">Save</button>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => { setIsEditingFindings(false); setFindingsInput(caseData.findings); }} className="bg-white dark:bg-slate-700 text-text-main font-bold py-2 px-4 rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">Cancel</button>
+                                <button onClick={handleSaveFindings} className="bg-primary text-white font-bold py-2 px-6 rounded-xl text-xs hover:bg-primary-hover shadow-lg shadow-primary/30 transition-all">Save</button>
                             </div>
                         </div>
                     ) : (
@@ -507,25 +534,25 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                     onToggle={() => toggleSection('diagnosis')}
                 >
                     {isEditingDiagnosis ? (
-                        <div className="p-2 space-y-3">
+                        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl m-2 border border-slate-200 dark:border-slate-700/50 space-y-4">
                             <div className="relative">
-                                <div className="flex justify-between items-center mb-1">
-                                    <label className="block text-xs font-bold text-text-muted">Description</label>
-                                    {loadingICD10 && <span className="text-xs text-primary animate-pulse">Searching codes...</span>}
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Diagnosis Description</label>
+                                    {loadingICD10 && <span className="text-xs text-primary font-bold animate-pulse">Searching codes...</span>}
                                 </div>
-                                <textarea value={diagnosisInput} onChange={handleDiagnosisChange} rows={2} className="w-full border dark:border-slate-600 bg-inherit rounded-md p-2 text-sm pr-10" />
-                                <div className="absolute bottom-2 right-2"><VoiceInput onTranscript={(t) => setDiagnosisInput(prev => prev + t)} disabled={isOffline} /></div>
+                                <textarea value={diagnosisInput} onChange={handleDiagnosisChange} rows={2} className="w-full border-0 bg-white dark:bg-slate-900/50 rounded-xl p-4 text-sm pr-12 shadow-inner focus:ring-2 focus:ring-primary/50 transition-all font-medium text-text-main" placeholder="Enter diagnosis..." />
+                                <div className="absolute bottom-3 right-3"><VoiceInput onTranscript={(t) => setDiagnosisInput(prev => prev + t)} disabled={isOffline} /></div>
 
                                 {icd10Options.length > 0 && (
-                                    <ul ref={dropdownRef} className="absolute z-50 w-full bg-white dark:bg-slate-800 border dark:border-slate-600 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                                    <ul ref={dropdownRef} className="absolute z-50 w-full bg-white dark:bg-slate-800 border dark:border-slate-600 rounded-xl shadow-xl mt-2 max-h-60 overflow-y-auto animate-fade-in">
                                         {icd10Options.map((opt, index) => (
                                             <li
                                                 key={index}
                                                 onClick={() => handleSelectSuggestion(opt)}
-                                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-xs border-b dark:border-slate-700 last:border-b-0"
+                                                className="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer text-sm border-b dark:border-slate-700/50 last:border-b-0 transition-colors"
                                             >
-                                                <div className="flex justify-between">
-                                                    <span className="font-bold text-primary mr-2">{opt.code}</span>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-bold text-primary mr-3 bg-primary/10 px-2 py-0.5 rounded">{opt.code}</span>
                                                     <span className="text-text-main truncate">{opt.description}</span>
                                                 </div>
                                             </li>
@@ -535,21 +562,21 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-text-muted mb-1">ICD-10 Code</label>
+                                <label className="block text-xs font-bold text-text-muted mb-2 uppercase tracking-wider">ICD-10 Code</label>
                                 <div className="relative">
                                     <input
                                         type="text"
                                         value={selectedIcd10}
                                         onChange={(e) => setSelectedIcd10(e.target.value)}
                                         placeholder="e.g. I80.2"
-                                        className="w-full border dark:border-slate-600 bg-inherit rounded-md p-2 text-sm font-mono uppercase"
+                                        className="w-full border-0 bg-white dark:bg-slate-900/50 rounded-xl p-3 text-sm font-mono uppercase shadow-inner focus:ring-2 focus:ring-primary/50 transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-2 mt-2">
-                                <button onClick={() => { setIsEditingDiagnosis(false); setDiagnosisInput(caseData.diagnosis); setSelectedIcd10(caseData.icd10Code || ''); setIcd10Options([]); }} className="bg-slate-200 text-slate-800 font-semibold py-1 px-3 rounded-md text-sm">Cancel</button>
-                                <button onClick={handleSaveDiagnosis} className="bg-accent text-white font-semibold py-1 px-3 rounded-md text-sm">Save</button>
+                            <div className="flex justify-end gap-3 mt-4">
+                                <button onClick={() => { setIsEditingDiagnosis(false); setDiagnosisInput(caseData.diagnosis); setSelectedIcd10(caseData.icd10Code || ''); setIcd10Options([]); }} className="bg-white dark:bg-slate-700 text-text-main font-bold py-2 px-4 rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">Cancel</button>
+                                <button onClick={handleSaveDiagnosis} className="bg-primary text-white font-bold py-2 px-6 rounded-xl text-xs hover:bg-primary-hover shadow-lg shadow-primary/30 transition-all">Save</button>
                             </div>
                         </div>
                     ) : (
@@ -572,18 +599,23 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                 )}
 
                 <div>
-                    <div className="p-4">
-                        <h3 className="font-semibold text-text-muted mb-2">Attached Files</h3>
-                        <ul className="space-y-2">
+                    <div className="p-6 bg-slate-50/30 dark:bg-slate-800/20">
+                        <h3 className="font-bold text-text-muted mb-4 uppercase tracking-widest text-xs">Attached Files</h3>
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {caseData.files.map(file => (
-                                <li key={file.id} className="flex items-center justify-between p-2 bg-slate-100 dark:bg-slate-800 rounded-md">
-                                    <span className="text-sm font-medium text-text-main">{file.name}</span>
-                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary font-semibold hover:underline">View</a>
+                                <li key={file.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/20 dark:border-slate-700 shadow-sm hover:shadow-md transition-all">
+                                    <span className="text-sm font-bold text-text-main truncate max-w-[70%]">{file.name}</span>
+                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary px-3 py-1 bg-primary/10 rounded-lg hover:bg-primary hover:text-white transition-colors">View</a>
                                 </li>
                             ))}
                         </ul>
-                        <div className="mt-4 flex items-center gap-2">
-                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-info-light file:text-primary hover:file:bg-blue-100 dark:file:bg-blue-900/50 dark:file:text-blue-300 dark:hover:file:bg-blue-800/50" disabled={isOffline} />
+                        <div className="mt-6 flex items-center gap-4">
+                            <label className="cursor-pointer group">
+                                <span className="text-sm font-bold text-primary group-hover:underline flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-xl group-hover:bg-primary/10 transition-colors">
+                                    {ICONS.upload} Upload File
+                                </span>
+                                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" disabled={isOffline} />
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -742,33 +774,37 @@ const CaseView: React.FC = () => {
                     ]} />
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col lg:flex-row gap-8">
                     {/* Sidebar / Tabs */}
-                    <div className="lg:w-1/4 flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-                        <button
-                            onClick={() => setActiveTab('details')}
-                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'details' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                        >
-                            {ICONS.case} Details
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('chat')}
-                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'chat' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                        >
-                            {ICONS.ai} AI Chat
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('discussion')}
-                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'discussion' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                        >
-                            {ICONS.chat} Discussion
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('guidelines')}
-                            className={`flex-shrink-0 lg:w-full text-left px-4 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === 'guidelines' ? 'bg-primary text-white shadow-md' : 'bg-surface text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                        >
-                            {ICONS.guidelines} Guidelines
-                        </button>
+                    <div className="lg:w-1/4">
+                        <div className="glass-card p-2 rounded-2xl shadow-lg border border-white/20 dark:border-slate-700/50 sticky top-6">
+                            <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
+                                <button
+                                    onClick={() => setActiveTab('details')}
+                                    className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'details' ? 'bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg shadow-primary/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
+                                >
+                                    {ICONS.case} Details
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('chat')}
+                                    className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'chat' ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
+                                >
+                                    {ICONS.ai} AI Chat
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('discussion')}
+                                    className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'discussion' ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
+                                >
+                                    {ICONS.chat} Discussion
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('guidelines')}
+                                    className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'guidelines' ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
+                                >
+                                    {ICONS.guidelines} Guidelines
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Main Content */}

@@ -1,5 +1,10 @@
 {
-  "appName": "[tr] Intelligent AI Hospital",
-  "credits": "[tr] {{count}} Credits",
-  "loginSignUp": "[tr] Login / Sign Up"
+  "appName": "Intelligent Health",
+  "loginSignUp": "Giriş Yap / Kayıt Ol",
+  "platform": "Platform",
+  "company": "Şirket",
+  "intelligenceFeed": "Zeka Akışı",
+  "subscribePrompt": "Klinik yapay zekadaki en son gelişmeler için bültenimize abone olun.",
+  "newsletterSuccess": "Zeka akışına başarıyla abone olundu!",
+  "missionStatement": "Herkes için daha sağlıklı bir yarın sağlamak amacıyla insan uzmanlığı ve makine zekasının sentezinde öncülük ediyoruz."
 }

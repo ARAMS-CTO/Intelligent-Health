@@ -36,13 +36,19 @@ const Toast: React.FC<{ notification: AppNotification; onDismiss: () => void }> 
           </a>
         )}
       </div>
-       <button onClick={onDismiss} className="text-gray-400 hover:text-gray-600 p-1 -mt-2 -mr-2">
+      <button onClick={onDismiss} className="text-gray-400 hover:text-gray-600 p-1 -mt-2 -mr-2">
         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
   );
+};
+
+export const showToast = {
+  success: (message: string, title = 'Success') => appEvents.emit('notification', { type: 'success', message, title }),
+  info: (message: string, title = 'Info') => appEvents.emit('notification', { type: 'info', message, title }),
+  warning: (message: string, title = 'Warning') => appEvents.emit('notification', { type: 'warning', message, title }),
 };
 
 export const ToastContainer: React.FC = () => {

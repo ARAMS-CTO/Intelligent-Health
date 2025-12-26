@@ -1,23 +1,23 @@
 
 # Stage 1: Build the React Frontend
-FROM node:18-alpine as build
+FROM node:20-alpine as build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
 # Stage 2: Setup the Python Backend
-FROM python:3.11-slim
+FROM python:3.11
 
 WORKDIR /app
 
-# Install system dependencies if needed
-# RUN apt-get update && apt-get install -y ...
+# Full python image has build-essential and headers
 
 # Copy backend requirements and install
 COPY server/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY server ./server

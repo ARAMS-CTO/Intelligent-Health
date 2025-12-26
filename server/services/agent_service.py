@@ -5,8 +5,15 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..models import AgentState as AgentStateModel
 
-import chromadb
-from chromadb.utils import embedding_functions
+try:
+    import chromadb
+    from chromadb.utils import embedding_functions
+    chroma_available = True
+except ImportError:
+    chromadb = None
+    chroma_available = False
+    print("WARNING: ChromaDB not found. RAG disabled.")
+
 import uuid
 
 # Initialize ChromaDB (persistent)
@@ -14,11 +21,12 @@ CHROMA_DATA_PATH = "server/data/chroma_db"
 os.makedirs(CHROMA_DATA_PATH, exist_ok=True)
 
 collection = None
-try:
-    chroma_client = chromadb.PersistentClient(path=CHROMA_DATA_PATH)
-    collection = chroma_client.get_or_create_collection(name="user_knowledge")
-except Exception as e:
-    print(f"WARNING: ChromaDB initialization failed. RAG features will be disabled. Error: {e}")
+if chroma_available:
+    try:
+        chroma_client = chromadb.PersistentClient(path=CHROMA_DATA_PATH)
+        collection = chroma_client.get_or_create_collection(name="user_knowledge")
+    except Exception as e:
+        print(f"WARNING: ChromaDB initialization failed. RAG features will be disabled. Error: {e}")
 
 class AgentService:
     def __init__(self):

@@ -1,114 +1,295 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Role } from '../types/index';
 import { ICONS } from '../constants/index';
+import { showToast } from '../components/Toast';
 
 const featuresByRole = {
   [Role.Doctor]: {
-    title: "For Doctors",
-    description: "Create anonymised cases, invite specialists, and receive AI-assisted diagnostic and treatment options to enhance your clinical decisions.",
-    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+    titleKey: "Clinical Specialists", // We'll translate titles too
+    descriptionKey: "Empower your diagnostic accuracy with AI-driven pattern recognition and real-time collaboration with global experts.",
+    icon: ICONS.specialist,
+    image: "/analysis.png"
   },
   [Role.Nurse]: {
-    title: "For Nurses",
-    description: "Document crucial bedside observations, upload photos of clinical signs, and contribute to care protocols with practical, on-the-ground insights.",
-    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" /></svg>
-  },
-  [Role.Specialist]: {
-    title: "For Specialists",
-    description: "Engage in deep case analysis, provide expert opinions, and contribute to the evolution of AI models by validating their outputs.",
-    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-12v4m-2-2h4m5 4v4m-2-2h4M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5z" /></svg>
+    titleKey: "Frontline Excellence",
+    descriptionKey: "Streamline patient monitoring and documentation with intelligent assistants designed for the medical floor.",
+    icon: ICONS.userPlus,
+    image: "/hero.png"
   },
   [Role.Patient]: {
-    title: "For Patients",
-    description: "Manage your personal health record, upload reports, and use a personal AI assistant to understand your conditions and treatment options better.",
-    icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+    titleKey: "Personal Health",
+    descriptionKey: "Take control of your healing journey with a personal AI health companion and seamless access to your clinical records.",
+    icon: ICONS.user,
+    image: "/analysis.png"
   },
 };
 
-const HeroSection: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => (
-  <div className="text-center py-20 lg:py-32 bg-background">
-    <h1 className="text-4xl lg:text-6xl font-extrabold text-text-main">
-      Collaborative Care, Intelligent Insights.
-    </h1>
-    <p className="mt-4 text-lg lg:text-xl text-text-muted max-w-3xl mx-auto">
-      A knowledge-sharing platform where medical expertise and artificial intelligence unite to prioritize one thing: <span className="font-bold text-accent">improving patient health outcomes.</span>
-    </p>
-    <div className="mt-8 flex justify-center gap-4 flex-wrap">
-      <button onClick={onGetStarted} className="bg-primary text-white font-bold py-3 px-8 rounded-full text-lg hover:bg-primary-hover transition duration-300 transform hover:scale-105">
-        Get Started as Medical Staff
-      </button>
-      <button onClick={onGetStarted} className="bg-accent text-white font-bold py-3 px-8 rounded-full text-lg hover:bg-accent-hover transition duration-300 transform hover:scale-105">
-        Get Started as a Patient
-      </button>
-    </div>
-  </div>
-);
-
-const VideoSection: React.FC = () => (
-    <div className="py-16 bg-surface">
-        <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold text-text-main mb-4">See How It Works</h2>
-            <p className="text-text-muted max-w-2xl mx-auto mb-8">
-                Watch this short video to see how our platform transforms collaboration and decision-making in healthcare.
-            </p>
-            <div className="aspect-w-16 aspect-h-9 max-w-4xl mx-auto rounded-lg shadow-2xl overflow-hidden bg-black">
-                {/* Placeholder for an embedded video */}
-                <div className="flex items-center justify-center h-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                    </svg>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const FeatureCarousel: React.FC = () => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const roles = Object.keys(featuresByRole) as (keyof typeof featuresByRole)[];
-
-  const nextSlide = () => setActiveIndex((prev) => (prev + 1) % roles.length);
-  const prevSlide = () => setActiveIndex((prev) => (prev - 1 + roles.length) % roles.length);
-
-  const activeFeature = featuresByRole[roles[activeIndex]];
-
+const HeroSection: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
+  const { t } = useTranslation();
   return (
-    <div className="bg-primary py-20 text-white">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-12">Designed for Every Role in Patient Care</h2>
-        <div className="relative flex items-center justify-center max-w-4xl mx-auto min-h-[250px]">
-          <button onClick={prevSlide} className="absolute left-0 -translate-x-1/2 p-2 bg-white/20 rounded-full hover:bg-white/40 transition">
-            {ICONS.chevronLeft}
-          </button>
-          
-          <div className="w-full text-center px-12">
-            <div className="flex justify-center mb-4">{activeFeature.icon}</div>
-            <h3 className="text-2xl font-bold mb-2">{activeFeature.title}</h3>
-            <p className="text-lg opacity-90 max-w-xl mx-auto">{activeFeature.description}</p>
+    <section className="relative min-h-[90vh] flex items-center overflow-hidden py-20 px-4">
+      {/* Background elements */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute top-0 right-0 w-[60%] h-[80%] bg-primary/10 blur-[160px] rounded-full animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-[40%] h-[60%] bg-accent/5 blur-[120px] rounded-full"></div>
+      </div>
+
+      <div className="container mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="animate-fade-in space-y-10">
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl border border-white/20 dark:border-slate-700/50 backdrop-blur-xl shadow-sm" style={{ backgroundColor: 'rgba(var(--color-surface-rgb), 0.4)' }}>
+            <span className="flex h-2 w-2 rounded-full bg-primary animate-ping"></span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{t('heroBadge')}</span>
           </div>
 
-          <button onClick={nextSlide} className="absolute right-0 translate-x-1/2 p-2 bg-white/20 rounded-full hover:bg-white/40 transition">
-            {ICONS.chevronRight}
-          </button>
+          <h1 className="text-4xl sm:text-6xl lg:text-8xl font-heading font-black text-text-main leading-[0.95] tracking-tighter">
+            {t('heroTitlePre')} <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-accent">{t('heroTitlePost')}</span>
+          </h1>
+
+          <p className="text-xl lg:text-2xl text-text-muted font-medium leading-relaxed max-w-xl">
+            {t('heroDescription')}
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-6 pt-6">
+            <button onClick={onGetStarted} className="btn-primary group flex items-center justify-center gap-3 py-5 px-10 text-base">
+              <span>{t('accessProviderPortal')}</span>
+              <span className="group-hover:translate-x-1 transition-transform" style={{ width: '20px', height: '20px' }}>
+                {React.cloneElement(ICONS.chevronRight as any, { style: { width: '20px', height: '20px' } })}
+              </span>
+            </button>
+            <button onClick={onGetStarted} className="btn-secondary py-5 px-10 text-base flex items-center justify-center">
+              {t('patientGateway')}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8 pt-10 border-t border-slate-200 dark:border-slate-800">
+            <div>
+              <p className="text-2xl sm:text-3xl font-heading font-black text-text-main tracking-tighter">99.2%</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{t('diagnosticAccuracy')}</p>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-heading font-black text-text-main tracking-tighter">1.2M+</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{t('casesAnalyzed')}</p>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-2xl sm:text-3xl font-heading font-black text-text-main tracking-tighter">24/7</p>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1">{t('aiVigilance')}</p>
+            </div>
+          </div>
         </div>
-        <div className="flex justify-center mt-8 space-x-2">
-            {roles.map((_, index) => (
-                <button key={index} onClick={() => setActiveIndex(index)} className={`w-3 h-3 rounded-full ${activeIndex === index ? 'bg-white' : 'bg-white/50'} transition`}></button>
-            ))}
+
+        <div className="relative group">
+          <div className="absolute -inset-4 bg-gradient-to-br from-primary/20 via-transparent to-accent/20 rounded-[60px] blur-3xl opacity-50 group-hover:opacity-100 transition-opacity duration-1000"></div>
+          <div className="relative glass-card p-3 rounded-[50px] overflow-hidden shadow-2xl border border-white/40 dark:border-slate-700/50">
+            <img
+              src="/hero.png"
+              alt="Clinical Collaboration"
+              className="w-full h-auto rounded-[40px] transform hover:scale-105 transition-transform duration-1000"
+            />
+            {/* Overlay stats card */}
+            <div className="absolute bottom-10 left-10 right-10 p-6 glass backdrop-blur-3xl rounded-3xl border border-white/20 shadow-2xl animate-fade-in">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                  {React.cloneElement(ICONS.ai as any, { style: { width: '24px', height: '24px' } })}
+                </div>
+                <div>
+                  <p className="text-xs font-black text-text-main tracking-tight uppercase tracking-widest">{t('medicalLlmActive')}</p>
+                  <p className="text-[10px] text-text-muted font-bold truncate italic opacity-80">{t('scanningParameters')}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
+  );
+};
+
+const FeatureSection: React.FC = () => {
+  const { t } = useTranslation();
+  const roles = [Role.Doctor, Role.Nurse, Role.Patient];
+  const [activeRole, setActiveRole] = useState(Role.Doctor);
+
+  return (
+    <section className="py-20 sm:py-32 container mx-auto px-4">
+      <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-20 space-y-4 sm:space-y-6">
+        <h2 className="text-3xl sm:text-5xl font-heading font-black text-text-main tracking-tighter">{t('specializedToolsets')}</h2>
+        <p className="text-lg sm:text-xl text-text-muted font-medium leading-relaxed">{t('toolsetsDescription')}</p>
+
+        <div className="flex flex-wrap justify-center gap-4 pt-6">
+          {roles.map(role => (
+            <button
+              key={role}
+              onClick={() => setActiveRole(role)}
+              className={`px-8 py-3 rounded-full font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${activeRole === role ? 'bg-primary text-white border-primary shadow-xl shadow-primary/20' : 'bg-white dark:bg-slate-800 text-text-muted border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}
+            >
+              {role}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card rounded-[60px] p-4 lg:p-12 border border-white/40 dark:border-slate-700 animate-fade-in" key={activeRole}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="space-y-10">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[28px] sm:rounded-[32px] bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-primary/30">
+              {React.cloneElement(featuresByRole[activeRole].icon as any, { style: { width: '32px', height: '32px' } })}
+            </div>
+            <h3 className="text-3xl sm:text-5xl font-heading font-black text-text-main tracking-tighter leading-tight">
+              {t(featuresByRole[activeRole].titleKey, featuresByRole[activeRole].titleKey)} <br />
+              <span className="text-primary opacity-60">{t('solutions')}</span>
+            </h3>
+            <p className="text-xl text-text-muted font-medium leading-relaxed">
+              {t(featuresByRole[activeRole].descriptionKey, featuresByRole[activeRole].descriptionKey)}
+            </p>
+            <ul className="space-y-4">
+              {['Intelligent Triage & Priority Scheduling', 'Context-Aware Diagnostic Suggestions', 'Encrypted Specialist Collaboration'].map(item => (
+                <li key={item} className="flex items-center gap-4 text-sm font-bold text-text-main">
+                  <div className="p-1 rounded-full bg-accent/20 text-accent">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                  </div>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative">
+            <div className="absolute -inset-4 bg-primary/5 blur-2xl rounded-full"></div>
+            <img
+              src={featuresByRole[activeRole].image}
+              alt={featuresByRole[activeRole].titleKey}
+              className="relative w-full h-[300px] sm:h-[500px] object-cover rounded-[32px] sm:rounded-[48px] shadow-2xl border border-white/20"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const CTASection: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
+  const { t } = useTranslation();
+  return (
+    <section className="py-32">
+      <div className="container mx-auto px-4">
+        <div className="glass-card rounded-[40px] sm:rounded-[80px] p-8 sm:p-16 lg:p-32 text-center bg-gradient-to-br from-primary/10 to-accent/10 relative overflow-hidden" style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(var(--color-primary-rgb), 0.1), rgba(var(--color-surface-rgb), 0.5), rgba(var(--color-accent-rgb), 0.1))' }}>
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 to-transparent"></div>
+
+          <div className="relative z-10 space-y-8 sm:space-y-12">
+            <h2 className="text-4xl sm:text-7xl lg:text-9xl font-heading font-black text-text-main tracking-tighter leading-none italic">
+              {t('readyMedicalEra')} <br /> <span className="text-primary">{t('medicalEra')}</span>
+            </h2>
+            <p className="text-lg sm:text-xl lg:text-3xl text-text-muted font-medium max-w-3xl mx-auto leading-relaxed">
+              {t('ctaDescription')}
+            </p>
+            <div className="pt-8">
+              <button onClick={onGetStarted} className="btn-primary py-6 px-16 text-xl rounded-[30px] animate-float">
+                {t('getStarted')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 };
 
 const LandingPage: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) => {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+
+  const handleNewsletter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    showToast.success(t('newsletterSuccess', 'Successfully subscribed to intelligence feed!'), 'Newsletter');
+    setEmail('');
+  };
+
   return (
-    <main>
+    <main className="bg-background pt-10 overflow-x-hidden">
       <HeroSection onGetStarted={onGetStarted} />
-      <VideoSection />
-      <FeatureCarousel />
-      <footer className="bg-slate-800 dark:bg-slate-900 text-slate-300 dark:text-slate-400 text-center p-4">
-        <p>&copy; 2025 Intelligent Hospital, where Patient health outcomes is always first!</p>
+
+      {/* Trust Bar */}
+      <div className="py-20 border-y border-slate-200 dark:border-slate-800 overflow-hidden relative">
+        <div className="absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-background to-transparent z-10"></div>
+        <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-background to-transparent z-10"></div>
+        <div className="flex animate-marquee whitespace-nowrap gap-20">
+          {['HealthTrust Global', 'MedCore Solutions', 'Clinical Dynamics', 'BioSync Partners', 'Emerald Care Group', 'Vitality Systems'].map(partner => (
+            <span key={partner} className="text-3xl font-heading font-black text-text-muted/20 uppercase tracking-tighter">{partner}</span>
+          ))}
+          {['HealthTrust Global', 'MedCore Solutions', 'Clinical Dynamics', 'BioSync Partners', 'Emerald Care Group', 'Vitality Systems'].map(partner => (
+            <span key={partner + '-alt'} className="text-3xl font-heading font-black text-text-muted/20 uppercase tracking-tighter">{partner}</span>
+          ))}
+        </div>
+      </div>
+
+      <FeatureSection />
+
+      <CTASection onGetStarted={onGetStarted} />
+
+      <footer className="py-32 border-t border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl">
+        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+                {React.cloneElement(ICONS.ai as any, { style: { width: '20px', height: '20px' } })}
+              </div>
+              <h3 className="text-xl font-heading font-black text-text-main tracking-tighter">{t('appName', 'Intelligent Health')}</h3>
+            </div>
+            <p className="text-sm text-text-muted font-medium leading-relaxed">
+              {t('missionStatement', 'Pioneering the synthesis of human expertise and machine intelligence to ensure a healthier tomorrow for everyone.')}
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('platform', 'Platform')}</h4>
+            <ul className="space-y-4 text-sm font-bold text-text-muted">
+              <li><a href="#" className="hover:text-primary transition-colors">Clinical Triage</a></li>
+              <li><a href="#" className="hover:text-primary transition-colors">Specialist Network</a></li>
+              <li><a href="#" className="hover:text-primary transition-colors">Patient Records</a></li>
+              <li><a href="#" className="hover:text-primary transition-colors">AI Research</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('company', 'Company')}</h4>
+            <ul className="space-y-4 text-sm font-bold text-text-muted">
+              <li><a href="#" className="hover:text-primary transition-colors">About Mission</a></li>
+              <li><a href="#" className="hover:text-primary transition-colors">Terms of Care</a></li>
+              <li><a href="#" className="hover:text-primary transition-colors">Privacy Shield</a></li>
+              <li><a href="#" className="hover:text-primary transition-colors">Security Audit</a></li>
+            </ul>
+          </div>
+
+          <div className="space-y-8">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('intelligenceFeed', 'Intelligence Feed')}</h4>
+            <div className="p-6 glass-card rounded-3xl space-y-4" style={{ height: 'auto' }}>
+              <p className="text-[10px] font-bold text-text-muted italic">{t('subscribePrompt', 'Subscribe to our newsletter for the latest in clinical AI.')}</p>
+              <form onSubmit={handleNewsletter} className="relative">
+                <input
+                  type="email"
+                  placeholder="email@hospital.com"
+                  className="w-full pr-12 text-xs"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <button type="submit" className="absolute right-2 top-1.5 p-2 rounded-xl bg-primary text-white">
+                  {React.cloneElement(ICONS.send as any, { style: { width: '16px', height: '16px' } })}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 pt-20 mt-20 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-[10px] font-black text-text-muted/40 uppercase tracking-widest">&copy; 2025 {t('appName', 'Intelligent Health')} System. Built for Precision.</p>
+          <div className="flex gap-6">
+            <div className="w-5 h-5 text-text-muted/40 hover:text-primary transition-colors cursor-pointer">{React.cloneElement(ICONS.chat as any, { style: { width: '20px', height: '20px' } })}</div>
+            <div className="w-5 h-5 text-text-muted/40 hover:text-primary transition-colors cursor-pointer">{React.cloneElement(ICONS.clock as any, { style: { width: '20px', height: '20px' } })}</div>
+            <div className="w-5 h-5 text-text-muted/40 hover:text-primary transition-colors cursor-pointer">{React.cloneElement(ICONS.bell as any, { style: { width: '20px', height: '20px' } })}</div>
+          </div>
+        </div>
       </footer>
     </main>
   );
