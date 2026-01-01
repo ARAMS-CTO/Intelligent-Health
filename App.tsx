@@ -1,4 +1,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, LoginSignupForm, useAuth } from './components/Auth';
 import Header from './components/Header';
@@ -9,6 +11,14 @@ import CaseView from './pages/CaseView';
 import PatientPortal from './pages/PatientPortal';
 import PatientIntake from './pages/PatientIntake';
 import PatientProfileView from './pages/PatientProfileView';
+import UserManagement from './pages/admin/UserManagement';
+import SystemStats from './pages/admin/SystemStats';
+import Finance from './pages/admin/Finance';
+import AIConfig from './pages/admin/AIConfig';
+import AdminLayout from './components/AdminLayout';
+import NurseDashboard from './pages/NurseDashboard';
+import EmergencyDashboard from './pages/EmergencyDashboard';
+import PatientDashboard from './pages/PatientDashboard';
 import { Role } from './types/index';
 import { ICONS } from './constants/index';
 import AIChatbot from './components/AIChatbot';
@@ -16,6 +26,7 @@ import { ToastContainer } from './components/Toast';
 import UserProfileModal from './components/UserProfileModal';
 import { ThemeProvider } from './components/Theme';
 import AntigravityManager from './components/AntigravityManager';
+import { AIAssistantWidget } from './components/AIAssistantWidget';
 
 // A modal component for the login form
 const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -88,11 +99,38 @@ const AppLayout: React.FC = () => {
                 <Routes>
                     <Route path="/" element={
                         user ? (
-                            user.role === Role.Patient ? <Navigate to="/portal" replace /> : <Navigate to="/dashboard" replace />
+                            user.role === Role.Patient ? <Navigate to="/patient-dashboard" replace /> :
+                                user.role === Role.Nurse ? <Navigate to="/nurse-dashboard" replace /> :
+                                    <Navigate to="/dashboard" replace />
                         ) : (
                             <LandingPage onGetStarted={() => setLoginModalOpen(true)} />
                         )
                     } />
+                    {/* Role-Specific Dashboards */}
+                    <Route
+                        path="/nurse-dashboard"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Nurse, Role.Admin]}>
+                                <NurseDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/emergency"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Doctor, Role.Nurse, Role.Admin]}>
+                                <EmergencyDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/patient-dashboard"
+                        element={
+                            <ProtectedRoute allowedRoles={patientRole}>
+                                <PatientDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
                     <Route
                         path="/dashboard"
                         element={
@@ -112,7 +150,7 @@ const AppLayout: React.FC = () => {
                     <Route
                         path="/patient-intake"
                         element={
-                            <ProtectedRoute allowedRoles={nonPatientRoles}>
+                            <ProtectedRoute allowedRoles={[...nonPatientRoles, ...patientRole]}>
                                 <PatientIntake />
                             </ProtectedRoute>
                         }
@@ -125,19 +163,54 @@ const AppLayout: React.FC = () => {
                             </ProtectedRoute>
                         }
                     />
-                    <Route
-                        path="/portal"
-                        element={
-                            <ProtectedRoute allowedRoles={patientRole}>
-                                <PatientPortal />
-                            </ProtectedRoute>
-                        }
-                    />
+
                     <Route
                         path="/admin"
                         element={
                             <ProtectedRoute allowedRoles={[Role.Admin]}>
-                                <AdminDashboard />
+                                <AdminLayout>
+                                    <AdminDashboard />
+                                </AdminLayout>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/users"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Admin]}>
+                                <AdminLayout>
+                                    <UserManagement />
+                                </AdminLayout>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/stats"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Admin]}>
+                                <AdminLayout>
+                                    <SystemStats />
+                                </AdminLayout>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/finance"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Admin]}>
+                                <AdminLayout>
+                                    <Finance />
+                                </AdminLayout>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/ai-config"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Admin]}>
+                                <AdminLayout>
+                                    <AIConfig />
+                                </AdminLayout>
                             </ProtectedRoute>
                         }
                     />
@@ -147,7 +220,8 @@ const AppLayout: React.FC = () => {
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setLoginModalOpen(false)} />
             <UserProfileModal isOpen={isProfileModalOpen} onClose={() => setProfileModalOpen(false)} user={user} />
 
-            {!isLanding && (
+            {/* Patient Chatbot Button */}
+            {!isLanding && user?.role === Role.Patient && (
                 <button
                     onClick={() => setChatbotOpen(true)}
                     className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-primary text-white p-5 rounded-3xl shadow-2xl shadow-primary/40 hover:bg-primary-hover transition-all transform hover:scale-110 z-40 active:scale-95 group"
@@ -159,24 +233,50 @@ const AppLayout: React.FC = () => {
                 </button>
             )}
             <AIChatbot isOpen={isChatbotOpen} onClose={() => setChatbotOpen(false)} />
+
+            {/* Doctor/Staff Assistant */}
+            <AIAssistantWidget />
         </div>
     );
 };
 
 
+const AppFallback = () => {
+    const { t } = useTranslation();
+    return (
+        <div className="w-full h-screen flex items-center justify-center text-text-main bg-background font-heading font-bold text-2xl tracking-tighter">
+            {t('initializing')} <span className="text-primary ml-2">{t('healthSystem')}</span>
+        </div>
+    );
+};
+
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 const App: React.FC = () => {
+    const [clientId, setClientId] = useState<string>(import.meta.env.VITE_GOOGLE_CLIENT_ID || "");
+    const [configLoaded, setConfigLoaded] = useState(false);
+
+    useEffect(() => {
+        // Fetch runtime config
+        fetch('/api/auth/config')
+            .then(res => res.json())
+            .then(data => {
+                if (data.googleClientId) {
+                    setClientId(data.googleClientId);
+                }
+            })
+            .catch(err => console.log("Config fetch failed:", err))
+            .finally(() => setConfigLoaded(true));
+    }, []);
+
+    if (!configLoaded) return <AppFallback />;
+
     return (
-        <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+        <GoogleOAuthProvider clientId={clientId || "AUTH_CLIENT_ID_MISSING"}>
             <AuthProvider>
                 <ThemeProvider>
                     <BrowserRouter>
-                        <Suspense fallback={
-                            <div className="w-full h-screen flex items-center justify-center text-text-main bg-background font-heading font-bold text-2xl tracking-tighter">
-                                Initializing <span className="text-primary ml-2">Health System...</span>
-                            </div>
-                        }>
+                        <Suspense fallback={<AppFallback />}>
                             <AppLayout />
                         </Suspense>
                     </BrowserRouter>

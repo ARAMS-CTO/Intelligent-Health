@@ -6,6 +6,7 @@ import { DataService, getActiveUsersForCase } from '../services/api';
 import VoiceInput from './VoiceInput';
 import { ICONS } from '../constants/index';
 import { appEvents } from '../services/events';
+import { showToast } from './Toast';
 
 // Helper function to format date
 const formatTimestamp = (timestamp: string) => {
@@ -153,7 +154,7 @@ const CaseDiscussion: React.FC<{ caseId: string, onPostComment: (comment: Commen
             await onPostComment(commentToAdd);
         } catch (error) {
             console.error("Failed to post comment:", error);
-            alert("Failed to post comment. Please check your connection.");
+            showToast.error("Failed to post comment. Please check your connection.");
             // Revert optimistic update on failure
             setComments(prev => prev.filter(c => c.id !== commentToAdd.id));
         }

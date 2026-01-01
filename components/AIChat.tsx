@@ -252,4 +252,4 @@ const AIChat: React.FC<AIChatProps> = ({ caseData, onAddFile, isOffline }) => {
   );
 };
 
-export default AIChat;
+export default React.memo(AIChat);

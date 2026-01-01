@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { GeminiService, startCaseDiscussionSimulation, stopCaseDiscussionSimulation, joinCase, leaveCase, DataService } from '../services/api';
 import { Case, UploadedFile, LabResult, AIInsights, Comment } from '../types/index';
@@ -7,11 +7,19 @@ import { ICONS } from '../constants/index';
 import AIChat from '../components/AIChat';
 import CaseDiscussion from '../components/CaseDiscussion';
 import { useAuth } from '../components/Auth';
-import ImageAnalysis from '../components/ImageAnalysis';
+import { FileAnalysisModal } from '../components/case/FileAnalysisModal';
+import { VoiceNoteList } from '../components/case/VoiceNoteList';
 import VoiceInput from '../components/VoiceInput';
+// import ImageAnalysis from '../components/ImageAnalysis'; // Replaced
+import VoiceRecorder from '../components/VoiceRecorder';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ClinicalGuidelinesCard from '../components/ClinicalGuidelinesCard';
 import VoiceFormAssistant from '../components/VoiceFormAssistant';
+import { FinancialsTab } from '../components/case/FinancialsTab';
+import { ClinicalPlanSection } from '../components/case/ClinicalPlanSection';
+import CardiologyPanel from '../components/specialties/CardiologyPanel';
+import { showToast } from '../components/Toast';
+import { AgentsConsole } from '../components/case/AgentsConsole';
 
 // --- Helper Components ---
 
@@ -88,7 +96,13 @@ const getInterpretation = (valueStr: string, range: string): LabResult['interpre
 
 // --- Lab Results Table Component ---
 
-const LabResultsTable: React.FC<{ results: LabResult[]; onAddResult: (result: LabResult) => void; isOffline: boolean }> = ({ results, onAddResult, isOffline }) => {
+interface LabResultsTableProps {
+    results: LabResult[];
+    onAddResult: (result: LabResult) => void;
+    isOffline: boolean;
+}
+
+const LabResultsTable = React.memo(({ results, onAddResult, isOffline }: LabResultsTableProps) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newResult, setNewResult] = useState<LabResult>({ test: '', value: '', unit: '', referenceRange: '', interpretation: 'Normal' });
 
@@ -162,16 +176,18 @@ const LabResultsTable: React.FC<{ results: LabResult[]; onAddResult: (result: La
             )}
         </div>
     );
-};
+});
 
 // --- AI Clinical Summary Section (Standalone) ---
 
-const AIClinicalSummarySection: React.FC<{
+interface AIClinicalSummarySectionProps {
     insights: AIInsights | null;
     isLoading: boolean;
     onGenerate: () => void;
     isOffline: boolean;
-}> = ({ insights, isLoading, onGenerate, isOffline }) => {
+}
+
+const AIClinicalSummarySection = React.memo(({ insights, isLoading, onGenerate, isOffline }: AIClinicalSummarySectionProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     // Automatically open when insights are generated
@@ -210,7 +226,7 @@ const AIClinicalSummarySection: React.FC<{
                             >
                                 {isLoading ? (
                                     <>
-                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         <span>Analyzing Case...</span>
                                     </>
                                 ) : (
@@ -288,7 +304,7 @@ const AIClinicalSummarySection: React.FC<{
             )}
         </div>
     );
-};
+});
 
 // --- Main Sub-Components ---
 
@@ -304,17 +320,24 @@ interface CaseDetailsCardProps {
     onUpdateFindings: (newFindings: string) => void;
     onUpdateDiagnosis: (newDiagnosis: string) => void;
     onUpdateICD10: (newCode: string) => void;
+    onOpenExplanation: () => void;
+    onAddVoiceNote: (note: string) => void; // New prop
 }
 
-const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, insights, onAddLabResult, onOpenAnalysisModal, isOffline, onUpdateComplaint, onUpdateHistory, onUpdateFindings, onUpdateDiagnosis, onUpdateICD10 }) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, insights, onAddLabResult, onOpenAnalysisModal, isOffline, onUpdateComplaint, onUpdateHistory, onUpdateFindings, onUpdateDiagnosis, onUpdateICD10, onOpenExplanation, onAddVoiceNote }) => {
+    // State for Collapsible Sections
     const [openSections, setOpenSections] = useState({
         complaint: true,
         history: true,
         findings: true,
         diagnosis: true,
         labs: true,
+        notes: true,
+        financials: false,
+        specialty: true // Default open for demo
     });
+
+    // ... existing useEffects ...
 
     // State for editable fields
     const [isEditingComplaint, setIsEditingComplaint] = useState(false);
@@ -335,6 +358,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
     const [loadingICD10, setLoadingICD10] = useState(false);
     const searchTimeoutRef = useRef<number | null>(null);
     const dropdownRef = useRef<HTMLUListElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -410,16 +434,26 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
         setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files && event.target.files[0]) {
             const file = event.target.files[0];
-            const newFile: UploadedFile = {
-                id: `file-${Date.now()}`,
-                name: file.name,
-                type: 'Photo', // Defaulting for simplicity
-                url: URL.createObjectURL(file),
-            };
-            onAddFile(newFile);
+            try {
+                // Upload to GCS and trigger AI processing
+                const response = await DataService.uploadFile(file, caseData.id);
+
+                const newFile: UploadedFile = {
+                    id: `file-${Date.now()}`,
+                    name: response.name,
+                    type: (response.type || 'Document') as any,
+                    url: response.url,
+                };
+                onAddFile(newFile);
+                showToast.success("File uploaded successfully");
+            } catch (error) {
+                console.error("Upload failed", error);
+                showToast.error("Failed to upload file.");
+            }
+
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
@@ -448,7 +482,11 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                             )}
                         </div>
                     </div>
-                    <div>
+                    <div className="flex gap-2">
+                        <button onClick={onOpenExplanation} disabled={isOffline} className="text-sm bg-white dark:bg-slate-700 text-text-main font-bold py-3 px-6 rounded-xl border border-white/20 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                            {ICONS.chat}
+                            <span>Explain</span>
+                        </button>
                         <button onClick={onOpenAnalysisModal} disabled={isOffline} className="text-sm bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-bold py-3 px-6 rounded-xl hover:shadow-xl hover:shadow-teal-500/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transform hover:-translate-y-0.5 active:scale-95">
                             {ICONS.imageAnalysis}
                             <span>Analyze Image</span>
@@ -458,12 +496,19 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
             </div>
 
             <div className="divide-y divide-white/10 dark:divide-slate-700/50">
+                <div className="mb-4">
+                    <ClinicalPlanSection caseData={caseData} isOffline={isOffline} />
+                </div>
+
                 <CollapsibleSection title="Presenting Complaint" isOpen={openSections.complaint} onToggle={() => toggleSection('complaint')}>
                     {isEditingComplaint ? (
                         <div className="p-4 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl m-2 border border-slate-200 dark:border-slate-700/50">
                             <div className="relative">
                                 <textarea value={complaintInput} onChange={(e) => setComplaintInput(e.target.value)} rows={4} className="w-full border-0 bg-white dark:bg-slate-900/50 rounded-xl p-4 text-sm pr-12 shadow-inner focus:ring-2 focus:ring-primary/50 transition-all font-medium text-text-main" placeholder="Enter complaint..." />
-                                <div className="absolute bottom-3 right-3"><VoiceInput onTranscript={(t) => setComplaintInput(prev => prev + t)} disabled={isOffline} /></div>
+                                <div className="absolute bottom-3 right-3 flex gap-2">
+                                    <VoiceInput onTranscript={(t) => setComplaintInput(prev => prev + t)} disabled={isOffline} />
+                                    <VoiceRecorder onTranscript={(t) => setComplaintInput(prev => prev + t)} disabled={isOffline} />
+                                </div>
                             </div>
                             <div className="flex justify-end gap-3 mt-4">
                                 <button onClick={() => { setIsEditingComplaint(false); setComplaintInput(caseData.complaint); }} className="bg-white dark:bg-slate-700 text-text-main font-bold py-2 px-4 rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">Cancel</button>
@@ -486,6 +531,18 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                             <button onClick={() => setIsEditingComplaint(true)} disabled={isOffline} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-surface p-1 rounded-full shadow-md disabled:hidden">{ICONS.edit}</button>
                         </div>
                     )}
+                </CollapsibleSection>
+
+                {/* Specialty Panel - Conditional Render based on case.tags or default for demo */}
+                <CollapsibleSection title="Cardiology Specialty Panel" isOpen={openSections.specialty} onToggle={() => toggleSection('specialty')}>
+                    <div className="p-2">
+                        <CardiologyPanel
+                            caseId={caseData.id}
+                            patientAge={caseData.patientProfile?.age || 0}
+                            patientSex={caseData.patientProfile?.sex || 'Unknown'}
+                            history={caseData.history}
+                        />
+                    </div>
                 </CollapsibleSection>
 
                 <CollapsibleSection title="History" isOpen={openSections.history} onToggle={() => toggleSection('history')}>
@@ -598,14 +655,44 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                     </CollapsibleSection>
                 )}
 
+                <CollapsibleSection title="Voice Notes" isOpen={openSections.notes} onToggle={() => toggleSection('notes')}>
+                    <VoiceNoteList
+                        caseId={caseData.id}
+                        notes={caseData.comments || []}
+                        onAddNote={onAddVoiceNote}
+                    />
+                </CollapsibleSection>
+
                 <div>
                     <div className="p-6 bg-slate-50/30 dark:bg-slate-800/20">
                         <h3 className="font-bold text-text-muted mb-4 uppercase tracking-widest text-xs">Attached Files</h3>
                         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {caseData.files.map(file => (
-                                <li key={file.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/20 dark:border-slate-700 shadow-sm hover:shadow-md transition-all">
-                                    <span className="text-sm font-bold text-text-main truncate max-w-[70%]">{file.name}</span>
-                                    <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary px-3 py-1 bg-primary/10 rounded-lg hover:bg-primary hover:text-white transition-colors">View</a>
+                                <li key={file.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-white/20 dark:border-slate-700 shadow-sm hover:shadow-md transition-all group">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-500">
+                                            {ICONS.document}
+                                        </div>
+                                        <span className="text-sm font-bold text-text-main truncate">{file.name}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {(file.type === 'Photo' || file.name.match(/\.(jpg|jpeg|png|webp|dcm)$/i)) && (
+                                            <button
+                                                onClick={() => {
+                                                    // Ideally open the modal pre-filled, but for now we just open it. 
+                                                    // Enhancing ImageAnalysis to accept a file URL would be next, 
+                                                    // but user just asked to Display AI analysis results.
+                                                    // I'll simulate "Display Analysis" by opening the modal.
+                                                    onOpenAnalysisModal();
+                                                }}
+                                                className="text-white bg-teal-500 hover:bg-teal-600 p-1.5 rounded-lg transition-colors text-xs font-bold flex items-center gap-1 shadow-sm"
+                                                title="Analyze with AI"
+                                            >
+                                                {ICONS.imageAnalysis} Analyze
+                                            </button>
+                                        )}
+                                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary px-3 py-1.5 bg-primary/10 rounded-lg hover:bg-primary hover:text-white transition-colors">View</a>
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -620,7 +707,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
@@ -631,11 +718,15 @@ const CaseView: React.FC = () => {
     const { user } = useAuth();
     const [caseData, setCaseData] = useState<Case | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'discussion' | 'guidelines'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'discussion' | 'guidelines' | 'financials' | 'specialists'>('details');
     const [isInsightsLoading, setIsInsightsLoading] = useState(false);
     const [insights, setInsights] = useState<AIInsights | null>(null);
     const [isImageAnalysisOpen, setIsImageAnalysisOpen] = useState(false);
+    const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+    const [explanation, setExplanation] = useState("");
+    const [isExplaining, setIsExplaining] = useState(false);
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
 
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
@@ -648,25 +739,27 @@ const CaseView: React.FC = () => {
         };
     }, []);
 
-    useEffect(() => {
-        const fetchCase = async () => {
-            if (!id) return;
-            setIsLoading(true);
-            try {
-                const foundCase = await DataService.getCaseById(id);
-                setCaseData(foundCase || null);
+    const fetchCase = React.useCallback(async () => {
+        if (!id) return;
+        // Don't set loading on updates to avoid flicker, only initial
+        if (!caseData) setIsLoading(true);
+        try {
+            const foundCase = await DataService.getCaseById(id);
+            setCaseData(foundCase || null);
 
-                if (foundCase && user) {
-                    joinCase(foundCase.id, user.id);
-                    startCaseDiscussionSimulation(foundCase.id, user);
-                }
-            } catch (error) {
-                console.error("Error fetching case:", error);
-            } finally {
-                setIsLoading(false);
+            if (foundCase && user) {
+                // Ensure we join if not already (this is safe to call repeatedly if idempotent, or we check state)
+                joinCase(foundCase.id, user.id);
+                startCaseDiscussionSimulation(foundCase.id, user);
             }
-        };
+        } catch (error) {
+            console.error("Error fetching case:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [id, user, caseData]); // Added caseData to dependencies for the `if (!caseData)` check
 
+    useEffect(() => {
         fetchCase();
 
         return () => {
@@ -675,7 +768,7 @@ const CaseView: React.FC = () => {
                 stopCaseDiscussionSimulation();
             }
         }
-    }, [id, user]);
+    }, [fetchCase, id, user]);
 
     const handleGenerateInsights = async () => {
         if (!caseData) return;
@@ -685,26 +778,25 @@ const CaseView: React.FC = () => {
             setInsights(result);
         } catch (error) {
             console.error("Failed to generate insights", error);
+            showToast.error("Failed to generate insights.");
         } finally {
             setIsInsightsLoading(false);
         }
     };
 
-    const handleAddFile = async (file: UploadedFile) => {
+    const handleAddFile = React.useCallback(async (file: UploadedFile) => {
         if (!caseData) return;
-        // Ideally, this would be an API call to upload the file and attach it to the case.
-        // For now, we'll simulate the update locally and via the updateCase method.
         const updatedCase = { ...caseData, files: [...caseData.files, file] };
         setCaseData(updatedCase);
-        await DataService.updateCase(caseData.id, { files: updatedCase.files });
-    };
+        await DataService.addCaseFile(caseData.id, file);
+    }, [caseData]);
 
     const handleAddLabResult = async (result: LabResult) => {
         if (!caseData) return;
         const updatedResults = [...(caseData.labResults || []), result];
         const updatedCase = { ...caseData, labResults: updatedResults };
         setCaseData(updatedCase);
-        await DataService.updateCase(caseData.id, { labResults: updatedResults });
+        await DataService.addLabResult(caseData.id, result);
     };
 
     const handleUpdateComplaint = async (val: string) => {
@@ -740,6 +832,43 @@ const CaseView: React.FC = () => {
     const handlePostComment = async (comment: Comment) => {
         await DataService.addComment(comment);
     };
+
+    const handleOpenExplanation = async () => {
+        if (!caseData) return;
+        setIsExplanationOpen(true);
+        if (!explanation) {
+            setIsExplaining(true);
+            try {
+                // Generate explanation
+                const res = await GeminiService.getPatientReport(caseData.id);
+                setExplanation(res.report || "Could not generate explanation.");
+            } catch (e) {
+                showToast.error("Failed to generate explanation.");
+                setExplanation("Failed to generate explanation.");
+            } finally {
+                setIsExplaining(false);
+            }
+        }
+    };
+
+    const handleAddVoiceNote = async (note: string) => {
+        if (!caseData || !user) return;
+        const newHelperComment: Comment = {
+            id: `note-${Date.now()}`,
+            caseId: caseData.id,
+            userId: user.id || 'unknown',
+            userName: user.name || 'Unknown',
+            userRole: user.role, // Added missing role
+            text: note,
+            timestamp: new Date().toISOString()
+        };
+        await DataService.addComment(newHelperComment);
+        const updatedComments = [...(caseData.comments || []), newHelperComment];
+        setCaseData({ ...caseData, comments: updatedComments });
+        showToast.success("Voice note added");
+    };
+
+
 
     if (isLoading) {
         return (
@@ -803,6 +932,12 @@ const CaseView: React.FC = () => {
                                 >
                                     {ICONS.guidelines} Guidelines
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab('financials')}
+                                    className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'financials' ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
+                                >
+                                    {ICONS.document} Financials
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -854,11 +989,18 @@ const CaseView: React.FC = () => {
                                     onUpdateFindings={handleUpdateFindings}
                                     onUpdateDiagnosis={handleUpdateDiagnosis}
                                     onUpdateICD10={handleUpdateICD10}
+                                    onOpenExplanation={handleOpenExplanation}
+                                    onAddVoiceNote={handleAddVoiceNote}
                                 />
                             </>
                         )}
                         {activeTab === 'chat' && (
                             <AIChat caseData={caseData} onAddFile={handleAddFile} isOffline={isOffline} />
+                        )}
+                        {activeTab === 'specialists' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <AgentsConsole caseData={caseData} onUpdate={fetchCase} />
+                            </div>
                         )}
                         {activeTab === 'discussion' && (
                             <CaseDiscussion caseId={caseData.id} onPostComment={handlePostComment} isOffline={isOffline} />
@@ -866,14 +1008,53 @@ const CaseView: React.FC = () => {
                         {activeTab === 'guidelines' && (
                             <ClinicalGuidelinesCard diagnosis={caseData.diagnosis} isOffline={isOffline} />
                         )}
+                        {activeTab === 'financials' && (
+                            <FinancialsTab caseData={caseData} />
+                        )}
                     </div>
                 </div>
             </div>
 
-            <ImageAnalysis
+            {isExplanationOpen && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fade-in border border-white/10 dark:border-slate-700">
+                        <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                            <h3 className="text-xl font-heading font-bold text-text-main flex items-center gap-2">
+                                {ICONS.chat} Patient Explanation
+                            </h3>
+                            <button onClick={() => setIsExplanationOpen(false)} className="text-text-muted hover:text-text-main p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6 max-h-[70vh] overflow-y-auto">
+                            {isExplaining ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-text-muted gap-4">
+                                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                    <p className="font-bold animate-pulse">Generating simplified explanation...</p>
+                                </div>
+                            ) : (
+                                <div className="prose dark:prose-invert max-w-none text-text-main whitespace-pre-wrap leading-relaxed">
+                                    {explanation}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                            <button onClick={() => { navigator.clipboard.writeText(explanation); }} className="px-4 py-2 text-primary font-bold hover:bg-primary/10 rounded-xl transition-colors">
+                                Copy Text
+                            </button>
+                            <button onClick={() => setIsExplanationOpen(false)} className="px-6 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors shadow-lg shadow-primary/30">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <FileAnalysisModal
                 isOpen={isImageAnalysisOpen}
                 onClose={() => setIsImageAnalysisOpen(false)}
                 isOffline={isOffline}
+                onSaveNote={handleAddVoiceNote}
             />
         </div>
     );

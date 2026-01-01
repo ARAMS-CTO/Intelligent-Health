@@ -21,26 +21,37 @@
 }
 
 :root {
-  --color-primary-rgb: 59, 130, 246;
-  --color-accent-rgb: 16, 185, 129;
+  /* GitHub Light Theme */
+  --color-primary: #0969da;
+  --color-primary-hover: #0550ae;
+  --color-accent: #1a7f37;
+  --color-accent-hover: #116329;
+  --color-surface: #ffffff;
+  --color-background: #f6f8fa;
+  --color-text-main: #24292f;
+  --color-text-muted: #57606a;
+
+  --color-primary-rgb: 9, 105, 218;
+  --color-accent-rgb: 26, 127, 55;
   --color-surface-rgb: 255, 255, 255;
-  --color-background-rgb: 248, 250, 252;
+  --color-background-rgb: 246, 248, 250;
 }
 
 .dark {
-  --color-primary: #60a5fa;
-  --color-primary-hover: #3b82f6;
-  --color-accent: #34d399;
-  --color-accent-hover: #10b981;
-  --color-surface: #0f172a;
-  --color-background: #020617;
-  --color-text-main: #f1f5f9;
-  --color-text-muted: #94a3b8;
+  /* GitHub Dark Dimmed Theme */
+  --color-primary: #539bf5;
+  --color-primary-hover: #4493f8;
+  --color-accent: #3fb950;
+  --color-accent-hover: #2ea043;
+  --color-surface: #22272e;
+  --color-background: #1c2128;
+  --color-text-main: #adbac7;
+  --color-text-muted: #768390;
 
-  --color-primary-rgb: 96, 165, 250;
-  --color-accent-rgb: 52, 211, 153;
-  --color-surface-rgb: 15, 23, 42;
-  --color-background-rgb: 2, 6, 23;
+  --color-primary-rgb: 83, 155, 245;
+  --color-accent-rgb: 63, 185, 80;
+  --color-surface-rgb: 34, 39, 46;
+  --color-background-rgb: 28, 33, 40;
 }
 
 /* Global SVG Fix - Critical for layout stability */

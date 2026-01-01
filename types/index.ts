@@ -65,7 +65,9 @@ export interface Case {
   status: 'Open' | 'Closed' | 'Under Review';
   labResults?: LabResult[];
   specialistId?: string; // Added for explicit assignment
+  assignedSpecialist?: string; // Cache for display
   specialistAssignmentTimestamp?: string;
+  comments?: Comment[]; // Added comments
 }
 
 export interface Comment {
@@ -164,9 +166,24 @@ export interface PatientProfile {
   personalDetails: {
     dob: string;
     bloodType: string;
+    sex?: 'Male' | 'Female' | 'Other';
   };
   allergies: string[];
   baselineIllnesses: string[];
+  contact?: {
+    phone: string;
+    email: string;
+    address: string;
+  };
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  primaryCarePhysician?: {
+    name: string;
+    phone: string;
+  };
   medications: Medication[];
   files: PatientFile[];
   visitHistory: VisitHistory[];
@@ -253,4 +270,62 @@ export interface DoctorProfile {
   bio: string;
   certifications: Certification[];
   profilePictureUrl: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeCases: number;
+  aiQueriesToday: number;
+  systemHealth: string;
+  geminiStatus: string;
+  dbStatus: string;
+}
+
+export interface AdminConfig {
+  features: {
+    medLM: boolean;
+    voiceAssistant: boolean;
+    ragKnowledge: boolean;
+    autoTriage: boolean;
+  };
+}
+
+export interface SystemLog {
+  id: number;
+  eventType: string;
+  userId?: string;
+  details?: any;
+  timestamp: string;
+}
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  type: 'Subscription' | 'Consultation' | 'AI Analysis';
+  status: 'Paid' | 'Pending' | 'Failed';
+  date: string;
+}
+
+export interface MedicalRecord {
+  id: string;
+  patientId: string;
+  uploaderId: string;
+  type: string;
+  title: string;
+  fileUrl: string;
+  contentText: string;
+  aiSummary: string;
+  createdAt: string;
+}
+
+export interface AgentCapability {
+  id: string;
+  agentRole: string;
+  capabilityName: string;
+  description: string;
+  inputSchema: any;
+  outputSchema: any;
+  isActive: boolean;
 }

@@ -28,5 +28,8 @@ COPY --from=build /app/dist ./static
 # Expose port
 EXPOSE 8080
 
+# Create a volume for uploads to ensure persistence
+VOLUME /app/static/uploads
+
 # Start the application
 CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8080"]

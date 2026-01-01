@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 // Fix: Import from '../types/index' for consistency.
 import { PatientIntakeData } from '../types/index';
 import { addPatientIntakeData } from '../services/api';
@@ -34,6 +35,7 @@ const formSchema = {
 };
 
 const PatientIntake: React.FC = () => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState(initialFormData);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [submittedPatientName, setSubmittedPatientName] = useState('');
@@ -149,23 +151,23 @@ const PatientIntake: React.FC = () => {
                         {/* Patient Demographics */}
                         <fieldset className="border border-slate-200/50 dark:border-slate-700/50 p-6 rounded-2xl bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm">
                             <legend className={legendClasses}>
-                                <span className="p-1.5 bg-primary/10 rounded-lg text-primary">{ICONS.user}</span> Patient Demographics
+                                <span className="p-1.5 bg-primary/10 rounded-lg text-primary">{ICONS.user}</span> {t('patientIntake.demographics', 'Patient Demographics')}
                             </legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div>
-                                    <label className={labelClasses}>First Name</label>
+                                    <label className={labelClasses}>{t('patientIntake.firstName', 'First Name')}</label>
                                     <input type="text" value={formData.fullName.firstName} onChange={e => handleInputChange('fullName', 'firstName', e.target.value)} required className={inputFieldClasses} placeholder="Jane" />
                                 </div>
                                 <div>
-                                    <label className={labelClasses}>Last Name</label>
+                                    <label className={labelClasses}>{t('patientIntake.lastName', 'Last Name')}</label>
                                     <input type="text" value={formData.fullName.lastName} onChange={e => handleInputChange('fullName', 'lastName', e.target.value)} required className={inputFieldClasses} placeholder="Doe" />
                                 </div>
                                 <div>
-                                    <label className={labelClasses}>Date of Birth</label>
+                                    <label className={labelClasses}>{t('patientIntake.dob', 'Date of Birth')}</label>
                                     <input type="date" value={formData.dob} onChange={e => handleDirectChange('dob', e.target.value)} required className={inputFieldClasses} />
                                 </div>
                                 <div>
-                                    <label className={labelClasses}>Sex</label>
+                                    <label className={labelClasses}>{t('patientIntake.sex', 'Sex')}</label>
                                     <div className="relative">
                                         <select value={formData.sex} onChange={e => handleDirectChange('sex', e.target.value)} className={`${inputFieldClasses} appearance-none`}>
                                             <option>Male</option>
@@ -185,7 +187,7 @@ const PatientIntake: React.FC = () => {
                         {/* Medical History */}
                         <fieldset className="border border-slate-200/50 dark:border-slate-700/50 p-6 rounded-2xl bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm">
                             <legend className={legendClasses}>
-                                <span className="p-1.5 bg-danger/10 rounded-lg text-danger">{ICONS.case}</span> Medical History
+                                <span className="p-1.5 bg-danger/10 rounded-lg text-danger">{ICONS.case}</span> {t('patientIntake.medicalHistory', 'Medical History')}
                             </legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div>
@@ -234,7 +236,7 @@ const PatientIntake: React.FC = () => {
                         {/* Contact Information */}
                         <fieldset className="border border-slate-200/50 dark:border-slate-700/50 p-6 rounded-2xl bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm">
                             <legend className={legendClasses}>
-                                <span className="p-1.5 bg-info/10 rounded-lg text-info">{ICONS.chat}</span> Contact Information
+                                <span className="p-1.5 bg-info/10 rounded-lg text-info">{ICONS.chat}</span> {t('patientIntake.contactInfo', 'Contact Information')}
                             </legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div>
@@ -256,7 +258,7 @@ const PatientIntake: React.FC = () => {
                         {/* Emergency Contact */}
                         <fieldset className="border border-slate-200/50 dark:border-slate-700/50 p-6 rounded-2xl bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm">
                             <legend className={legendClasses}>
-                                <span className="p-1.5 bg-warning/10 rounded-lg text-warning-text">{ICONS.riskHigh}</span> Emergency Contact
+                                <span className="p-1.5 bg-warning/10 rounded-lg text-warning-text">{ICONS.riskHigh}</span> {t('patientIntake.emergencyContact', 'Emergency Contact')}
                             </legend>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
                                 <div>
@@ -278,7 +280,7 @@ const PatientIntake: React.FC = () => {
                         {/* Physician Information */}
                         <fieldset className="border border-slate-200/50 dark:border-slate-700/50 p-6 rounded-2xl bg-white/30 dark:bg-slate-800/30 backdrop-blur-sm">
                             <legend className={legendClasses}>
-                                <span className="p-1.5 bg-primary/10 rounded-lg text-primary">{ICONS.specialist}</span> Physician Information
+                                <span className="p-1.5 bg-primary/10 rounded-lg text-primary">{ICONS.specialist}</span> {t('patientIntake.physicianInfo', 'Physician Information')}
                             </legend>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                 <div>
@@ -294,10 +296,10 @@ const PatientIntake: React.FC = () => {
 
                         <div className="flex justify-end gap-4 pt-6 border-t border-slate-100 dark:border-slate-700 mt-2">
                             <button type="button" onClick={() => navigate('/dashboard')} className="glass-button text-slate-800 dark:text-slate-200 font-bold py-3 px-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                Cancel
+                                {t('common.cancel', 'Cancel')}
                             </button>
                             <button type="submit" className="bg-gradient-to-r from-primary to-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all transform hover:-translate-y-0.5">
-                                Save Patient
+                                {t('patientIntake.save', 'Save Patient')}
                             </button>
                         </div>
                     </form>

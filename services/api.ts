@@ -1,5 +1,5 @@
 
-import { User, Role, Case, Comment, AnonymisedPatientProfile, TreatmentOption, PatientProfile, PatientFile, DiagnosisSuggestion, AIInsights, Medication, PatientIntakeData, AIAgentStats, AIActionItem, DiagnosisSuggestionFeedback, ExtractedCaseData, SymptomAnalysisResult, AIContextualSuggestion, DoctorProfile, Certification, UnratedSuggestion } from '../types/index';
+import { User, Role, Case, Comment, AnonymisedPatientProfile, TreatmentOption, PatientProfile, PatientFile, DiagnosisSuggestion, AIInsights, Medication, PatientIntakeData, AIAgentStats, AIActionItem, DiagnosisSuggestionFeedback, ExtractedCaseData, SymptomAnalysisResult, AIContextualSuggestion, DoctorProfile, Certification, UnratedSuggestion, MedicalRecord, UploadedFile, LabResult } from '../types/index';
 import { appEvents } from './events';
 
 // --- CONFIGURATION ---
@@ -62,6 +62,18 @@ export class DataService {
         return data.user;
     }
 
+    static async loginWithGoogle(accessToken: string, role: Role): Promise<User> {
+        const response = await fetch(`${API_BASE_URL}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: accessToken, role })
+        });
+        if (!response.ok) throw new Error('Google login failed');
+        const data = await response.json();
+        localStorage.setItem('token', data.access_token);
+        return data.user;
+    }
+
     static async getUsers(): Promise<User[]> {
         const res = await fetch(`${API_BASE_URL}/users`, { headers: getAuthHeader() });
         return res.json();
@@ -69,6 +81,8 @@ export class DataService {
 
     static async getDoctorProfile(profileId: string): Promise<DoctorProfile | undefined> {
         const res = await fetch(`${API_BASE_URL}/doctors/${profileId}`, { headers: getAuthHeader() });
+        if (res.status === 404) return undefined;
+        if (!res.ok) throw new Error("Failed to fetch doctor profile");
         return res.json();
     }
 
@@ -126,6 +140,24 @@ export class DataService {
         });
     }
 
+    static async addCaseFile(caseId: string, file: UploadedFile): Promise<UploadedFile> {
+        const res = await fetch(`${API_BASE_URL}/cases/${caseId}/files`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(file)
+        });
+        return res.json();
+    }
+
+    static async addLabResult(caseId: string, result: LabResult): Promise<LabResult> {
+        const res = await fetch(`${API_BASE_URL}/cases/${caseId}/results`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(result)
+        });
+        return res.json();
+    }
+
     // --- Comments ---
     static async getAllComments(): Promise<Comment[]> {
         const res = await fetch(`${API_BASE_URL}/comments`, { headers: getAuthHeader() });
@@ -159,6 +191,17 @@ export class DataService {
     // --- Patients ---
     static async getPatientProfile(id: string): Promise<PatientProfile | undefined> {
         const res = await fetch(`${API_BASE_URL}/patients/${id}`, { headers: getAuthHeader() });
+        if (res.status === 404) return undefined;
+        if (!res.ok) throw new Error("Failed to fetch patient profile");
+        return res.json();
+    }
+
+    static async updatePatientProfile(id: string, update: any): Promise<PatientProfile> {
+        const res = await fetch(`${API_BASE_URL}/patients/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(update)
+        });
         return res.json();
     }
 
@@ -178,6 +221,11 @@ export class DataService {
         });
     }
 
+    static async getPatientRecords(patientId: string): Promise<MedicalRecord[]> {
+        const res = await fetch(`${API_BASE_URL}/patients/${patientId}/records`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
     static async searchPatients(query: string): Promise<PatientProfile[]> {
         const res = await fetch(`${API_BASE_URL}/patients/search?q=${encodeURIComponent(query)}`, { headers: getAuthHeader() });
         return res.json();
@@ -189,6 +237,96 @@ export class DataService {
             headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
             body: JSON.stringify(data)
         });
+        return res.json();
+    }
+
+    // --- Admin ---
+    // getUsers is already defined above in User & Auth section
+
+    static async deleteUser(userId: string): Promise<void> {
+        await fetch(`${API_BASE_URL}/users/${userId}`, {
+            method: 'DELETE',
+            headers: getAuthHeader()
+        });
+    }
+
+    static async getAdminStats(): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/dashboard/admin/stats`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async getAdminConfig(): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/dashboard/admin/config`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async updateAdminConfig(features: any): Promise<void> {
+        await fetch(`${API_BASE_URL}/dashboard/admin/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ features })
+        });
+    }
+
+    static async getSystemLogs(): Promise<any[]> {
+        const res = await fetch(`${API_BASE_URL}/dashboard/admin/logs`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    // --- Billing ---
+    static async getTransactions(): Promise<any[]> {
+        const res = await fetch(`${API_BASE_URL}/billing/admin/transactions`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async getCostEstimate(caseId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/${caseId}`, { headers: getAuthHeader() });
+        if (res.status === 404) return null;
+        return res.json();
+    }
+
+    static async generateCostEstimate(caseId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/estimate/${caseId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        return res.json();
+    }
+
+    static async uploadFile(file: File, caseId?: string): Promise<{ url: string, name: string, type: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (caseId) {
+            formData.append('case_id', caseId);
+        }
+
+        const res = await fetch(`${API_BASE_URL}/files/upload`, {
+            method: 'POST',
+            headers: { ...getAuthHeader() },
+            body: formData
+        });
+
+        if (!res.ok) throw new Error("File upload failed");
+        return res.json();
+    }
+    static async approveCostEstimate(caseId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/estimate/${caseId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        return res.json();
+    }
+
+    static async rejectCostEstimate(caseId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/estimate/${caseId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        return res.json();
+    }
+
+    static async getPendingEstimates(role: string): Promise<any[]> {
+        const res = await fetch(`${API_BASE_URL}/billing/admin/estimates/pending?role=${role}`, { headers: getAuthHeader() });
         return res.json();
     }
 }
@@ -235,23 +373,42 @@ export const stopCaseDiscussionSimulation = () => { };
 
 export class GeminiService {
     static async getAIAgentStats(userId: string): Promise<AIAgentStats> {
-        // TODO: Implement backend
-        return {
-            id: 'agent-1',
-            userId: userId,
-            accuracy: 0.95,
-            personalizationLevel: 0.8,
-            casesAnalyzed: 10,
-            feedbackProvided: 5
-        };
+        try {
+            const res = await fetch(`${API_BASE_URL}/ai/stats/${userId}`, { headers: getAuthHeader() });
+            return res.json();
+        } catch (e) {
+            console.error("Failed to fetch AI stats", e);
+            // Fallback mock
+            return {
+                id: 'agent-1',
+                userId: userId,
+                accuracy: 0.85,
+                personalizationLevel: 0.6,
+                casesAnalyzed: 0,
+                feedbackProvided: 0
+            };
+        }
     }
 
     static async getRecentUnratedSuggestion(userId: string): Promise<UnratedSuggestion | null> {
-        return null;
+        try {
+            const res = await fetch(`${API_BASE_URL}/ai/unrated/${userId}`, { headers: getAuthHeader() });
+            if (res.status === 404) return null;
+            return res.json();
+        } catch (e) { return null; }
     }
 
     static async submitAIFeedback(caseId: string, suggestionName: string, feedback: DiagnosisSuggestionFeedback): Promise<void> {
-        return Promise.resolve();
+        await fetch(`${API_BASE_URL}/ai/feedback`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({
+                case_id: caseId,
+                suggestion_name: suggestionName,
+                rating: feedback.rating,
+                comments: feedback.comments
+            })
+        });
     }
 
     static async getCaseInsights(caseData: Case, userId: string = 'anonymous'): Promise<AIInsights> {
@@ -290,9 +447,7 @@ export class GeminiService {
                 body: JSON.stringify({
                     history: history,
                     message: newMessage,
-                    context: `Medical Assistant for case: ${caseData.title}. Be concise.`,
-                    userId: userId,
-                    userRole: userRole
+                    context: `Medical Assistant for case: ${caseData.title}. Be concise.`
                 })
             });
             const data = await response.json();
@@ -302,17 +457,16 @@ export class GeminiService {
         }
     }
 
-    static async explainToPatient(query: string, profile: PatientProfile): Promise<string> {
+    static async explainToPatient(diagnosis: string, plan: string, patientAge: number): Promise<any> {
         try {
             const response = await fetch(`${API_BASE_URL}/ai/explain_patient`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                body: JSON.stringify({ query, patient_name: profile.name })
+                body: JSON.stringify({ diagnosis, plan, patient_age: patientAge })
             });
-            const data = await response.json();
-            return data.response;
+            return await response.json();
         } catch (error) {
-            return "Service unavailable.";
+            return { explanation: "Service unavailable." };
         }
     }
 
@@ -365,16 +519,41 @@ export class GeminiService {
         } catch (e) { throw new Error("Analysis failed."); }
     }
 
-    static async analyzeImage(image: { data: string, mimeType: string }, prompt: string): Promise<string> {
+    static async analyzeFile(file: File, type: string = "general", prompt?: string): Promise<any> {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type);
+        if (prompt) {
+            formData.append('prompt', prompt);
+        }
+
         try {
-            const response = await fetch(`${API_BASE_URL}/ai/analyze_image`, {
+            const response = await fetch(`${API_BASE_URL}/ai/analyze_file`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-                body: JSON.stringify({ image_data: image.data, mime_type: image.mimeType, prompt })
+                headers: { ...getAuthHeader() }, // No Content-Type for FormData
+                body: formData
             });
-            const data = await response.json();
-            return data.response;
-        } catch (e) { throw new Error("Image analysis failed."); }
+            if (!response.ok) throw new Error("Analysis failed");
+            return await response.json();
+        } catch (e) { throw new Error("File analysis failed."); }
+    }
+
+    static async analyzeImage(file: File, type: string = "general", prompt?: string): Promise<any> {
+        return this.analyzeFile(file, type, prompt);
+    }
+
+    static async transcribeAudio(file: Blob): Promise<{ transcript: string }> {
+        const formData = new FormData();
+        formData.append('file', file, 'audio.wav');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/transcribe`, {
+                method: 'POST',
+                headers: { ...getAuthHeader() },
+                body: formData
+            });
+            return await response.json();
+        } catch (e) { return { transcript: "" }; }
     }
 
     static async searchICD10Codes(query: string): Promise<{ code: string; description: string }[]> {
@@ -405,4 +584,104 @@ export class GeminiService {
             return { updates: {}, response: "Sorry, I couldn't process that request." };
         }
     }
+
+    static async generateDailyQuestions(profileSummary: string): Promise<{ questions: string[] }> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/generate_daily_questions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ profile_summary: profileSummary })
+            });
+            return await response.json();
+        } catch (error) {
+            return { questions: [] };
+        }
+    }
+
+    static async getPatientReport(caseId: string): Promise<{ report: string }> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/report/patient/${caseId}`, { headers: getAuthHeader() });
+            return await response.json();
+        } catch (e) { return { report: "Service unavailable" }; }
+    }
+
+    static async getClinicalPlan(caseId: string): Promise<{ plan: string }> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/plan/${caseId}`, { headers: getAuthHeader() });
+            return await response.json();
+        } catch (e) { return { plan: "Service unavailable" }; }
+    }
+
+    static async uploadPatientRecord(file: File): Promise<any> {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/patient/upload_record`, {
+                method: 'POST',
+                headers: { ...getAuthHeader() },
+                body: formData
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "Upload failed");
+            }
+            return await response.json();
+        } catch (e: any) { throw new Error(e.message || "File upload failed."); }
+    }
+
+    static async chatWithPatientAgent(history: any[], newMessage: string): Promise<string> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/patient/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ history, message: newMessage })
+            });
+            const data = await response.json();
+            return data.response;
+        } catch (error) {
+            return "Patient Agent unavailable.";
+        }
+    }
+
+    // -- NEW: Agent Orchestrator Chat --
+    static async agentChat(message: string): Promise<any> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/agent_chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ message })
+            });
+            return await response.json();
+        } catch (e) {
+            console.error("Agent chat failed", e);
+            throw e;
+        }
+    }
+
+    static async seedAgentCapabilities(): Promise<void> {
+        await fetch(`${API_BASE_URL}/bus/seed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+    }
+
+    static async findAgentCapability(query: string): Promise<any[]> {
+        const res = await fetch(`${API_BASE_URL}/bus/find`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ query })
+        });
+        return res.json();
+    }
+
+    static async executeAgentCapability(capability: string, params: any): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/bus/execute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ capability, params })
+        });
+        return res.json();
+    }
 }
+

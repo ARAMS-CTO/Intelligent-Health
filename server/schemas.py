@@ -60,18 +60,23 @@ class LabResult(BaseSchema):
     reference_range: str
     interpretation: Optional[Literal['Normal', 'Abnormal-High', 'Abnormal-Low', 'Critical']] = None
 
-class Case(BaseSchema):
-    id: str
+class CaseBase(BaseSchema):
     title: str
     creator_id: str
     patient_id: str
-    created_at: str
-    patient_profile: Optional[AnonymisedPatientProfile] = None # Optional because it might not be fully populated in all views
     complaint: str
     history: str
     findings: str
     diagnosis: str
-    tags: List[str]
+    tags: List[str] = []
+
+class CaseCreate(CaseBase):
+    pass
+
+class Case(CaseBase):
+    id: str
+    created_at: str
+    patient_profile: Optional[AnonymisedPatientProfile] = None 
     files: List[UploadedFile] = []
     status: Literal['Open', 'Closed', 'Under Review']
     lab_results: Optional[List[LabResult]] = None
@@ -127,6 +132,7 @@ class AIInsights(BaseSchema):
     diagnosis_confidence: float
     patient_risks: List[str]
     key_symptoms: List[str]
+    primary_diagnosis: Optional[str] = None
 
 class PatientFile(BaseSchema):
     id: str
@@ -188,6 +194,13 @@ class PatientIntakeData(BaseSchema):
     emergency_contact: EmergencyContact
     primary_care_physician: PrimaryCarePhysician
 
+class PatientUpdate(BaseSchema):
+    contact: Optional[Contact] = None
+    emergency_contact: Optional[EmergencyContact] = None
+    primary_care_physician: Optional[PrimaryCarePhysician] = None
+    allergies: Optional[List[str]] = None
+    baseline_illnesses: Optional[List[str]] = None
+
 class AIActionItem(BaseSchema):
     case_id: str
     case_title: str
@@ -229,3 +242,93 @@ class DoctorProfile(BaseSchema):
     bio: str
     certifications: List[Certification]
     profile_picture_url: str
+
+class AdminStats(BaseSchema):
+    total_users: int
+    active_cases: int
+    ai_queries_today: int
+    system_health: str # 'Optimal', 'Degraded', 'Critical'
+    gemini_status: str
+    db_status: str
+
+class DashboardStats(BaseSchema):
+    overdue: int
+    updates: int
+    assignments: int
+
+class SystemConfigUpdate(BaseSchema):
+    features: Dict[str, bool]
+
+class CostEstimate(BaseSchema):
+    id: str
+    case_id: str
+    total_cost: float
+    currency: str
+    breakdown: List[CostItem]
+    insurance_coverage: float
+    patient_responsibility: float
+    status: Literal['Estimated', 'Approved', 'Pending']
+    created_at: datetime
+
+class SystemLog(BaseSchema):
+    id: int
+    event_type: str
+    user_id: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    timestamp: datetime
+
+class Transaction(BaseSchema):
+    id: str
+    user_id: str
+    user_name: str
+    amount: float
+    type: Literal['Subscription', 'Consultation', 'AI Analysis']
+    status: Literal['Paid', 'Pending', 'Failed']
+    date: datetime
+
+class AIFeedbackBase(BaseSchema):
+    user_id: Optional[str] = None
+    case_id: Optional[str] = None
+    suggestion_name: str
+    rating: Literal['good', 'bad']
+    comments: Optional[str] = None
+
+class AIFeedbackCreate(AIFeedbackBase):
+    pass
+
+class AIFeedback(AIFeedbackBase):
+    id: int
+    timestamp: datetime
+
+class UnratedSuggestion(BaseSchema):
+    case_id: str
+    case_title: str
+    suggestion: DiagnosisSuggestion
+
+class ChatRequest(BaseModel):
+    message: str
+    history: List[Dict[str, str]] = []
+    model: Optional[str] = None
+    context: Optional[str] = None
+    userId: Optional[str] = None
+    userRole: Optional[str] = None
+
+class MedicalRecord(BaseSchema):
+    id: str
+    patient_id: Optional[str] = None
+    uploader_id: str
+    type: str
+    title: str
+    file_url: str
+    content_text: str
+    ai_summary: str
+    created_at: datetime
+
+class AgentCapability(BaseSchema):
+    id: str
+    agent_role: str
+    capability_name: str
+    description: str
+    input_schema: Dict[str, Any]
+    output_schema: Dict[str, Any]
+    is_active: bool

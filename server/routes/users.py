@@ -7,43 +7,72 @@ from ..models import User as UserModel, DoctorProfile as DoctorProfileModel
 
 router = APIRouter()
 
-# Mock Data for Doctor Profiles
+from typing import List, Optional
+from ..schemas import Role
+
+from ..routes.auth import get_current_user
+
 @router.get("/users", response_model=List[User])
-async def get_users(db: Session = Depends(get_db)):
-    users = db.query(UserModel).all()
-    return users
+async def get_users(role: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(UserModel)
+    if role:
+        query = query.filter(UserModel.role == role)
+    return query.all()
 
 @router.get("/doctors/{profile_id}", response_model=DoctorProfile)
-async def get_doctor_profile(profile_id: str, db: Session = Depends(get_db)):
-    # Try finding by profile id first
-    profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.id == profile_id).first()
-    
-    # If not found, try finding by user_id (since frontend might be passing user_id as profile_id in some contexts)
-    if not profile:
-         profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.user_id == profile_id).first()
+async def get_doctor_profile(profile_id: str, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+    if profile_id == "me":
+        profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.user_id == current_user.id).first()
+    else:
+        # Try finding by profile id first
+        profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.id == profile_id).first()
+        # If not found, try finding by user_id
+        if not profile:
+             profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.user_id == profile_id).first()
 
     if not profile:
-        # Check if user exists but has no profile, maybe create empty one?
-        # For now, return 404
         raise HTTPException(status_code=404, detail="Doctor profile not found")
     return profile
 
 @router.put("/doctors/{profile_id}", response_model=DoctorProfile)
-async def update_doctor_profile(profile_id: str, updates: DoctorProfile, db: Session = Depends(get_db)):
-    profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.id == profile_id).first()
-    if not profile:
-         profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.user_id == profile_id).first()
-         
+async def update_doctor_profile(profile_id: str, updates: DoctorProfile, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    profile = None
+    if profile_id == "me":
+         profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.user_id == current_user.id).first()
+    else:
+        profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.id == profile_id).first()
+        if not profile:
+             profile = db.query(DoctorProfileModel).filter(DoctorProfileModel.user_id == profile_id).first()
+    
     if not profile:
         raise HTTPException(status_code=404, detail="Doctor profile not found")
     
+    # Authorization Check
+    # Allow if it's their own profile OR they are Admin
+    if profile.user_id != current_user.id and current_user.role != "Admin":
+        raise HTTPException(status_code=403, detail="Not authorized to update this profile")
+    
     # Update fields
-    profile.specialty = updates.specialty
-    profile.years_of_experience = updates.years_of_experience
-    profile.bio = updates.bio
-    profile.certifications = [c.dict() for c in updates.certifications]
-    profile.profile_picture_url = updates.profile_picture_url
+    if updates.specialty: profile.specialty = updates.specialty
+    if updates.years_of_experience: profile.years_of_experience = updates.years_of_experience
+    if updates.bio: profile.bio = updates.bio
+    if updates.certifications: profile.certifications = [c.dict() for c in updates.certifications]
+    if updates.profile_picture_url: profile.profile_picture_url = updates.profile_picture_url
     
     db.commit()
     db.refresh(profile)
     return profile
+
+@router.delete("/users/{user_id}")
+async def delete_user(user_id: str, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Only Admin can delete users
+    if current_user.role != "Admin":
+         raise HTTPException(status_code=403, detail="Only Admins can delete users")
+
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}

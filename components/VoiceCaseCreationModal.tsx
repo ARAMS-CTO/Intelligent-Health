@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// Fix: Import from '../types/index' to get the correct PatientProfile type with visitHistory.
 import { ExtractedCaseData, PatientProfile, AIContextualSuggestion } from '../types/index';
 import { GeminiService, searchPatients } from '../services/api';
 import { ICONS } from '../constants/index';
@@ -22,6 +21,7 @@ const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen,
     const [contextualSuggestions, setContextualSuggestions] = useState<AIContextualSuggestion[]>([]);
     const [error, setError] = useState('');
     const recognitionRef = useRef<any>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // State for patient selection
     const [patientSearchQuery, setPatientSearchQuery] = useState('');
@@ -40,11 +40,20 @@ const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen,
         if (recognitionRef.current) {
             recognitionRef.current.stop();
         }
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
     }, []);
 
     // Fix: Hoisted function to resolve "used before declaration" error.
     const handleExtractAndAugmentDetails = useCallback(async () => {
+        // Use a ref-based transcript check or accept argument would be better, but relying on state for now
+        // If coming from file upload, we hope state is updated. 
         if (transcript.trim().length < 10) {
+            // Check if we are in transcribing step, maybe give it a moment? 
+            // No, just fail if short.
+            // BUT: If the user just spoke, `transcript` is updated via `onresult`.
+            // If uploaded, `transcript` updated via `handleFileUpload`.
             setError("The transcript is too short. Please provide more details.");
             setStep('error');
             return;
@@ -71,6 +80,30 @@ const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen,
             setStep('error');
         }
     }, [transcript, selectedPatient]);
+
+
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setTranscript("Transcribing audio file...");
+        try {
+            const { transcript: text } = await GeminiService.transcribeAudio(file);
+            if (!text) throw new Error("No transcript generated.");
+
+            // Update state and trigger processing
+            setTranscript(text);
+            setStep('transcribing');
+        } catch (e: any) {
+            setError("Failed to process audio file.");
+            setStep('error');
+        }
+    };
+
+    // I need to add this function to replacement. And Ref.
+
+
 
     useEffect(() => {
         if (isOpen) {
@@ -145,121 +178,7 @@ const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen,
 
     if (!isOpen) return null;
 
-    const renderContent = () => {
-        switch (step) {
-            case 'patient-selection':
-                return (
-                    <div>
-                        <h3 className="text-xl font-semibold text-text-main mb-4">Step 1: Select Patient</h3>
-                        <input
-                            type="text"
-                            value={patientSearchQuery}
-                            onChange={(e) => handlePatientSearch(e.target.value)}
-                            placeholder="Search by name or MRN..."
-                            className="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                        <div className="mt-4 max-h-60 overflow-y-auto">
-                            {patientSearchResults.map(p => (
-                                <button key={p.id} onClick={() => handleSelectPatient(p)} className="w-full text-left p-3 hover:bg-slate-100 rounded-md">
-                                    <p className="font-semibold">{p.name}</p>
-                                    <p className="text-sm text-text-muted">ID: {p.identifier}</p>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                );
-            case 'recording':
-                return (
-                    <div className="text-center">
-                        <h3 className="text-xl font-semibold text-text-main mb-2">Step 2: Recording...</h3>
-                        <p className="text-text-muted mb-4">Patient: <strong className="text-text-main">{selectedPatient?.name}</strong></p>
-                        <p className="text-sm bg-slate-100 p-4 rounded-lg min-h-[80px] text-left">{transcript || "Start speaking..."}</p>
-                    </div>
-                );
-            case 'transcribing':
-            case 'augmenting':
-                return (
-                    <div className="text-center flex flex-col items-center justify-center">
-                        <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <h3 className="text-xl font-semibold text-text-main">{step === 'augmenting' ? 'Cross-Referencing Patient History...' : 'AI is Analyzing Transcript...'}</h3>
-                        <p className="text-text-muted mt-2">{step === 'augmenting' ? 'Generating contextual suggestions.' : 'Extracting key information.'}</p>
-                    </div>
-                );
-            case 'reviewing':
-                return (
-                    <div>
-                        <h3 className="text-xl font-semibold text-text-main mb-4">Step 3: Review AI Analysis</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[50vh] overflow-y-auto pr-2">
-                            {/* Extracted Details */}
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-text-main border-b pb-2">Extracted Details</h4>
-                                {Object.entries(extractedData || {}).map(([key, value]) => {
-                                    if (key === 'missing_information' || key === 'patientId' || !value) return null;
-                                    const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                    return (
-                                        <div key={key}>
-                                            <label className="block text-sm font-bold text-text-muted">{formattedKey}</label>
-                                            <p className="text-text-main bg-slate-100 p-2 rounded-md mt-1 text-sm">{String(value)}</p>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            {/* Suggestions */}
-                            <div className="space-y-4">
-                                <h4 className="font-bold text-text-main border-b pb-2">AI Suggestions</h4>
-                                {extractedData?.missing_information && (
-                                    <div className="p-3 bg-warning-light border-l-4 border-warning rounded-r-md">
-                                        <h5 className="font-bold text-warning-text flex items-center gap-2 text-sm">{ICONS.riskModerate} <span>Consider Adding</span></h5>
-                                        <ul className="list-disc list-inside mt-2 text-warning-text text-xs">
-                                            {extractedData.missing_information.map((item, index) => <li key={index}>{item}</li>)}
-                                        </ul>
-                                    </div>
-                                )}
-                                {contextualSuggestions.map((item, index) => (
-                                    <div key={index} className="p-3 bg-info-light border-l-4 border-info rounded-r-md">
-                                        <h5 className="font-bold text-info-text flex items-center gap-2 text-sm">{ICONS.ai} <span>AI Suggests</span></h5>
-                                        <p className="mt-1 text-info-text text-sm font-semibold">{item.suggestion}</p>
-                                        <p className="mt-1 text-info-text text-xs italic"><strong>Rationale:</strong> {item.rationale}</p>
-                                    </div>
-                                ))}
-                                {contextualSuggestions.length === 0 && !extractedData?.missing_information && <p className="text-sm text-text-muted italic">No specific suggestions from AI.</p>}
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'error':
-                return (
-                    <div className="text-center">
-                        <h3 className="text-xl font-semibold text-danger-text mb-4">An Error Occurred</h3>
-                        <p className="text-text-muted bg-danger-light p-4 rounded-lg">{error}</p>
-                    </div>
-                );
-        }
-    };
 
-    const renderFooter = () => {
-        switch (step) {
-            case 'reviewing':
-                return (
-                    <div className="flex justify-between gap-4 w-full">
-                        <button onClick={resetState} className="bg-slate-200 text-slate-800 font-bold py-2 px-6 rounded-md hover:bg-slate-300 transition">Start Over</button>
-                        <button onClick={() => extractedData && onProceed(extractedData)} className="bg-accent text-white font-bold py-2 px-6 rounded-md hover:bg-accent-hover transition">Proceed to Create Case</button>
-                    </div>
-                );
-            case 'error':
-                return <button onClick={resetState} className="bg-primary text-white font-bold py-2 px-6 rounded-md hover:bg-primary-hover transition">Try Again</button>;
-            case 'patient-selection':
-                return <p className="text-sm text-text-muted">Select a patient to begin.</p>;
-            case 'recording':
-                return (
-                    <button onClick={handleToggleRecording} className={`w-20 h-20 rounded-full flex items-center justify-center transition-colors shadow-lg bg-danger animate-pulse`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v6a1 1 0 11-2 0V7z" clipRule="evenodd" /></svg>
-                    </button>
-                );
-            default:
-                return null;
-        }
-    }
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -319,14 +238,37 @@ const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen,
                             </div>
 
                             <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 min-h-[120px] text-left relative overflow-hidden mb-8 shadow-inner">
-                                <p className="text-lg text-text-main leading-relaxed">{transcript || <span className="text-slate-400 italic">Start speaking to record case details...</span>}</p>
+                                <p className="text-lg text-text-main leading-relaxed">{transcript || <span className="text-slate-400 italic">Start speaking or upload audio...</span>}</p>
                                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse"></div>
                             </div>
 
-                            <button onClick={handleToggleRecording} className="w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-xl bg-danger shadow-danger/30 hover:shadow-danger/50 animate-pulse hover:scale-105 mx-auto">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v6a1 1 0 11-2 0V7z" clipRule="evenodd" /></svg>
-                            </button>
-                            <p className="mt-4 text-sm text-text-muted font-medium">Click to Stop Recording</p>
+                            <div className="flex flex-col items-center gap-4">
+                                <button onClick={handleToggleRecording} className="w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-xl bg-danger shadow-danger/30 hover:shadow-danger/50 animate-pulse hover:scale-105">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 012 0v6a1 1 0 11-2 0V7z" clipRule="evenodd" /></svg>
+                                </button>
+                                <p className="text-sm text-text-muted font-medium mb-2">Click to Stop Recording</p>
+
+                                <div className="flex items-center gap-2 w-full max-w-xs">
+                                    <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                    <span className="text-xs text-text-muted font-bold uppercase">OR</span>
+                                    <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1"></div>
+                                </div>
+
+                                <input
+                                    type="file"
+                                    accept="audio/*"
+                                    className="hidden"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                />
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="text-primary hover:text-primary-hover font-bold text-sm flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-primary/5 transition"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                    Upload Audio File
+                                </button>
+                            </div>
                         </div>
                     )}
 

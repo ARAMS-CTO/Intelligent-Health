@@ -32,8 +32,14 @@ def get_engine():
         )
     else:
         # Fallback for local dev
-        default_url = "postgresql://user:password@localhost/intelligent_health"
-        db_url = os.getenv("DATABASE_URL", default_url)
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            # Default to SQLite for zero-config local dev
+            db_url = "sqlite:///./intelligent_health.db"
+            return create_engine(
+                db_url, 
+                connect_args={"check_same_thread": False}
+            )
         return create_engine(db_url)
 
 engine = get_engine()

@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from server.database import SessionLocal, engine
-from server.models import User, DoctorProfile, Base
+from server.models import User, DoctorProfile, Base, SystemConfig
 from sqlalchemy import create_engine
 
 # Override engine for remote seeding
@@ -91,6 +91,20 @@ def seed_users():
             
         print(f"Created user: {u_data['email']} with role {u_data['role']}")
         
+    # Seed System Config
+    if not db.query(SystemConfig).filter(SystemConfig.key == "features").first():
+        config = SystemConfig(
+            key="features",
+            value={
+                "medLM": True,
+                "voiceAssistant": True,
+                "ragKnowledge": True,
+                "autoTriage": True
+            }
+        )
+        db.add(config)
+        print("Created default system configuration.")
+
     db.commit()
     db.close()
     print("Seeding completed.")

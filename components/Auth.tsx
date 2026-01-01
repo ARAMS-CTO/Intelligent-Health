@@ -3,10 +3,12 @@ import React, { createContext, useState, useContext, ReactNode, useCallback } fr
 import { User, Role } from '../types/index';
 import { DataService } from '../services/api';
 import { ICONS } from '../constants/index';
+import { showToast } from './Toast';
 
 interface AuthContextType {
     user: User | null;
     login: (email: string, role: Role, password?: string) => Promise<void>;
+    loginWithGoogle: (accessToken: string, role: Role) => Promise<void>;
     register: (email: string, role: Role, password?: string, name?: string) => Promise<void>;
     logout: () => void;
 }
@@ -26,7 +28,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         } catch (error) {
             console.error("Login error:", error);
-            alert("Login failed. Please check credentials.");
+            showToast.error("Login failed. Please check credentials.");
+        }
+    }, []);
+
+    const loginWithGoogle = useCallback(async (accessToken: string, role: Role) => {
+        try {
+            const loggedInUser = await DataService.loginWithGoogle(accessToken, role);
+            if (loggedInUser) {
+                setUser(loggedInUser);
+            }
+        } catch (error) {
+            console.error("Google login error:", error);
+            showToast.error("Google login failed.");
         }
     }, []);
 
@@ -38,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         } catch (error) {
             console.error("Registration error:", error);
-            alert("Registration failed.");
+            showToast.error("Registration failed.");
         }
     }, []);
 
@@ -47,7 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, register }}>
+        <AuthContext.Provider value={{ user, login, logout, register, loginWithGoogle }}>
             {children}
         </AuthContext.Provider>
     );
@@ -68,7 +82,7 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
     const [name, setName] = useState('');
     const [role, setRole] = useState<Role>(Role.Doctor);
     const [isLoading, setIsLoading] = useState(false);
-    const { login, register } = useAuth();
+    const { login, register, loginWithGoogle } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -91,8 +105,7 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
         onSuccess: async (tokenResponse) => {
             setIsLoading(true);
             try {
-                // Mocking user profile retrieval after Google success
-                await login("google-user@intelligent-health.com", Role.Doctor, "google-oauth");
+                await loginWithGoogle(tokenResponse.access_token, role);
                 onLogin();
             } catch (error) {
                 console.error('Google Auth Error:', error);

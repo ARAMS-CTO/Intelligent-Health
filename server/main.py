@@ -1,53 +1,53 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import auth_router, cases_router, patients_router, ai_router, comments_router, users_router, dashboard_router
+from dotenv import load_dotenv
+
+load_dotenv()
+from .routes import init_app
+from .database import Base, engine
+
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Intelligent Health API", version="0.1.0")
 
 # CORS Configuration
-origins = [
-    "http://localhost:5173", # Vite default
-    "http://localhost:3000",
-    "https://intelligent-hospital.web.app",
-    "https://intelligent-hospital.firebaseapp.com",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for now to avoid issues during dev, restrict in prod
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include Routers
-# Include Routers
-app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-app.include_router(cases_router, prefix="/api/cases", tags=["Cases"])
-app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
-app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
-app.include_router(comments_router, prefix="/api/comments", tags=["Comments"])
-app.include_router(users_router, prefix="/api", tags=["Users"]) # Note: prefix is /api because routes are /users and /doctors
-app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+    return response
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "service": "Intelligent Health API"}
+
+# Include Routers via init_app
+init_app(app)
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-# ... (previous code)
-
-
-
 # Serve Static Files (React App)
-# Ensure 'static' directory exists or handle it gracefully
+# Serve Static Files (React App)
+os.makedirs("static/assets", exist_ok=True)
+os.makedirs("static/uploads", exist_ok=True)
+
 if os.path.exists("static"):
     app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-    # You might need to mount other folders if your build structure differs
+    app.mount("/uploads", StaticFiles(directory="static/uploads"), name="uploads")
     
     @app.get("/{full_path:path}")
     async def serve_react_app(full_path: str):
-        # api routes are already handled above because they are more specific (if defined correctly)
-        # but to be safe, we can check if it starts with api
         if full_path.startswith("api"):
              raise HTTPException(status_code=404, detail="Not Found")
         
@@ -55,9 +55,8 @@ if os.path.exists("static"):
         if os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)
         
-        # Fallback to index.html for SPA routing
         return FileResponse("static/index.html")
 else:
     @app.get("/")
     async def root():
-        return {"message": "Intelligent Health API is running. Static files not found (dev mode)."}
+        return {"message": "Intelligent Health API is running. Static files not found."}

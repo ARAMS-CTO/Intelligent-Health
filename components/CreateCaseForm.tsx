@@ -4,6 +4,7 @@ import { Case, AnonymisedPatientProfile } from '../types/index';
 import { useAuth } from './Auth';
 import VoiceInput from './VoiceInput';
 import VoiceFormAssistant from './VoiceFormAssistant';
+import { showToast } from './Toast';
 
 interface CreateCaseFormProps {
   onSubmit: (caseData: Omit<Case, 'id' | 'creatorId' | 'createdAt' | 'files' | 'status'>) => void;
@@ -60,7 +61,7 @@ const CreateCaseForm: React.FC<CreateCaseFormProps> = ({ onSubmit, onCancel, ini
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert("You must be logged in to create a case.");
+      showToast.error("You must be logged in to create a case.");
       return;
     }
 

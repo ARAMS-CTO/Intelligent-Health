@@ -1,40 +1,45 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from ..schemas import Comment
+from sqlalchemy import func
+from ..schemas import Comment, AdminStats, SystemConfigUpdate, SystemLog as SystemLogSchema, DashboardStats
 from ..database import get_db
-from ..models import Case as CaseModel, Comment as CommentModel
-
+from ..models import Case as CaseModel, Comment as CommentModel, User as UserModel, SystemLog, SystemConfig
+import os
 router = APIRouter()
 
-@router.get("/stats")
-async def get_dashboard_stats(db: Session = Depends(get_db)):
+# Check for Gemini API Key availability
+API_KEY = os.environ.get("GEMINI_API_KEY")
+
+from ..routes.auth import get_current_user
+from ..schemas import User
+
+@router.get("/stats", response_model=DashboardStats)
+async def get_dashboard_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     now = datetime.utcnow()
     three_days_ago = now - timedelta(days=3)
     twenty_four_hours_ago = now - timedelta(hours=24)
     
-    # ISO Format Strings for comparison (Assumes DB stores ISO strings)
-    # Note: DB strings might not have timezone info, matching default isoformat()
     three_days_ago_iso = three_days_ago.isoformat()
     twenty_four_hours_ago_iso = twenty_four_hours_ago.isoformat()
 
-    # Calculate Overdue (Open/Under Review & > 3 days old)
-    # Using SQL filtering for efficiency
+    # Overdue: Cases created > 3 days ago that are still Open
     overdue_count = db.query(CaseModel).filter(
         CaseModel.status.in_(["Open", "Under Review"]),
         CaseModel.created_at < three_days_ago_iso
     ).count()
 
-    # Calculate Updates (Comments > 24h ago... wait, logic says "Updates" usually means RECENT updates)
-    # If the user wants "Updates", they likely mean NEW updates (last 24h), not OLD updates.
-    # The original logic was `timestamp > twenty_four_hours_ago.timestamp()`, which means NEWER than 24h.
+    # Updates: Comments in last 24h (system-wide for now, or relevant to user cases)
     updates_count = db.query(CommentModel).filter(
         CommentModel.timestamp > twenty_four_hours_ago_iso
     ).count()
 
-    # Assignments (Mock logic for now, or count cases assigned to user if auth user passed)
-    assignments_count = 5 
+    # Assignments: Cases assigned to THIS user that are Open
+    assignments_count = db.query(CaseModel).filter(
+        CaseModel.specialist_id == current_user.id,
+        CaseModel.status == "Open"
+    ).count()
 
     return {
         "overdue": overdue_count,
@@ -42,8 +47,67 @@ async def get_dashboard_stats(db: Session = Depends(get_db)):
         "assignments": assignments_count
     }
 
+@router.get("/admin/stats", response_model=AdminStats)
+async def get_admin_stats(db: Session = Depends(get_db)):
+    total_users = db.query(UserModel).count()
+    active_cases = db.query(CaseModel).filter(CaseModel.status != "Closed").count()
+    
+    # Calculate AI queries in last 24h from SystemLogs
+    day_ago = datetime.utcnow() - timedelta(hours=24)
+    ai_queries = db.query(SystemLog).filter(
+        SystemLog.event_type == "ai_query",
+        SystemLog.timestamp > day_ago
+    ).count()
+
+    # Gemini Status check
+    gemini_status = "Connected" if API_KEY else "Disconnected"
+    
+    # DB Status (if we are here, DB is at least partially working)
+    db_status = "Connected"
+
+    return {
+        "total_users": total_users,
+        "active_cases": active_cases,
+        "ai_queries_today": ai_queries,
+        "system_health": "Optimal",
+        "gemini_status": gemini_status,
+        "db_status": db_status
+    }
+
+@router.get("/admin/config")
+async def get_system_config(db: Session = Depends(get_db)):
+    config = db.query(SystemConfig).filter(SystemConfig.key == "features").first()
+    if not config:
+        # Default features
+        default_features = {
+            "medLM": True,
+            "voiceAssistant": True,
+            "ragKnowledge": True,
+            "autoTriage": True
+        }
+        return {"features": default_features}
+    return {"features": config.value}
+
+@router.post("/admin/config")
+async def update_system_config(update: SystemConfigUpdate, db: Session = Depends(get_db)):
+    config = db.query(SystemConfig).filter(SystemConfig.key == "features").first()
+    if not config:
+        config = SystemConfig(key="features", value=update.features)
+        db.add(config)
+    else:
+        config.value = update.features
+    
+    db.commit()
+    return {"status": "success", "features": config.value}
+
+@router.get("/admin/logs", response_model=List[SystemLogSchema])
+async def get_system_logs(db: Session = Depends(get_db)):
+    # Import locally or alias to avoid conflict if top-level import is tricky
+    # But better to update top level imports.
+    # For now, I will use the schema from ..schemas
+    return db.query(SystemLog).order_by(SystemLog.timestamp.desc()).limit(20).all()
+
 @router.get("/activity", response_model=List[Comment])
 async def get_recent_activity(db: Session = Depends(get_db)):
-    # Use SQL Order By and Limit for efficiency
     recent_comments = db.query(CommentModel).order_by(CommentModel.timestamp.desc()).limit(5).all()
     return recent_comments

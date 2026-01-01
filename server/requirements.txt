@@ -1,14 +1,14 @@
 fastapi
 uvicorn
-google-genai
 python-multipart
 sqlalchemy
-# psycopg2-binary
-cloudsql-sqlalchemy
+cloud-sql-python-connector
 pg8000
 python-dotenv
 passlib[bcrypt]
 python-jose[cryptography]
-# chromadb
-# sentence-transformers
 pydantic-settings
+google-generativeai
+google-cloud-storage
+google-cloud-speech
+httpx

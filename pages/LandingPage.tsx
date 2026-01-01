@@ -6,22 +6,25 @@ import { showToast } from '../components/Toast';
 
 const featuresByRole = {
   [Role.Doctor]: {
-    titleKey: "Clinical Specialists", // We'll translate titles too
-    descriptionKey: "Empower your diagnostic accuracy with AI-driven pattern recognition and real-time collaboration with global experts.",
+    titleKey: "featureDoctorTitle",
+    descriptionKey: "featureDoctorDesc",
     icon: ICONS.specialist,
-    image: "/analysis.png"
+    image: "/analysis.png",
+    items: ["featureList1", "featureList2", "featureList3"]
   },
   [Role.Nurse]: {
-    titleKey: "Frontline Excellence",
-    descriptionKey: "Streamline patient monitoring and documentation with intelligent assistants designed for the medical floor.",
+    titleKey: "featureNurseTitle",
+    descriptionKey: "featureNurseDesc",
     icon: ICONS.userPlus,
-    image: "/hero.png"
+    image: "/hero.png",
+    items: ["featureList1", "featureList2", "featureList3"]
   },
   [Role.Patient]: {
-    titleKey: "Personal Health",
-    descriptionKey: "Take control of your healing journey with a personal AI health companion and seamless access to your clinical records.",
+    titleKey: "featurePatientTitle",
+    descriptionKey: "featurePatientDesc",
     icon: ICONS.user,
-    image: "/analysis.png"
+    image: "/analysis.png",
+    items: ["featureList1", "featureList2", "featureList3"]
   },
 };
 
@@ -124,7 +127,7 @@ const FeatureSection: React.FC = () => {
               onClick={() => setActiveRole(role)}
               className={`px-8 py-3 rounded-full font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${activeRole === role ? 'bg-primary text-white border-primary shadow-xl shadow-primary/20' : 'bg-white dark:bg-slate-800 text-text-muted border-slate-200 dark:border-slate-700 hover:border-primary/40'}`}
             >
-              {role}
+              {t(role)}
             </button>
           ))}
         </div>
@@ -144,12 +147,12 @@ const FeatureSection: React.FC = () => {
               {t(featuresByRole[activeRole].descriptionKey, featuresByRole[activeRole].descriptionKey)}
             </p>
             <ul className="space-y-4">
-              {['Intelligent Triage & Priority Scheduling', 'Context-Aware Diagnostic Suggestions', 'Encrypted Specialist Collaboration'].map(item => (
-                <li key={item} className="flex items-center gap-4 text-sm font-bold text-text-main">
+              {featuresByRole[activeRole].items.map(itemKey => (
+                <li key={itemKey} className="flex items-center gap-4 text-sm font-bold text-text-main">
                   <div className="p-1 rounded-full bg-accent/20 text-accent">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                   </div>
-                  <span>{item}</span>
+                  <span>{t(itemKey)}</span>
                 </li>
               ))}
             </ul>
@@ -243,22 +246,22 @@ const LandingPage: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) =
           </div>
 
           <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('platform', 'Platform')}</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('platform')}</h4>
             <ul className="space-y-4 text-sm font-bold text-text-muted">
-              <li><a href="#" className="hover:text-primary transition-colors">Clinical Triage</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Specialist Network</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Patient Records</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">AI Research</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('clinicalTriage')); }} className="hover:text-primary transition-colors">{t('clinicalTriage')}</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('specialistNetwork')); }} className="hover:text-primary transition-colors">{t('specialistNetwork')}</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('patientRecords')); }} className="hover:text-primary transition-colors">{t('patientRecords')}</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('aiResearch')); }} className="hover:text-primary transition-colors">{t('aiResearch')}</a></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('company', 'Company')}</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-text-main mb-8">{t('company')}</h4>
             <ul className="space-y-4 text-sm font-bold text-text-muted">
-              <li><a href="#" className="hover:text-primary transition-colors">About Mission</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Terms of Care</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Privacy Shield</a></li>
-              <li><a href="#" className="hover:text-primary transition-colors">Security Audit</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('aboutMission')); }} className="hover:text-primary transition-colors">{t('aboutMission')}</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('termsOfCare')); }} className="hover:text-primary transition-colors">{t('termsOfCare')}</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('privacyShield')); }} className="hover:text-primary transition-colors">{t('privacyShield')}</a></li>
+              <li><a href="#" onClick={(e) => { e.preventDefault(); showToast.info(t('securityAudit')); }} className="hover:text-primary transition-colors">{t('securityAudit')}</a></li>
             </ul>
           </div>
 
@@ -283,12 +286,7 @@ const LandingPage: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) =
           </div>
         </div>
         <div className="container mx-auto px-4 pt-20 mt-20 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-[10px] font-black text-text-muted/40 uppercase tracking-widest">&copy; 2025 {t('appName', 'Intelligent Health')} System. Built for Precision.</p>
-          <div className="flex gap-6">
-            <div className="w-5 h-5 text-text-muted/40 hover:text-primary transition-colors cursor-pointer">{React.cloneElement(ICONS.chat as any, { style: { width: '20px', height: '20px' } })}</div>
-            <div className="w-5 h-5 text-text-muted/40 hover:text-primary transition-colors cursor-pointer">{React.cloneElement(ICONS.clock as any, { style: { width: '20px', height: '20px' } })}</div>
-            <div className="w-5 h-5 text-text-muted/40 hover:text-primary transition-colors cursor-pointer">{React.cloneElement(ICONS.bell as any, { style: { width: '20px', height: '20px' } })}</div>
-          </div>
+          <p className="text-[10px] font-black text-text-muted/40 uppercase tracking-widest">&copy; 2025 {t('footerCredit')}</p>
         </div>
       </footer>
     </main>

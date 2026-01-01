@@ -19,6 +19,8 @@ const Toast: React.FC<{ notification: AppNotification; onDismiss: () => void }> 
         return <div className="p-2 bg-blue-500 rounded-full">{ICONS.chat}</div>;
       case 'warning':
         return <div className="p-2 bg-yellow-500 rounded-full">{ICONS.riskModerate}</div>;
+      case 'error':
+        return <div className="p-2 bg-red-500 rounded-full">{ICONS.riskHigh}</div>;
       default:
         return <div className="p-2 bg-gray-500 rounded-full">{ICONS.bell}</div>;
     }
@@ -49,6 +51,7 @@ export const showToast = {
   success: (message: string, title = 'Success') => appEvents.emit('notification', { type: 'success', message, title }),
   info: (message: string, title = 'Info') => appEvents.emit('notification', { type: 'info', message, title }),
   warning: (message: string, title = 'Warning') => appEvents.emit('notification', { type: 'warning', message, title }),
+  error: (message: string, title = 'Error') => appEvents.emit('notification', { type: 'error', message, title }),
 };
 
 export const ToastContainer: React.FC = () => {

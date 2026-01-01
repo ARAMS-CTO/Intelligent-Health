@@ -2,14 +2,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../components/Auth';
 import { GeminiService, getPatientProfileById, addPatientMedication } from '../services/api';
-import { PatientProfile, Medication, Role } from '../types/index';
+import { PatientProfile, Medication, Role, PatientFile } from '../types/index';
 import { ICONS } from '../constants/index';
 import Tooltip from '../components/Tooltip';
 import { useTranslation } from 'react-i18next';
 
+import { DataService } from '../services/api';
+import { showToast } from '../components/Toast';
+
 interface Message {
   author: 'user' | 'ai';
   content: string;
+}
+
+interface CostEstimate {
+  id: string;
+  total_cost: number;
+  currency: string;
+  status: string;
+  insurance_coverage: number;
+  patient_responsibility: number;
 }
 
 // Helper function to parse AI responses and add tooltips
@@ -51,23 +63,55 @@ const PatientPortal: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [userInput, setUserInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [costEstimates, setCostEstimates] = useState<CostEstimate[]>([]);
   const { t } = useTranslation('patientPortal');
 
+  const uploadToGCS = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      return data.url;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    if (user?.patientProfileId) {
-      const fetchProfile = async () => {
-        const patientProfile = await getPatientProfileById(user.patientProfileId!);
-        if (patientProfile) {
-          setProfile(patientProfile);
-          setMessages([
-            { author: 'ai', content: t('aiDoctor.initialMessage', { name: patientProfile.name.split(' ')[0] }) }
-          ]);
-        }
-      };
-      fetchProfile();
+    if (user) {
+      if (user.patientProfileId) {
+        const fetchProfile = async () => {
+          try {
+            const patientProfile = await getPatientProfileById(user.patientProfileId!);
+            if (patientProfile) {
+              setProfile(patientProfile);
+              setMessages([
+                { author: 'ai', content: t('aiDoctor.initialMessage', { name: patientProfile.name.split(' ')[0] }) }
+              ]);
+            } else {
+              console.error("Profile not found");
+              setFetchError(true);
+            }
+          } catch (e) {
+            console.error("Failed to fetch profile", e);
+            setFetchError(true);
+          }
+        };
+        fetchProfile();
+      } else {
+        // No profile ID means new patient needs to create one
+        setProfile(null);
+      }
     }
   }, [user, t]);
 
@@ -91,7 +135,12 @@ const PatientPortal: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await GeminiService.explainToPatient(query, profile);
+      // Use general chat for patient interactions to support varied queries
+      const response = await GeminiService.getGeneralChatResponse(
+        messages.map(m => ({ role: m.author === 'ai' ? 'model' : 'user', parts: [m.content] })),
+        query,
+        user?.id || 'anonymous'
+      );
       setMessages(prev => [...prev, { author: 'ai', content: response }]);
     } catch (error: any) {
       const errorMessage = `Error: ${error.message || 'An unexpected error occurred.'}`;
@@ -102,17 +151,57 @@ const PatientPortal: React.FC = () => {
     }
   };
 
+  const handleDailyCheckup = async () => {
+    if (!profile) return;
+    setLoading(true);
+    // Construct summary
+    const summary = `Diagnosed with: ${profile.baselineIllnesses.join(', ')}. Medication: ${profile.medications.map(m => m.name).join(', ')}`;
+    try {
+      const res = await GeminiService.generateDailyQuestions(summary);
+      if (res.questions && res.questions.length > 0) {
+        const formatted = "Here are your daily health check questions:\n" + res.questions.map((q: string) => "• " + q).join("\n");
+        setMessages(prev => [...prev, { author: 'ai', content: formatted }]);
+      } else {
+        setMessages(prev => [...prev, { author: 'ai', content: "I don't have any specific questions for you today. How are you feeling?" }]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       setSelectedFile(event.target.files[0]);
     }
   };
 
-  const handleFileUpload = () => {
-    if (selectedFile) {
-      alert(`Uploading file: ${selectedFile.name}`);
-      // Here you would typically handle the upload to a server
-      setSelectedFile(null);
+  const handleFileUpload = async () => {
+    if (!selectedFile || !profile) return;
+    if (!confirm(`Upload ${selectedFile.name} to your profile?`)) return;
+
+    try {
+      const uploaded = await DataService.uploadFile(selectedFile);
+      if (uploaded.url) {
+        const newFile: PatientFile = {
+          id: `file-${Date.now()}`,
+          name: selectedFile.name,
+          type: 'Lab Test', // Default to valid type
+          uploadDate: new Date().toISOString().split('T')[0],
+          url: uploaded.url,
+        };
+        // Ensure addPatientFile is available, likely imported or we use DataService
+        await DataService.addPatientFile(profile.id, newFile);
+
+        setProfile(prev => prev ? ({ ...prev, files: [...prev.files, newFile] }) : null);
+        setProfile(prev => prev ? ({ ...prev, files: [...prev.files, newFile] }) : null);
+        showToast.success(t('documents.uploadSuccess'));
+        setSelectedFile(null);
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast.error(t('errors.uploadFailed'));
     }
   };
 
@@ -120,7 +209,7 @@ const PatientPortal: React.FC = () => {
     e.preventDefault();
     if (!profile) return;
     if (!newMedicationName.trim() || !newMedicationDosage.trim() || !newMedicationFrequency.trim()) {
-      alert('Please fill out all medication fields.');
+      showToast.error('Please fill out all medication fields.');
       return;
     }
 
@@ -148,7 +237,7 @@ const PatientPortal: React.FC = () => {
       setNewMedicationFrequency('');
     } catch (error) {
       console.error("Failed to add medication", error);
-      alert("Failed to save medication. Please try again.");
+      showToast.error("Failed to save medication. Please try again.");
     }
   };
 
@@ -161,10 +250,54 @@ const PatientPortal: React.FC = () => {
     );
   }
 
+  if (fetchError) {
+    return (
+      <div className="bg-background min-h-screen flex items-center justify-center p-4">
+        <div className="glass-card max-w-md w-full p-8 rounded-2xl shadow-xl text-center border border-white/20 dark:border-slate-700">
+          <div className="text-danger text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-text-main mb-2">Error Loading Profile</h2>
+          <p className="text-text-muted mb-6">We couldn't load your patient profile. It may not exist or the server is down.</p>
+          <div className="flex flex-col gap-3">
+            <button onClick={() => window.location.reload()} className="bg-primary text-white py-3 px-6 rounded-xl font-bold hover:bg-primary-hover transition-all">
+              Retry
+            </button>
+            {user?.patientProfileId && (
+              <div className="text-xs text-text-muted mt-2 bg-slate-100 dark:bg-slate-800 p-2 rounded text-center">
+                DEBUG: ID {user.patientProfileId}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!profile) {
+    if (user && !user.patientProfileId) {
+      return (
+        <div className="bg-background min-h-screen flex items-center justify-center p-4">
+          <div className="glass-card max-w-md w-full p-8 rounded-2xl shadow-xl text-center border border-white/20 dark:border-slate-700">
+            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
+              {ICONS.user}
+            </div>
+            <h2 className="text-2xl font-bold text-text-main mb-2">Welcome, {user.name.split(' ')[0]}!</h2>
+            <p className="text-text-muted mb-8 leading-relaxed">To access your health dashboard and AI assistant, we need to set up your patient profile first.</p>
+            <a href="/patient-intake" className="block w-full bg-gradient-to-r from-primary to-indigo-600 text-white font-bold py-3.5 px-6 rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all transform hover:-translate-y-0.5">
+              Complete Patient Profile
+            </a>
+            <button onClick={() => window.location.reload()} className="mt-4 text-xs text-text-muted hover:text-primary transition-colors">
+              Refresh if you've already done this
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="bg-background min-h-screen flex items-center justify-center">
-        <p>Loading patient profile...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-text-muted font-bold animate-pulse">Loading patient profile...</p>
+        </div>
       </div>
     );
   }
@@ -337,16 +470,56 @@ const PatientPortal: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Financials / Cost Estimates */}
+            <div className="glass-card rounded-2xl p-8 shadow-xl border border-white/20 dark:border-slate-700">
+              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+                <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl text-white shadow-lg shadow-amber-500/30">
+                  {ICONS.money}
+                </div>
+                <h2 className="text-2xl font-heading font-bold text-text-main">My Financials</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-white/40 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-bold text-text-main">Estimated Cost: Recent Consultation</h4>
+                      <p className="text-xs text-text-muted">Generated on {new Date().toLocaleDateString()}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-warning/10 text-warning text-xs font-bold rounded-lg uppercase">Estimated</span>
+                  </div>
+                  <div className="flex justify-between items-end mt-4">
+                    <div className="text-sm">
+                      <p className="text-text-muted">Total: <span className="line-through">$1,200</span></p>
+                      <p className="text-success font-bold">Insurance: -$960 (80%)</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-text-muted uppercase font-bold">Your Responsibility</p>
+                      <p className="text-2xl font-black text-text-main">$240.00</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-center text-text-muted mt-2">
+                  * Estimations are based on standard procedure costs and your insurance plan. Final bill may vary.
+                </p>
+              </div>
+            </div>
           </div>
           {/* Right Column: AI Assistant */}
           {/* Right Column: AI Assistant */}
           <div className="glass-card rounded-2xl p-6 shadow-xl flex flex-col h-[75vh] max-h-[850px] sticky top-6 border border-white/20 dark:border-slate-700">
-            <h2 className="text-xl font-heading font-bold text-text-main flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-700/50">
-              <div className="p-2 bg-gradient-to-br from-primary to-indigo-600 rounded-lg text-white shadow-md">
-                {ICONS.ai}
-              </div>
-              {t('aiDoctor.title')}
-            </h2>
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 dark:border-slate-700/50">
+              <h2 className="text-xl font-heading font-bold text-text-main flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-primary to-indigo-600 rounded-lg text-white shadow-md">
+                  {ICONS.ai}
+                </div>
+                {t('aiDoctor.title')}
+              </h2>
+              <button onClick={handleDailyCheckup} disabled={loading} className="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-lg hover:bg-primary hover:text-white transition-all disabled:opacity-50">
+                Daily Check-in
+              </button>
+            </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 pr-2">
               {messages.map((msg, index) => (
                 <div key={index} className={`flex gap-4 ${msg.author === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>

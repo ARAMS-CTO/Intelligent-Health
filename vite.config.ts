@@ -9,6 +9,19 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
+      headers: {
+        'Cross-Origin-Opener-Policy': 'unsafe-none',
+      },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        },
+        '/uploads': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        }
+      }
     },
     plugins: [
       react(),
