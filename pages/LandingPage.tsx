@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Role } from '../types/index';
-import { ICONS } from '../constants/index';
+import { ICONS, APP_VERSION } from '../constants/index';
 import { showToast } from '../components/Toast';
 
 const featuresByRole = {
@@ -286,7 +286,10 @@ const LandingPage: React.FC<{ onGetStarted: () => void }> = ({ onGetStarted }) =
           </div>
         </div>
         <div className="container mx-auto px-4 pt-20 mt-20 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-[10px] font-black text-text-muted/40 uppercase tracking-widest">&copy; 2025 {t('footerCredit')}</p>
+          <p className="text-[10px] font-black text-text-muted/40 uppercase tracking-widest flex items-center gap-4">
+            <span>&copy; 2025 {t('footerCredit')}</span>
+            <span className="opacity-50">v{APP_VERSION}</span>
+          </p>
         </div>
       </footer>
     </main>

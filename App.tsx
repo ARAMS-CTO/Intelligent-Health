@@ -281,7 +281,7 @@ const AppLayout: React.FC = () => {
 
             {/* Doctor/Staff Assistant */}
             <AIAssistantWidget />
-            <Footer />
+            {!isLanding && <Footer />}
         </div>
     );
 };
