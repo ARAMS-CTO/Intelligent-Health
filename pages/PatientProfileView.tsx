@@ -91,8 +91,13 @@ const PatientProfileView: React.FC = () => {
                 baselineIllnesses: editForm.baselineIllnesses.split(',').map((s: string) => s.trim()).filter((s: string) => s)
             };
 
+            // Update Profile
             const updatedProfile = await DataService.updatePatientProfile(id, updates);
             setProfile(updatedProfile);
+
+            // Update Consents
+            await DataService.updateUserConsents(editForm.gdpr_consent, editForm.data_sharing_consent, editForm.marketing_consent);
+
             setIsEditing(false);
             showToast.success("Profile updated successfully");
         } catch (error) {
@@ -315,6 +320,50 @@ const PatientProfileView: React.FC = () => {
                                         onChange={e => setEditForm({ ...editForm, baselineIllnesses: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary h-20"
                                     />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                <h4 className="font-bold text-primary text-sm uppercase tracking-wider">Privacy & Consents (GDPR)</h4>
+                                <div className="space-y-3">
+                                    <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.gdpr_consent}
+                                            onChange={e => setEditForm({ ...editForm, gdpr_consent: e.target.checked })}
+                                            className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <div>
+                                            <span className="font-bold text-text-main text-sm">GDPR Data Processing</span>
+                                            <p className="text-xs text-text-muted">I agree to the processing of my personal data for medical purposes.</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.data_sharing_consent}
+                                            onChange={e => setEditForm({ ...editForm, data_sharing_consent: e.target.checked })}
+                                            className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <div>
+                                            <span className="font-bold text-text-main text-sm">3rd Party Data Sharing</span>
+                                            <p className="text-xs text-text-muted">Allow sharing non-sensitive data with external partners (e.g. Insurance).</p>
+                                        </div>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={editForm.marketing_consent}
+                                            onChange={e => setEditForm({ ...editForm, marketing_consent: e.target.checked })}
+                                            className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <div>
+                                            <span className="font-bold text-text-main text-sm">Marketing & Updates</span>
+                                            <p className="text-xs text-text-muted">Receive news and updates about platform features.</p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
                         </div>

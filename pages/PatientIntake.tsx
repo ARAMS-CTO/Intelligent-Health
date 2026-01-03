@@ -8,6 +8,7 @@ import { addPatientIntakeData } from '../services/api';
 import { ICONS } from '../constants/index';
 import Breadcrumbs from '../components/Breadcrumbs';
 import VoiceFormAssistant from '../components/VoiceFormAssistant';
+import { useAuth } from '../components/Auth';
 
 const initialFormData: Omit<PatientIntakeData, 'id'> = {
     fullName: { firstName: '', lastName: '' },
@@ -79,9 +80,12 @@ const PatientIntake: React.FC = () => {
         });
     };
 
+    const { refreshUser } = useAuth(); // Get refreshUser from context
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const savedData = await addPatientIntakeData(formData);
+        await refreshUser(); // Refresh auth context to get the new profile ID
         setSubmittedPatientName(`${savedData.fullName.firstName} ${savedData.fullName.lastName}`);
         setIsSubmitted(true);
     };

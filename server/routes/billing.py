@@ -19,6 +19,39 @@ STANDARD_PRICING = {
     "Hospital Stay (Day)": {"cost": 1200.0, "category": "Stay"}
 }
 
+from ..models import SystemConfig
+from pydantic import BaseModel
+
+class BillingConfig(BaseModel):
+    accepted_currencies: list[str]
+    payment_gateways: dict[str, bool] # {"paypal": true, "stripe": true, "wechat": false}
+    
+@router.get("/config")
+async def get_billing_config(db: Session = Depends(get_db)):
+    # Fetch from DB or return defaults
+    config = db.query(SystemConfig).filter(SystemConfig.key == "billing_settings").first()
+    if config:
+        return config.value
+    return {
+        "accepted_currencies": ["USD", "EUR", "AED", "CNY"],
+        "payment_gateways": {"paypal": True, "stripe": True, "wechat": False} 
+    }
+
+@router.post("/config")
+async def update_billing_config(config: BillingConfig, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.role != "Admin":
+         raise HTTPException(status_code=403, detail="Not authorized")
+         
+    db_config = db.query(SystemConfig).filter(SystemConfig.key == "billing_settings").first()
+    if not db_config:
+        db_config = SystemConfig(key="billing_settings", value=config.dict())
+        db.add(db_config)
+    else:
+        db_config.value = config.dict()
+        
+    db.commit()
+    return db_config.value
+
 @router.post("/estimate/{case_id}", response_model=CostEstimateSchema)
 async def generate_cost_estimate(case_id: str, db: Session = Depends(get_db)):
     """
@@ -211,3 +244,109 @@ async def get_transactions(current_user: User = Depends(get_current_user), db: S
         db.commit()
     
     return db.query(TransactionModel).order_by(TransactionModel.date.desc()).all()
+
+from ..services.paypal_service import PayPalService
+from ..models import User as UserModel
+
+@router.post("/paypal/create-order")
+async def create_paypal_order(amount: float, currency: str = "USD", user: UserModel = Depends(get_current_user)):
+    service = PayPalService()
+    try:
+        order = await service.create_order(amount, currency)
+        return order
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/paypal/capture-order")
+async def capture_paypal_order(order_id: str, db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
+    service = PayPalService()
+    try:
+        capture = await service.capture_order(order_id)
+        
+        # If successful, add credits or handle logic
+        if capture.get("status") == "COMPLETED":
+            # Logic: 1 USD = 10 Credits (Example)
+            units = capture.get("purchase_units", [{}])[0]
+            amount_str = units.get("payments", {}).get("captures", [{}])[0].get("amount", {}).get("value", "0")
+            amount = float(amount_str)
+            
+            credits_to_add = int(amount * 10) # 10 credits per dollar
+            user.credits += credits_to_add
+            
+            # Log transaction
+            new_tx = TransactionModel(
+                id=f"tx-{order_id}",
+                user_id=user.id,
+                user_name=user.name,
+                amount=amount,
+                type="Subscription", # Or "Credit Purchase"
+                status="Paid",
+                date=datetime.datetime.utcnow()
+            )
+            db.add(new_tx)
+            db.commit()
+            return {"status": "success", "new_credits": user.credits, "capture": capture}
+            
+        return {"status": "failed", "capture": capture}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+from ..services.stripe_service import StripeService
+
+@router.post("/stripe/create-payment-intent")
+async def create_stripe_payment(amount: float, currency: str = "usd", user: UserModel = Depends(get_current_user)):
+    service = StripeService()
+    return await service.create_payment_intent(amount, currency)
+
+@router.post("/stripe/verify-payment")
+async def verify_stripe_payment(intent_id: str, db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
+    service = StripeService()
+    intent = await service.retrieve_payment_intent(intent_id)
+    
+    if intent.status == "succeeded":
+        # Check if already processed to prevent duplicates (ideally lookup tx ID)
+        existing = db.query(TransactionModel).filter(TransactionModel.id == f"tx-{intent.id}").first()
+        if existing:
+            return {"status": "success", "message": "Already processed", "new_credits": user.credits}
+
+        amount = intent.amount / 100.0
+        credits_to_add = int(amount * 10) # 10 credits per dollar
+        user.credits += credits_to_add
+        
+        new_tx = TransactionModel(
+            id=f"tx-{intent.id}",
+            user_id=user.id,
+            user_name=user.name,
+            amount=amount,
+            type="Credit Purchase",
+            status="Paid",
+            date=datetime.datetime.utcnow()
+        )
+        db.add(new_tx)
+        db.commit()
+        return {"status": "success", "new_credits": user.credits}
+    else:
+        return {"status": "pending", "message": "Payment not yet succeeded"}
+
+@router.post("/stripe/connect-account")
+async def create_connect_account(email: str = None, user: UserModel = Depends(get_current_user)):
+    """
+    Onboards a user (e.g. Pharmacy/Insurance) to Stripe Connect to receive payouts.
+    """
+    if user.role not in ["Admin", "Pharmacy", "Insurance"]: 
+         pass # Allow for dev
+         
+    service = StripeService()
+    email_to_use = email or user.email
+    account = await service.create_connected_account(email_to_use)
+    
+    # Generate Link
+    import os
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    link = await service.create_account_link(
+        account.id, 
+        refresh_url=f"{frontend_url}/admin/finance", 
+        return_url=f"{frontend_url}/admin/finance"
+    )
+    
+    return {"account_id": account.id, "onboarding_url": link.url}

@@ -368,8 +368,46 @@ def test_agent_execution():
         else:
             print(f"   [FAIL] Could not create case. {res_case.status_code} {res_case.text}")
 
+            # 16. Research Agent Integration
+            print("\n16. Testing Research Agent Routing & Execution...")
+            research_queries = [
+                ("Find clinical guidelines for Sepsis", "find_guidelines"),
+                ("Research recent treatments for multiple sclerosis", "research_condition")
+            ]
+            
+            for query, expected_task in research_queries:
+                print(f"   Query: '{query}'")
+                r_payload = {"message": query}
+                res_research = requests.post(f"{BASE_URL}/ai/agent_chat", json=r_payload, headers=headers_doc)
+                
+                if res_research.status_code == 200:
+                    r_data = res_research.json()
+                    # Check routing
+                    actual_task = r_data.get("routed_to")
+                    if actual_task == expected_task:
+                        print(f"   [PASS] Routed to '{expected_task}'.")
+                        
+                        # Check result structure
+                        result = r_data.get("result", {})
+                        if expected_task == "find_guidelines":
+                             if "guideline_title" in result:
+                                 print(f"   [PASS] Received Guideline: {result.get('guideline_title')}")
+                             else:
+                                 print(f"   [FAIL] Invalid Guideline structure: {result}")
+                        elif expected_task == "research_condition":
+                             if "summary" in result:
+                                 print("   [PASS] Received Research Summary.")
+                             else:
+                                 print(f"   [FAIL] Invalid Research structure: {result}")
+                    else:
+                        print(f"   [FAIL/WARN] Expected '{expected_task}' but got '{actual_task}' (Using Model Routing)")
+                else:
+                    print(f"   [FAIL] API Error {res_research.status_code}: {res_research.text}")
+
     except Exception as e:
-        print(f"   [FAIL] Error creating case/doctor: {e}")
+        print(f"   [FAIL] Error in test: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         # Cleanup dummy file
         try:

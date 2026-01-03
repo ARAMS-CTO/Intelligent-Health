@@ -582,6 +582,47 @@ const CaseCard: React.FC<{
     );
 };
 
+const TokenBalanceWidget: React.FC = () => {
+    const [balance, setBalance] = useState({ balance: 0, total_earned: 0 });
+    const { t } = useTranslation('dashboard');
+
+    useEffect(() => {
+        DataService.getTokenBalance().then(setBalance).catch(console.error);
+    }, []);
+
+    return (
+        <div className="glass-card rounded-[32px] p-8 relative overflow-hidden group hover:shadow-2xl transition-all duration-300 border border-white/20 dark:border-slate-700/50">
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 blur-3xl rounded-full group-hover:bg-purple-500/20 transition-colors"></div>
+
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h3 className="font-heading font-bold text-xl text-text-main flex items-center gap-2">
+                        <span className="p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-lg">{ICONS.money}</span>
+                        ARAMS Wallet
+                    </h3>
+                    <p className="text-xs text-text-muted mt-1 ml-1">Research Incentives</p>
+                </div>
+                <Link to="/research-community" className="text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-colors">
+                    View Ecosystem &rarr;
+                </Link>
+            </div>
+
+            <div className="space-y-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                    <span className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1">Current Balance</span>
+                    <div className="text-3xl font-black text-slate-800 dark:text-slate-100">
+                        {balance.balance.toFixed(2)} <span className="text-sm font-medium text-slate-400">Tokens</span>
+                    </div>
+                </div>
+                <div className="flex justify-between items-center text-sm px-2">
+                    <span className="text-text-muted">Lifetime Earned:</span>
+                    <span className="font-bold text-green-600">+{balance.total_earned.toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Dashboard: React.FC = () => {
     const [cases, setCases] = useState<Case[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -861,6 +902,7 @@ const Dashboard: React.FC = () => {
                     <div className="lg:col-span-1 space-y-8 lg:sticky lg:top-8 self-start">
                         {user && <AIAgentCard user={user} />}
                         <SymptomCheckerWidget />
+                        <TokenBalanceWidget />
 
                         <div className="glass-card rounded-[32px] p-8 border border-white/20 dark:border-slate-700/50 relative overflow-hidden group">
                             <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-accent/5 blur-3xl rounded-full group-hover:bg-accent/10 transition-all"></div>

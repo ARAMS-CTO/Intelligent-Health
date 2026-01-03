@@ -14,6 +14,13 @@ class User(Base):
     credits = Column(Integer, default=100)
     hashed_password = Column(String, nullable=True)
     
+    # Privacy & Consents
+    gdpr_consent = Column(Boolean, default=False)
+    data_sharing_consent = Column(Boolean, default=False) # For external agents/partners
+    marketing_consent = Column(Boolean, default=False)
+    accepted_terms_at = Column(DateTime, nullable=True)
+    accepted_privacy_policy_at = Column(DateTime, nullable=True)
+    
     # Role-specific associations
     linked_doctor_ids = Column(JSON, default=[]) # For Nurses: list of doctor User IDs they work with
     
@@ -280,4 +287,57 @@ class NurseAssignment(Base):
     
     nurse = relationship("User", foreign_keys=[nurse_id], back_populates="assignments")
     # doctor relationship can be added if needed
+
+# --- ARAMS Token Ecosystem Models ---
+
+class TokenWallet(Base):
+    __tablename__ = "token_wallets"
+    
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
+    balance = Column(Float, default=0.0)
+    total_earned = Column(Float, default=0.0)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="token_wallet")
+
+class TokenTransaction(Base):
+    __tablename__ = "token_transactions"
+    
+    id = Column(String, primary_key=True) # UUID
+    wallet_id = Column(String, ForeignKey("token_wallets.user_id"))
+    amount = Column(Float)
+    type = Column(String) # 'Reward', 'Transfer', 'PlatformFee', 'Redemption'
+    description = Column(String)
+    related_entity_id = Column(String, nullable=True) # e.g., Case ID, Contribution ID
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    wallet = relationship("TokenWallet", back_populates="transactions")
+
+class ResearchGroup(Base):
+    __tablename__ = "research_groups"
+    
+    id = Column(String, primary_key=True)
+    name = Column(String)
+    topic = Column(String)
+    creator_id = Column(String, ForeignKey("users.id"))
+    members = Column(JSON) # List of User IDs
+    total_tokens_generated = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    creator = relationship("User")
+
+class ResearchContribution(Base):
+    __tablename__ = "research_contributions"
+    
+    id = Column(String, primary_key=True)
+    group_id = Column(String, ForeignKey("research_groups.id"))
+    contributor_id = Column(String, ForeignKey("users.id"))
+    data_type = Column(String) # 'Case', 'LabResult', 'Feedback'
+    data_id = Column(String)
+    quality_score = Column(Float) # AI or Peer reviewed score (0.0 - 1.0)
+    tokens_awarded = Column(Float)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+User.token_wallet = relationship("TokenWallet", uselist=False, back_populates="user")
+TokenWallet.transactions = relationship("TokenTransaction", back_populates="wallet")
 

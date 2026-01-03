@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/Auth';
-import { DataService, updateCaseStatus } from '../services/api';
+import { DataService, updateCaseStatus, GeminiService } from '../services/api';
 import { ICONS } from '../constants/index';
 import { Case, User } from '../types/index';
-// @ts-ignore
-import { GeminiService } from '../services/api';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useNavigate } from 'react-router-dom';
 
@@ -125,23 +123,30 @@ const NurseDashboard: React.FC = () => {
                         <NurseAssistantChat onRefresh={loadData} />
 
                         <div className="glass-card p-6 rounded-2xl">
-                            <h3 className="font-bold text-lg mb-4">Pending Orders</h3>
-                            <ul className="space-y-3">
-                                <li className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                    <input type="checkbox" className="rounded text-indigo-500 focus:ring-indigo-500" />
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold">CBC & BMP</p>
-                                        <p className="text-xs text-gray-500">Case #1024 - Urgent</p>
-                                    </div>
-                                </li>
-                                <li className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                    <input type="checkbox" className="rounded text-indigo-500 focus:ring-indigo-500" />
-                                    <div className="flex-1">
-                                        <p className="text-sm font-bold">Chest X-Ray</p>
-                                        <p className="text-xs text-gray-500">Case #1029</p>
-                                    </div>
-                                </li>
-                            </ul>
+                            <h3 className="font-bold text-lg mb-4">Pending Orders <span className="text-xs text-gray-400 font-normal">(Coming Soon)</span></h3>
+                            {user?.role === 'Admin' ? (
+                                <ul className="space-y-3 opacity-75">
+                                    <li className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 relative">
+                                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">Mock</div>
+                                        <input type="checkbox" className="rounded text-indigo-500 focus:ring-indigo-500" disabled />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold">CBC & BMP</p>
+                                            <p className="text-xs text-gray-500">Case #1024 - Urgent</p>
+                                        </div>
+                                    </li>
+                                    <li className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300">
+                                        <input type="checkbox" className="rounded text-indigo-500 focus:ring-indigo-500" disabled />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold">Chest X-Ray</p>
+                                            <p className="text-xs text-gray-500">Case #1029</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            ) : (
+                                <div className="text-center py-6 text-gray-400 text-sm italic border border-dashed border-gray-200 rounded-xl">
+                                    Lab Integrations & Ordering System<br />Under Development
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

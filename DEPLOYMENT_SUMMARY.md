@@ -2,6 +2,7 @@
 
 ## 🚀 Live Application
 **Production URL:** https://intelligent-health-977696014858.us-central1.run.app
+**Current Version:** v0.1.1 (Includes Login Fixes & Role Redirection)
 
 ## ✅ Implemented Features & Infrastructure
 
@@ -25,7 +26,10 @@
   - Voice-to-form assistance
   - Clinical guidelines summarization
   - Patient-friendly medical explanations
-  - Automated case triage by urgency
+  - Automated case triage by urgency (Nurse Agent) **(New)**
+  - Enhanced Billing Estimates & Approvals **(New)**
+  - **Research Agent**: `ResearcherAgent` for guidelines & condition research.
+  - **PayPal Integration**: Payment processing for credits & donations.
 
 ### 3. **Admin Dashboard**
 - ✅ Real-time system statistics:
@@ -149,8 +153,18 @@
 #### Billing (`/api/billing`)
 - `POST /estimate/{case_id}` - Generate cost estimate
 - `GET /estimate/{case_id}` - Retrieve cost estimate
+- `POST /paypal/create-order` - Create PayPal Payment Order
+- `POST /paypal/capture-order` - Capture PayPal Payment and add credits
+- `POST /stripe/create-payment-intent` - Create Stripe Payment Intent **(New)**
+- `POST /stripe/verify-payment` - Verify Stripe Payment and add credits **(New)**
+- `POST /stripe/connect-account` - Onboard providers to Stripe Connect **(New)**
 
-#### Files (`/api/files`)
+#### Users (`/api`)
+- `POST /users/me/consents` - Update GDPR & Data Sharing Consents **(New)**
+
+#### Agent Bus (`/api/bus` & `/api/ai`)
+- `POST /agent_chat` - Inter-agent communication (includes Research)
+- `POST /chat` - Conversational AI (Medical context)
 - `POST /upload` - Upload file (Supports `case_id` for auto-ingestion & analysis)
 
 ### Frontend Features

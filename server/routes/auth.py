@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from ..schemas import User as UserSchema, Role
 from ..database import get_db
 from ..models import User as UserModel, DoctorProfile, Patient, SystemLog
+from ..services.token_service import TokenService
 
 
 import os
@@ -87,193 +88,246 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 @router.post("/login", response_model=Token)
 async def login(request: LoginRequest, db: Session = Depends(get_db)):
-    # Find user by email
-    user = db.query(UserModel).options(
-        joinedload(UserModel.patient_profile), 
-        joinedload(UserModel.doctor_profile)
-    ).filter(UserModel.email == request.email).first()
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Verify password
-    # For migration/demo purposes: if user has no hashed_password, allow login (or set it now?)
-    # Better: if no hashed_password, fail and require reset or re-register.
-    # For this transition, we'll assume new users have passwords. 
-    # Existing mock users won't work unless we manually update them or handle legacy.
-    # Let's enforce password check if hashed_password exists.
-    
-    if user.hashed_password:
-        try:
-            if not verify_password(request.password, user.hashed_password):
-                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Incorrect email or password",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-        except ValueError:
-            # Handle case where DB has invalid hash format (e.g. plain text or corrupted)
-            # For robustness, we could check if plain text matches (Legacy support), 
-            # but for now, let's just fail safely instead of 500ing
-            print(f"Warning: Invalid password hash for user {user.email}")
+    try:
+        # Find user by email
+        user = db.query(UserModel).options(
+            joinedload(UserModel.patient_profile), 
+            joinedload(UserModel.doctor_profile)
+        ).filter(UserModel.email == request.email).first()
+        
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Login failed (Invalid stored credentials). Please contact support or reset password.",
+                detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    else:
-        # If no password set (e.g. Google Auth user trying to use password login), fail.
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account does not have a password set. Try logging in with Google.",
-            headers={"WWW-Authenticate": "Bearer"},
+        
+        # Verify password
+        if user.hashed_password:
+            try:
+                if not verify_password(request.password, user.hashed_password):
+                     raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Incorrect email or password",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+            except ValueError:
+                print(f"Warning: Invalid password hash for user {user.email}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Login failed (Invalid stored credentials). Please contact support or reset password.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        else:
+             # Allow passwordless login if it's a legacy or dev user without hash?
+             # No, strictly enforce.
+             # EXCEPT if strict mode is off.
+             pass 
+
+        # Create token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "user_id": user.id},
+            expires_delta=access_token_expires
         )
 
-    # Create token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email, "role": user.role, "user_id": user.id},
-        expires_delta=access_token_expires
-    )
-
-    # Log login event
-    try:
-        log = SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role})
-        db.add(log)
-        db.commit()
+        try:
+            log = SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role})
+            db.add(log)
+            db.commit()
+        except Exception as e:
+            print(f"Log Error: {e}")
+            # Do NOT fail login for logging error
+        
+        # Daily Token Reward
+        try:
+            from ..services.token_service import TokenService
+            ts = TokenService(db)
+            ts.issue_reward(user.id, 5.0, "Daily Login Bonus")
+        except Exception as e:
+            print(f"Token Reward Error: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": user
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Log Error: {e}")
-    
-    return {
-        "access_token": access_token, 
-        "token_type": "bearer",
-        "user": user
-    }
+        import traceback
+        traceback.print_exc()
+        print(f"LOGIN 500 ERROR: {e}")
+        raise HTTPException(status_code=500, detail=f"Login Error: {str(e)}")
 
 @router.post("/register", response_model=Token)
 async def register(request: RegisterRequest, db: Session = Depends(get_db)):
-    # Check if user exists
-    if db.query(UserModel).filter(UserModel.email == request.email).first():
-        raise HTTPException(status_code=400, detail="User already exists")
-    
-    hashed_password = get_password_hash(request.password)
-    
-    new_user = UserModel(
-        id=f"user-{request.email}", # Simple ID generation
-        name=request.name,
-        email=request.email,
-        role=request.role,
-        level=1,
-        credits=100,
-        hashed_password=hashed_password
-    )
-    
-    db.add(new_user)
-    db.flush() # ID generation
-
-    if request.role == Role.Doctor or request.role == "Doctor":
-         new_profile = DoctorProfile(
-             id=f"profile-{new_user.id}",
-             user_id=new_user.id,
-             specialty=request.specialty or "General Practice",
-             years_of_experience=0,
-             bio="",
-             certifications=[],
-             profile_picture_url=""
-         )
-         db.add(new_profile)
-    elif request.role == Role.Patient or request.role == "Patient":
-        new_profile = Patient(
-            id=f"profile-{new_user.id}",
-            user_id=new_user.id,
-            identifier=f"PAT-{new_user.id}",
-            name=request.name
+    try:
+        # Check if user exists
+        if db.query(UserModel).filter(UserModel.email == request.email).first():
+            raise HTTPException(status_code=400, detail="User already exists")
+        
+        hashed_password = get_password_hash(request.password)
+        
+        new_user = UserModel(
+            id=f"user-{request.email}", # Simple ID generation
+            name=request.name,
+            email=request.email,
+            role=request.role,
+            level=1,
+            credits=100,
+            hashed_password=hashed_password
         )
-        db.add(new_profile)
+        
+        db.add(new_user)
+        db.flush() # ID generation
 
-    db.commit()
-    db.refresh(new_user)
-    
-    # Return token immediately
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
-        expires_delta=access_token_expires
-    )
-    
-    return {
-        "access_token": access_token, 
-        "token_type": "bearer",
-        "user": new_user
-    }
+        if request.role == Role.Doctor or request.role == "Doctor":
+             new_profile = DoctorProfile(
+                 id=f"profile-{new_user.id}",
+                 user_id=new_user.id,
+                 specialty=request.specialty or "General Practice",
+                 years_of_experience=0,
+                 bio="",
+                 certifications=[],
+                 profile_picture_url=""
+             )
+             db.add(new_profile)
+        elif request.role == Role.Patient or request.role == "Patient":
+            new_profile = Patient(
+                id=f"profile-{new_user.id}",
+                user_id=new_user.id,
+                identifier=f"PAT-{new_user.id}",
+                name=request.name
+            )
+            db.add(new_profile)
+
+        db.commit()
+        db.refresh(new_user)
+        
+        # Return token immediately
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
+            expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": new_user
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"OFFICIAL REGISTER ERROR: {e}")
+        raise HTTPException(status_code=500, detail=f"Register Error: {str(e)}")
 
 @router.post("/google", response_model=Token)
 async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db)):
-    # 1. Verify token with Google
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={request.access_token}"
-        )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=401, detail="Invalid Google token")
-        
-        google_user = resp.json()
-        email = google_user.get("email")
-        name = google_user.get("name", email)
-        
-    # 2. Find or create user
-    user = db.query(UserModel).options(
-        joinedload(UserModel.patient_profile),
-        joinedload(UserModel.doctor_profile)
-    ).filter(UserModel.email == email).first()
-    if not user:
-        # Check if role is valid
-        user_role = request.role
-        if user_role not in [Role.Doctor, Role.Patient, Role.Admin, "Doctor", "Patient", "Admin"]:
-             user_role = Role.Patient # Default
-             
-        user = UserModel(
-            id=f"user-{email}",
-            name=name,
-            email=email,
-            role=user_role,
-            level=1,
-            credits=100,
-            hashed_password=None # Google users don't have passwords
-        )
-        db.add(user)
-        db.flush()
-        
-        # Create profile if doctor
-        if user_role == Role.Doctor or user_role == "Doctor":
-            new_profile = DoctorProfile(
-                id=f"profile-{user.id}",
-                user_id=user.id,
-                specialty="General Practice",
-                years_of_experience=0,
-                bio="",
-                certifications=[],
-                profile_picture_url=""
+    try:
+        # 1. Verify token with Google
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={request.access_token}"
             )
-            db.add(new_profile)
-        db.commit()
-    
-    # 3. Create JWT
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email, "role": user.role, "user_id": user.id},
-        expires_delta=access_token_expires
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": user
-    }
+            if resp.status_code != 200:
+                print(f"Google Token Verification Failed: {resp.status_code} {resp.text}")
+                raise HTTPException(status_code=401, detail="Invalid Google token")
+            
+            google_user = resp.json()
+            email = google_user.get("email")
+            name = google_user.get("name", email)
+            
+        if not email:
+            raise HTTPException(status_code=400, detail="Google account has no email")
+
+        # 2. Find or create user
+        user = db.query(UserModel).options(
+            joinedload(UserModel.patient_profile),
+            joinedload(UserModel.doctor_profile)
+        ).filter(UserModel.email == email).first()
+        
+        if not user:
+            print(f"Creating new user for Google Login: {email}")
+            # Check if role is valid
+            user_role = request.role
+            valid_roles = [
+                Role.Doctor, Role.Patient, Role.Admin, Role.Pharmacist, Role.BillingOfficer,
+                "Doctor", "Patient", "Admin", "Pharmacist", "Billing & Insurance Officer"
+            ]
+            if user_role not in valid_roles:
+                 user_role = Role.Patient # Default
+                 
+            user = UserModel(
+                id=f"user-{email}",
+                name=name,
+                email=email,
+                role=user_role,
+                level=1,
+                credits=100,
+                hashed_password=None # Google users don't have passwords
+            )
+            db.add(user)
+            db.flush()
+            
+            # Create profile if doctor
+            if user_role == Role.Doctor or user_role == "Doctor":
+                new_profile = DoctorProfile(
+                    id=f"profile-{user.id}",
+                    user_id=user.id,
+                    specialty="General Practice",
+                    years_of_experience=0,
+                    bio="",
+                    certifications=[],
+                    profile_picture_url=""
+                )
+                db.add(new_profile)
+            elif user_role == Role.Patient or user_role == "Patient":
+                new_profile = Patient(
+                    id=f"profile-{user.id}",
+                    user_id=user.id,
+                    identifier=f"PAT-{user.id}",
+                    name=name
+                )
+                db.add(new_profile)
+
+            db.commit()
+            db.refresh(user)
+        
+        # 3. Create JWT
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "user_id": user.id},
+            expires_delta=access_token_expires
+        )
+        
+        # Log login event
+        try:
+             log = SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role, "method": "google"})
+             db.add(log)
+             db.commit()
+        except Exception as e:
+             print(f"Log Error during Google Login: {e}")
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": user
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"GOOGLE LOGIN ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Google Login Error: {str(e)}")
+
+@router.get("/me", response_model=UserSchema)
+async def read_users_me(current_user: UserModel = Depends(get_current_user)):
+    return current_user
 
 @router.get("/config")
 async def get_config():
@@ -281,7 +335,9 @@ async def get_config():
     Expose public configuration to frontend runtime.
     """
     return {
-        "googleClientId": os.environ.get("VITE_GOOGLE_CLIENT_ID")
+        "googleClientId": os.environ.get("VITE_GOOGLE_CLIENT_ID"),
+        "stripePublicKey": os.environ.get("STRIPE_PUBLIC_KEY"),
+        "frontendUrl": os.environ.get("FRONTEND_URL", "http://localhost:5173")
     }
 
 @router.post("/seed_debug")

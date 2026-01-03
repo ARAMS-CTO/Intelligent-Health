@@ -20,6 +20,9 @@ import { ClinicalPlanSection } from '../components/case/ClinicalPlanSection';
 import CardiologyPanel from '../components/specialties/CardiologyPanel';
 import { showToast } from '../components/Toast';
 import { AgentsConsole } from '../components/case/AgentsConsole';
+import { ResearchPanel } from '../components/case/ResearchPanel';
+import PayPalPayment from '../components/PayPalPayment';
+import { StripePayment } from '../components/StripePayment';
 
 // --- Helper Components ---
 
@@ -219,24 +222,29 @@ const AIClinicalSummarySection = React.memo(({ insights, isLoading, onGenerate, 
                     {!insights ? (
                         <div className="text-center py-8">
                             <p className="text-text-muted mb-6 max-w-md mx-auto">Generate AI insights to analyze the case, examine symptoms, and identify key risks with high precision.</p>
-                            <button
-                                onClick={onGenerate}
-                                disabled={isLoading || isOffline}
-                                className="bg-gradient-to-r from-primary to-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 transform hover:-translate-y-0.5"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        <span>Analyzing Case...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
-                                        'Generate AI Insights'
-                                    </>
-                                )}
-                            </button>
+                            <div className="flex justify-center gap-4">
+                                <button
+                                    onClick={onGenerate}
+                                    disabled={isLoading || isOffline}
+                                    className="bg-gradient-to-r from-primary to-indigo-600 text-white font-bold py-3 px-8 rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 transform hover:-translate-y-0.5"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                            <span>Analyzing Case...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                                            'Generate AI Insights'
+                                        </>
+                                    )}
+                                </button>
+
+                                <DonateToResearchButton caseId={insights ? "current" : "unknown"} />
+                            </div>
                         </div>
+
                     ) : (
                         <div className="space-y-6">
                             {/* Diagnosis Confidence */}
@@ -718,7 +726,7 @@ const CaseView: React.FC = () => {
     const { user } = useAuth();
     const [caseData, setCaseData] = useState<Case | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'discussion' | 'guidelines' | 'financials' | 'specialists'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'chat' | 'discussion' | 'guidelines' | 'financials' | 'specialists' | 'research'>('details');
     const [isInsightsLoading, setIsInsightsLoading] = useState(false);
     const [insights, setInsights] = useState<AIInsights | null>(null);
     const [isImageAnalysisOpen, setIsImageAnalysisOpen] = useState(false);
@@ -932,11 +940,19 @@ const CaseView: React.FC = () => {
                                 >
                                     {ICONS.guidelines} Guidelines
                                 </button>
+
                                 <button
                                     onClick={() => setActiveTab('financials')}
                                     className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'financials' ? 'bg-gradient-to-r from-primary to-indigo-600 text-white shadow-lg shadow-primary/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
                                 >
                                     {ICONS.document} Financials
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('research')}
+                                    className={`flex-shrink-0 w-full text-left px-5 py-4 rounded-xl font-bold transition-all duration-300 flex items-center gap-3 whitespace-nowrap outline-none ${activeTab === 'research' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/30' : 'text-text-muted hover:bg-slate-100/50 dark:hover:bg-slate-700/50 hover:text-text-main'}`}
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                                    Research
                                 </button>
                             </div>
                         </div>
@@ -1009,46 +1025,73 @@ const CaseView: React.FC = () => {
                             <ClinicalGuidelinesCard diagnosis={caseData.diagnosis} isOffline={isOffline} />
                         )}
                         {activeTab === 'financials' && (
-                            <FinancialsTab caseData={caseData} />
+                            <div className="space-y-6">
+                                <FinancialsTab caseData={caseData} />
+
+                                <div className="glass-card p-6 rounded-2xl shadow-lg border border-white/20 dark:border-slate-700/50">
+                                    <h3 className="text-xl font-bold text-text-main mb-4 flex items-center gap-2">
+                                        {ICONS.money} Payment & Donations
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
+                                            <h4 className="font-bold text-text-main mb-2 border-b pb-2 dark:border-slate-700">PayPal</h4>
+                                            <PayPalPayment onSuccess={(details) => {
+                                                showToast.success(`PayPal Payment successful!`);
+                                            }} />
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
+                                            <h4 className="font-bold text-text-main mb-2 border-b pb-2 dark:border-slate-700">Credit Card (Stripe)</h4>
+                                            <StripePayment onSuccess={() => {
+                                                showToast.success(`Stripe Payment successful!`);
+                                            }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'research' && user && (
+                            <ResearchPanel caseData={caseData} userRole={user.role} />
                         )}
                     </div>
                 </div>
             </div>
 
-            {isExplanationOpen && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fade-in border border-white/10 dark:border-slate-700">
-                        <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                            <h3 className="text-xl font-heading font-bold text-text-main flex items-center gap-2">
-                                {ICONS.chat} Patient Explanation
-                            </h3>
-                            <button onClick={() => setIsExplanationOpen(false)} className="text-text-muted hover:text-text-main p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                        <div className="p-6 max-h-[70vh] overflow-y-auto">
-                            {isExplaining ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-text-muted gap-4">
-                                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                                    <p className="font-bold animate-pulse">Generating simplified explanation...</p>
-                                </div>
-                            ) : (
-                                <div className="prose dark:prose-invert max-w-none text-text-main whitespace-pre-wrap leading-relaxed">
-                                    {explanation}
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3">
-                            <button onClick={() => { navigator.clipboard.writeText(explanation); }} className="px-4 py-2 text-primary font-bold hover:bg-primary/10 rounded-xl transition-colors">
-                                Copy Text
-                            </button>
-                            <button onClick={() => setIsExplanationOpen(false)} className="px-6 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors shadow-lg shadow-primary/30">
-                                Close
-                            </button>
+            {
+                isExplanationOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-fade-in border border-white/10 dark:border-slate-700">
+                            <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                                <h3 className="text-xl font-heading font-bold text-text-main flex items-center gap-2">
+                                    {ICONS.chat} Patient Explanation
+                                </h3>
+                                <button onClick={() => setIsExplanationOpen(false)} className="text-text-muted hover:text-text-main p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                            <div className="p-6 max-h-[70vh] overflow-y-auto">
+                                {isExplaining ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-text-muted gap-4">
+                                        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                        <p className="font-bold animate-pulse">Generating simplified explanation...</p>
+                                    </div>
+                                ) : (
+                                    <div className="prose dark:prose-invert max-w-none text-text-main whitespace-pre-wrap leading-relaxed">
+                                        {explanation}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                                <button onClick={() => { navigator.clipboard.writeText(explanation); }} className="px-4 py-2 text-primary font-bold hover:bg-primary/10 rounded-xl transition-colors">
+                                    Copy Text
+                                </button>
+                                <button onClick={() => setIsExplanationOpen(false)} className="px-6 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary-hover transition-colors shadow-lg shadow-primary/30">
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <FileAnalysisModal
                 isOpen={isImageAnalysisOpen}
@@ -1056,7 +1099,104 @@ const CaseView: React.FC = () => {
                 isOffline={isOffline}
                 onSaveNote={handleAddVoiceNote}
             />
-        </div>
+        </div >
+    );
+};
+
+const DonateToResearchButton: React.FC<{ caseId: string }> = ({ caseId }) => {
+    const [showModal, setShowModal] = useState(false);
+    const [groupId, setGroupId] = useState('');
+    const [groups, setGroups] = useState<any[]>([]);
+    const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (showModal) {
+            loadGroups();
+        }
+    }, [showModal]);
+
+    const loadGroups = async () => {
+        setIsLoadingGroups(true);
+        try {
+            const data = await DataService.getResearchGroups();
+            setGroups(data);
+            if (data.length > 0) setGroupId(data[0].id);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoadingGroups(false);
+        }
+    };
+
+    const handleDonate = async () => {
+        if (!groupId) return showToast.error("Please select a Group");
+        setIsSubmitting(true);
+        try {
+            const res = await DataService.contributeToResearch(groupId, 'Case', caseId);
+            showToast.success(`Donation Successful! Earned ${res.tokens_earned.toFixed(2)} tokens.`);
+            setShowModal(false);
+        } catch (e) {
+            showToast.error("Donation failed.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <>
+            <button
+                onClick={() => setShowModal(true)}
+                className="bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border border-emerald-600/20 font-bold py-3 px-6 rounded-xl hover:bg-emerald-600/20 transition-all flex items-center gap-2"
+            >
+                {ICONS.money} Donate to Research
+            </button>
+
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-fade-in border border-white/20 dark:border-slate-700">
+                        <h3 className="text-xl font-bold text-text-main mb-2">Donate Case to Science</h3>
+                        <p className="text-sm text-text-muted mb-4">
+                            Contributing this case helps medical research.
+                            Data will be anonymized. You will receive ARAMS tokens.
+                        </p>
+
+                        <div className="mb-4">
+                            <label className="block text-xs font-bold text-text-muted mb-1">Target Research Group</label>
+                            {isLoadingGroups ? (
+                                <div className="text-sm text-text-muted animate-pulse">Loading groups...</div>
+                            ) : groups.length > 0 ? (
+                                <select
+                                    value={groupId}
+                                    onChange={e => setGroupId(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none"
+                                >
+                                    {groups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name} ({g.topic})</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div className="text-sm text-red-500">No active research groups found.</div>
+                            )}
+                            <p className="text-[10px] text-text-muted mt-1">
+                                Join more groups in the <a href="/research-community" className="text-primary underline">Research Community</a>.
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowModal(false)} className="px-4 py-2 text-text-muted hover:bg-slate-100 rounded-lg">Cancel</button>
+                            <button
+                                onClick={handleDonate}
+                                disabled={isSubmitting || !groupId}
+                                className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Processing...' : 'Confirm Donation'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 

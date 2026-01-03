@@ -52,6 +52,7 @@ export const showToast = {
   info: (message: string, title = 'Info') => appEvents.emit('notification', { type: 'info', message, title }),
   warning: (message: string, title = 'Warning') => appEvents.emit('notification', { type: 'warning', message, title }),
   error: (message: string, title = 'Error') => appEvents.emit('notification', { type: 'error', message, title }),
+  loading: (message: string, title = 'Processing') => appEvents.emit('notification', { type: 'info', message, title }), // Fallback to info for now
 };
 
 export const ToastContainer: React.FC = () => {

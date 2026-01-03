@@ -1,7 +1,15 @@
 from .database import SessionLocal, engine
 from .models import Base, User, DoctorProfile, Patient
-from .routes.auth import get_password_hash
+from .database import SessionLocal, engine
+from .models import Base, User, DoctorProfile, Patient
+# from .routes.auth import get_password_hash # Removing to avoid import cycles/errors
 from .schemas import Role
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 Base.metadata.create_all(bind=engine)
 
@@ -88,7 +96,43 @@ def seed_users():
         else:
              print(f"Admin exists: {admin_email}")
              admin.hashed_password = get_password_hash("password")
-        
+
+        # Pharmacist
+        pharm_email = "mina.pharmacist@intelligent-health.com"
+        pharmacist = db.query(User).filter(User.email == pharm_email).first()
+        if not pharmacist:
+            print(f"Creating Pharmacist: {pharm_email}")
+            pharmacist = User(
+                id="user-pharm-001",
+                name="Mina Pharmacist",
+                email=pharm_email,
+                role=Role.Pharmacist,
+                hashed_password=get_password_hash("password"),
+                credits=100
+            )
+            db.add(pharmacist)
+        else:
+            print(f"Pharmacist exists: {pharm_email}")
+            pharmacist.hashed_password = get_password_hash("password")
+
+        # Billing Officer
+        bill_email = "bill.officer@intelligent-health.com"
+        billing_officer = db.query(User).filter(User.email == bill_email).first()
+        if not billing_officer:
+            print(f"Creating Billing Officer: {bill_email}")
+            billing_officer = User(
+                id="user-bill-001",
+                name="Bill Officer",
+                email=bill_email,
+                role=Role.BillingOfficer,
+                hashed_password=get_password_hash("password"),
+                credits=100
+            )
+            db.add(billing_officer)
+        else:
+            print(f"Billing Officer exists: {bill_email}")
+            billing_officer.hashed_password = get_password_hash("password")
+
         db.commit()
         print("Seeding completed successfully.")
 

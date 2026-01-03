@@ -219,6 +219,23 @@ const PatientDashboard: React.FC = () => {
                 <p className="text-gray-500 mt-2">Manage your health journey with AI-powered insights.</p>
             </header>
 
+            {!user.patientProfileId && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-6 rounded-2xl mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-amber-100 dark:bg-amber-900/50 text-amber-600 rounded-xl">
+                            {ICONS.user}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-lg text-amber-900 dark:text-amber-100">Complete Your Profile</h3>
+                            <p className="text-sm text-amber-700 dark:text-amber-200/70">We need your medical history to provide personalized AI insights.</p>
+                        </div>
+                    </div>
+                    <button onClick={() => window.location.href = '/patient-intake'} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-1">
+                        Go to Intake &rarr;
+                    </button>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -229,7 +246,32 @@ const PatientDashboard: React.FC = () => {
 
                     {activeTab === 'overview' && (
                         <div className="space-y-8 animate-fade-in">
-                            <PatientAppointments cases={cases} />
+                            <div className="glass-card p-6 rounded-2xl relative overflow-hidden">
+                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                    {ICONS.calendar} Active Cases & Visits <span className="text-xs text-text-muted font-normal">(Coming Soon)</span>
+                                </h3>
+                                {user?.role === 'Admin' ? (
+                                    <>
+                                        <div className="absolute top-2 right-2 bg-yellow-400 text-black text-[10px] px-2 py-1 rounded font-bold shadow opacity-80 z-10">Mock Data Preview</div>
+                                        <div className="space-y-4 opacity-75">
+                                            {[1, 2].map(i => (
+                                                <div key={i} className="flex justify-between items-center p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                                                    <div>
+                                                        <h4 className="font-bold">Follow-up Consultation</h4>
+                                                        <p className="text-sm text-gray-500">Scheduled • Oct {10 + i}, 2025</p>
+                                                    </div>
+                                                    <button className="text-primary font-bold text-sm hover:underline" disabled>View Details</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="p-8 text-center text-gray-400 italic border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
+                                        Appointment Scheduling & Case Tracking coming in v2.0
+                                    </div>
+                                )}
+                            </div>
+
                             <HealthRecordsList records={records.slice(0, 3)} onUpload={handleUploadRecord} />
                         </div>
                     )}

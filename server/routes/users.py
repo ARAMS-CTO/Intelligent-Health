@@ -76,3 +76,26 @@ async def delete_user(user_id: str, current_user: UserModel = Depends(get_curren
     db.delete(user)
     db.commit()
     return {"message": "User deleted successfully"}
+
+
+from pydantic import BaseModel
+class ConsentUpdate(BaseModel):
+    gdpr_consent: bool
+    data_sharing_consent: bool
+    marketing_consent: bool
+
+@router.post("/users/me/consents")
+async def update_consents(consents: ConsentUpdate, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    user = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+    if not user: raise HTTPException(status_code=404, detail="User not found")
+
+    user.gdpr_consent = consents.gdpr_consent
+    user.data_sharing_consent = consents.data_sharing_consent
+    user.marketing_consent = consents.marketing_consent
+    
+    if consents.gdpr_consent and not user.accepted_privacy_policy_at:
+        import datetime
+        user.accepted_privacy_policy_at = datetime.datetime.utcnow()
+        
+    db.commit()
+    return {"status": "success", "message": "Consents updated"}

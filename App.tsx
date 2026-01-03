@@ -4,6 +4,7 @@ import i18n from 'i18next';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, LoginSignupForm, useAuth } from './components/Auth';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
@@ -27,6 +28,9 @@ import UserProfileModal from './components/UserProfileModal';
 import { ThemeProvider } from './components/Theme';
 import AntigravityManager from './components/AntigravityManager';
 import { AIAssistantWidget } from './components/AIAssistantWidget';
+import PharmacyDashboard from './pages/PharmacyDashboard';
+import InsuranceDashboard from './pages/InsuranceDashboard';
+import { ResearchCommunity } from './pages/ResearchCommunity';
 
 // A modal component for the login form
 const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -52,7 +56,18 @@ const patientRole = [Role.Patient];
 
 // A component to protect routes based on user authentication and role.
 const ProtectedRoute: React.FC<{ children: React.ReactElement; allowedRoles: Role[] }> = ({ children, allowedRoles }) => {
-    const { user } = useAuth();
+    const { user, isLoading } = useAuth();
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+                <div className="animate-pulse flex flex-col items-center">
+                    <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
+                    <div className="text-sm font-bold text-gray-500">Verifying Session...</div>
+                </div>
+            </div>
+        );
+    }
 
     if (!user) {
         return <Navigate to="/" replace />;
@@ -101,7 +116,9 @@ const AppLayout: React.FC = () => {
                         user ? (
                             user.role === Role.Patient ? <Navigate to="/patient-dashboard" replace /> :
                                 user.role === Role.Nurse ? <Navigate to="/nurse-dashboard" replace /> :
-                                    <Navigate to="/dashboard" replace />
+                                    user.role === Role.Pharmacist ? <Navigate to="/pharmacy" replace /> :
+                                        user.role === Role.BillingOfficer ? <Navigate to="/billing" replace /> :
+                                            <Navigate to="/dashboard" replace />
                         ) : (
                             <LandingPage onGetStarted={() => setLoginModalOpen(true)} />
                         )
@@ -214,6 +231,34 @@ const AppLayout: React.FC = () => {
                             </ProtectedRoute>
                         }
                     />
+
+                    <Route
+                        path="/research-community"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Doctor, Role.Nurse, Role.Patient, Role.Admin]}>
+                                <ResearchCommunity />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/pharmacy"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Pharmacist, Role.Admin]}>
+                                <PharmacyDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/billing"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.BillingOfficer, Role.Admin]}>
+                                <InsuranceDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
@@ -236,6 +281,7 @@ const AppLayout: React.FC = () => {
 
             {/* Doctor/Staff Assistant */}
             <AIAssistantWidget />
+            <Footer />
         </div>
     );
 };

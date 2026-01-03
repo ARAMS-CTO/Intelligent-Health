@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { User, Role } from '../types/index';
 import { DataService } from '../services/api';
 import { ICONS } from '../constants/index';
@@ -11,12 +11,16 @@ interface AuthContextType {
     loginWithGoogle: (accessToken: string, role: Role) => Promise<void>;
     register: (email: string, role: Role, password?: string, name?: string) => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
+    isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+
+    const [isLoading, setIsLoading] = useState(true);
 
     const login = useCallback(async (email: string, role: Role, password?: string) => {
         try {
@@ -58,10 +62,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const logout = useCallback(() => {
         setUser(null);
+        localStorage.removeItem('token');
     }, []);
 
+    const refreshUser = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setIsLoading(false);
+                return;
+            }
+            const res = await fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) {
+                const me = await res.json();
+                setUser(me);
+            } else {
+                // If token is invalid, clear it
+                localStorage.removeItem('token');
+            }
+        } catch (e) {
+            console.error("Refresh failed", e);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    // Re-hydrate on mount
+    useEffect(() => {
+        refreshUser();
+    }, [refreshUser]);
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, register, loginWithGoogle }}>
+        <AuthContext.Provider value={{ user, login, logout, register, loginWithGoogle, refreshUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );
@@ -80,7 +112,7 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
-    const [role, setRole] = useState<Role>(Role.Doctor);
+    const [role, setRole] = useState<Role>(Role.Patient);
     const [isLoading, setIsLoading] = useState(false);
     const { login, register, loginWithGoogle } = useAuth();
 
@@ -163,23 +195,25 @@ export const LoginSignupForm: React.FC<{ onLogin: () => void }> = ({ onLogin }) 
                         disabled={isLoading}
                     />
                 </div>
-                <div>
-                    <label className="block text-text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="role">Your Role</label>
-                    <div className="relative">
-                        <select
-                            id="role"
-                            value={role}
-                            onChange={(e) => setRole(e.target.value as Role)}
-                            className="block w-full px-4 py-3 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-text-main appearance-none font-sans"
-                            disabled={isLoading}
-                        >
-                            {Object.values(Role).map(r => <option key={r} value={r} className="bg-white dark:bg-slate-900">{r}</option>)}
-                        </select>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                {isRegistering && (
+                    <div>
+                        <label className="block text-text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="role">Your Role</label>
+                        <div className="relative">
+                            <select
+                                id="role"
+                                value={role}
+                                onChange={(e) => setRole(e.target.value as Role)}
+                                className="block w-full px-4 py-3 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm font-medium text-text-main appearance-none font-sans"
+                                disabled={isLoading}
+                            >
+                                {Object.values(Role).map(r => <option key={r} value={r} className="bg-white dark:bg-slate-900">{r}</option>)}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
                 <button
                     type="submit"
                     disabled={isLoading}

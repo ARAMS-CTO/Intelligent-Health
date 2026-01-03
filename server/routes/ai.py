@@ -258,12 +258,29 @@ async def agent_chat(request: ChatRequest, current_user: User = Depends(get_curr
     
     # Simple summary if string not present
     response_text = result.get("message", "Task Executed.")
-    if result.get("status") == "success" and "triaged_count" in result:
-        response_text = f"Successfully triaged {result['triaged_count']} cases."
-    if "explanation" in result:
-        response_text = str(result["explanation"])
     
-    return {"response": response_text, "result": result, "routed_to": task}
+    return {
+        "response": response_text,
+        "result": result,
+        "routed_to": task
+    }
+
+class AgentTaskRequest(BaseModel):
+    task: str
+    payload: Dict[str, Any]
+
+@router.post("/agent_task")
+async def execute_agent_task(request: AgentTaskRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Directly execute a specific agent task.
+    Bypasses the LLM Router.
+    """
+    from ..agents.orchestrator import orchestrator
+    
+    context = {"user_id": current_user.id, "user_role": current_user.role}
+    result = await orchestrator.dispatch(request.task, request.payload, context, db)
+    
+    return result
 
 @router.post("/search_icd10")
 async def search_icd10(request: AnalysisRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -24,13 +24,8 @@ export class DataService {
             });
 
             if (!response.ok) {
-                if (response.status === 401) {
-                    // Implicit registration fallback for demo smoothness (optional, can be removed for strict auth)
-                    // If we want strict auth, we should return null or throw.
-                    // return await this.register(email, role, pwd);
-                    throw new Error('Login failed: Invalid credentials');
-                }
-                throw new Error('Login failed');
+                const errData = await response.json().catch(() => ({ detail: response.statusText }));
+                throw new Error(errData.detail || 'Login failed');
             }
 
             const data = await response.json();
@@ -56,7 +51,10 @@ export class DataService {
                 name: userName
             })
         });
-        if (!response.ok) throw new Error('Registration failed');
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({ detail: response.statusText }));
+            throw new Error(errData.detail || 'Registration failed');
+        }
         const data = await response.json();
         localStorage.setItem('token', data.access_token);
         return data.user;
@@ -68,7 +66,10 @@ export class DataService {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ access_token: accessToken, role })
         });
-        if (!response.ok) throw new Error('Google login failed');
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({ detail: response.statusText }));
+            throw new Error(errData.detail || 'Google login failed');
+        }
         const data = await response.json();
         localStorage.setItem('token', data.access_token);
         return data.user;
@@ -327,6 +328,93 @@ export class DataService {
 
     static async getPendingEstimates(role: string): Promise<any[]> {
         const res = await fetch(`${API_BASE_URL}/billing/admin/estimates/pending?role=${role}`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async createPayPalOrder(amount: number, currency: string = "USD"): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/paypal/create-order?amount=${amount}&currency=${currency}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        if (!res.ok) throw new Error("Create PayPal Order Failed");
+        return res.json();
+    }
+
+    static async capturePayPalOrder(orderId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/paypal/capture-order?order_id=${orderId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        if (!res.ok) throw new Error("Capture PayPal Order Failed");
+        return res.json();
+    }
+
+    static async createStripePaymentIntent(amount: number, currency: string = "USD"): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/stripe/create-payment-intent?amount=${amount}&currency=${currency}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        if (!res.ok) throw new Error("Create Stripe Intent Failed");
+        return res.json();
+    }
+
+    static async verifyStripePayment(intentId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/stripe/verify-payment?intent_id=${intentId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        if (!res.ok) throw new Error("Verify Stripe Payment Failed");
+        return res.json();
+    }
+    // --- Token Ecosystem ---
+    static async getTokenBalance(): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/tokens/balance`, {
+            headers: getAuthHeader()
+        });
+        return res.json();
+    }
+
+    static async createResearchGroup(name: string, topic: string, members: string[]): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/tokens/groups`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ name, topic, members })
+        });
+        if (!res.ok) throw new Error("Failed to create group");
+        return res.json();
+    }
+
+    static async contributeToResearch(groupId: string, dataType: string, dataId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/tokens/contribute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ group_id: groupId, data_type: dataType, data_id: dataId })
+        });
+        if (!res.ok) throw new Error("Contribution failed");
+        return res.json();
+    }
+
+    static async getResearchGroups(): Promise<any[]> {
+        const res = await fetch(`${API_BASE_URL}/tokens/groups`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async joinResearchGroup(groupId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/tokens/groups/${groupId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        if (!res.ok) throw new Error("Failed to join group");
+        return res.json();
+    }
+
+    static async createStripeConnectAccount(email?: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/stripe/connect-account`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ email })
+        });
+        if (!res.ok) throw new Error("Failed to create connect account");
         return res.json();
     }
 }
@@ -659,6 +747,21 @@ export class GeminiService {
         }
     }
 
+    static async executeAgentCapability(capability: string, params: any): Promise<any> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/agent_task`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ task: capability, payload: params })
+            });
+            if (!response.ok) throw new Error("Agent task failed");
+            return await response.json();
+        } catch (e) {
+            console.error("Execute Agent Capability Failed", e);
+            throw e;
+        }
+    }
+
     static async seedAgentCapabilities(): Promise<void> {
         await fetch(`${API_BASE_URL}/bus/seed`, {
             method: 'POST',
@@ -675,13 +778,33 @@ export class GeminiService {
         return res.json();
     }
 
-    static async executeAgentCapability(capability: string, params: any): Promise<any> {
-        const res = await fetch(`${API_BASE_URL}/bus/execute`, {
+
+    static async updateUserConsents(gdpr: boolean, share: boolean, marketing: boolean): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/users/me/consents`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-            body: JSON.stringify({ capability, params })
+            body: JSON.stringify({ gdpr_consent: gdpr, data_sharing_consent: share, marketing_consent: marketing })
         });
+        if (!res.ok) throw new Error("Failed to update consents");
         return res.json();
     }
+
+    // --- Billing Config ---
+    static async getBillingConfig(): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/config`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async updateBillingConfig(config: any): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/billing/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(config)
+        });
+        if (!res.ok) throw new Error("Failed to update billing config");
+        return res.json();
+    }
+
+
 }
 

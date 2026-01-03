@@ -21,7 +21,7 @@ class DoctorAgent(BaseAgent):
             self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
 
     def can_handle(self, task_type: str) -> bool:
-        return task_type in ["diagnose", "treatment_plan", "review_labs", "clinical_summary", "augment_case"]
+        return task_type in ["diagnose", "treatment_plan", "review_labs", "clinical_summary", "augment_case", "daily_checkin"]
 
     async def process(self, task: str, payload: Dict[str, Any], context: Dict[str, Any], db: Session) -> Dict[str, Any]:
         if task == "clinical_summary":
@@ -30,6 +30,8 @@ class DoctorAgent(BaseAgent):
             return await self._generate_treatment_plan(payload, context, db)
         elif task == "augment_case":
              return await self._augment_case_data(payload, context, db)
+        elif task == "daily_checkin":
+             return await self.daily_checkin(payload, context, db)
         else:
             raise NotImplementedError(f"DoctorAgent cannot handle task: {task}")
 
@@ -105,3 +107,32 @@ class DoctorAgent(BaseAgent):
             return json.loads(response.text)
         except Exception as e:
             return []
+
+    async def daily_checkin(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
+        """
+        Proactively asks doctor about research data or financial needs.
+        """
+        user_id = context.get("user_id")
+        
+        # Check if we already asked today? (Mock logic for now)
+        
+        prompt = """
+        You are a helpful assistant for a Doctor. 
+        Generate a friendly, concise daily check-in message.
+        Ask specifically if they have any new patient cases that could be anonymized for the 'Research Community'.
+        Also ask if they have any pending financial reimbursements or needs for their department.
+        
+        Tone: Professional, Collaborative, Encouraging.
+        """
+        
+        try:
+            response = self.model.generate_content(prompt)
+            return {
+                "message": response.text,
+                "actions": [
+                    {"label": "Submit Research Case", "action": "navigate", "target": "/research-community"},
+                    {"label": "Check Finances", "action": "navigate", "target": "/dashboard/billing"}
+                ]
+            }
+        except Exception as e:
+             return {"error": str(e)}
