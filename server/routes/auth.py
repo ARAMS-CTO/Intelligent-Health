@@ -16,6 +16,8 @@ import httpx
 
 from fastapi.security import OAuth2PasswordBearer
 
+from ..config import settings
+
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -27,7 +29,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -43,16 +45,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 # Security Config
-SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey") # Change this in prod!
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Settings imported from config.py
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 class LoginRequest(BaseModel):
     email: str
-    password: str # Added password
-    role: str # Optional? Usually login is just email/pass, but keeping for now if frontend sends it
+    password: str 
+    role: Optional[str] = "Patient"
 
 class RegisterRequest(BaseModel):
     name: str
@@ -83,7 +83,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 @router.post("/login", response_model=Token)
@@ -125,7 +125,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
              pass 
 
         # Create token
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.email, "role": user.role, "user_id": user.id},
             expires_delta=access_token_expires
@@ -208,7 +208,7 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
         db.refresh(new_user)
         
         # Return token immediately
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
             expires_delta=access_token_expires
@@ -242,7 +242,10 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
             name = google_user.get("name", email)
             
         if not email:
+            print("Google Login Error: No email found in Google response.")
             raise HTTPException(status_code=400, detail="Google account has no email")
+
+        print(f"Google Login: Verified email {email}. Proceeding to DB lookup...")
 
         # 2. Find or create user
         user = db.query(UserModel).options(
@@ -261,6 +264,8 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
             if user_role not in valid_roles:
                  user_role = Role.Patient # Default
                  
+            print(f"Creating new user {email} with role {user_role}")
+            
             user = UserModel(
                 id=f"user-{email}",
                 name=name,
@@ -298,7 +303,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
             db.refresh(user)
         
         # 3. Create JWT
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.email, "role": user.role, "user_id": user.id},
             expires_delta=access_token_expires
@@ -335,9 +340,12 @@ async def get_config():
     Expose public configuration to frontend runtime.
     """
     return {
-        "googleClientId": os.environ.get("VITE_GOOGLE_CLIENT_ID"),
-        "stripePublicKey": os.environ.get("STRIPE_PUBLIC_KEY"),
-        "frontendUrl": os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+        "googleClientId": settings.GOOGLE_CLIENT_ID,
+        "stripePublicKey": settings.STRIPE_PUBLIC_KEY,
+        "frontendUrl": settings.FRONTEND_URL,
+        "appVersion": settings.APP_VERSION,
+        "version": settings.APP_VERSION # Redundant fallback
     }
 
 @router.post("/seed_debug")

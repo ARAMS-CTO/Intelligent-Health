@@ -718,6 +718,21 @@ export class GeminiService {
         } catch (e: any) { throw new Error(e.message || "File upload failed."); }
     }
 
+    static async analyzeRecord(recordId: string): Promise<any> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/patient/analyze_record/${recordId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "Analysis failed");
+            }
+            return await response.json();
+        } catch (e: any) { throw new Error(e.message || "Analysis request failed."); }
+    }
+
+
     static async chatWithPatientAgent(history: any[], newMessage: string): Promise<string> {
         try {
             const response = await fetch(`${API_BASE_URL}/ai/patient/chat`, {

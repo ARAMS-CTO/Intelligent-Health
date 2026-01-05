@@ -178,6 +178,14 @@ class Comment(Base):
     case = relationship("Case", back_populates="comments")
     user = relationship("User", back_populates="comments")
 
+class NewsletterSubscriber(Base):
+    __tablename__ = "newsletter_subscribers"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, unique=True, index=True)
+    subscribed_at = Column(DateTime, default=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
 class AgentState(Base) :
     __tablename__ = "agent_states"
     

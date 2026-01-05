@@ -64,4 +64,4 @@ export const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
-export const APP_VERSION = "0.1.2";
+export const APP_VERSION = "0.1.4";

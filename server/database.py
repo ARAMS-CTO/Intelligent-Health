@@ -1,26 +1,23 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
-from google.cloud.sql.connector import Connector, IPTypes
+from .config import settings
 
 # --- DATABASE CONFIG ---
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS", "YourStrongPassword123!")
-DB_NAME = os.getenv("DB_NAME", "postgres")
-INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME") # e.g. project:region:instance
+# DB settings are now loaded from server.config.Settings
+
 
 def get_engine():
     # If we are in Cloud Run, use the Cloud SQL Connector
-    if INSTANCE_CONNECTION_NAME:
+    if settings.INSTANCE_CONNECTION_NAME:
         connector = Connector()
         def getconn():
             conn = connector.connect(
-                INSTANCE_CONNECTION_NAME,
+                settings.INSTANCE_CONNECTION_NAME,
                 "pg8000",
-                user=DB_USER,
-                password=DB_PASS,
-                db=DB_NAME,
+                user=settings.DB_USER,
+                password=settings.DB_PASS,
+                db=settings.DB_NAME,
                 ip_type=IPTypes.PUBLIC  # Use PUBLIC or PRIVATE depending on setup
             )
             return conn
@@ -32,7 +29,7 @@ def get_engine():
         )
     else:
         # Fallback for local dev
-        db_url = os.getenv("DATABASE_URL")
+        db_url = settings.DATABASE_URL
         if not db_url:
             # Default to SQLite for zero-config local dev
             db_url = "sqlite:///./intelligent_health.db"

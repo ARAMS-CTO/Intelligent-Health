@@ -1,11 +1,10 @@
 import stripe
-import os
 from fastapi import HTTPException
-from ..models import User
+from ..config import settings
 
 class StripeService:
     def __init__(self):
-        self.secret_key = os.environ.get("STRIPE_SECRET_KEY")
+        self.secret_key = settings.STRIPE_SECRET_KEY
         if not self.secret_key:
              # Use a mock or fail? Ideally fail if it's required, but preventing crash.
              # print("Warning: STRIPE_SECRET_KEY not set.")

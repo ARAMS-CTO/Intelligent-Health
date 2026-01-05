@@ -7,6 +7,9 @@ import uuid
 import datetime
 
 router = APIRouter()
+from ..routes.auth import get_current_user
+from ..schemas import User
+from ..config import settings
 
 # Mock Standard Pricing DB
 STANDARD_PRICING = {
@@ -157,34 +160,74 @@ async def approve_estimate(case_id: str, current_user: User = Depends(get_curren
         
     current_status = estimate.status
     
+    # Helper to simulate email
+    def send_email_notification(to_role_or_email, subject, body):
+        from ..models import SystemLog
+        log = SystemLog(
+            event_type="notification_email",
+            user_id=current_user.id,
+            details={
+                "to": to_role_or_email,
+                "subject": subject,
+                "body": body,
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            }
+        )
+        db.add(log)
+        print(f"--- EMAIL SIMULATION ---\nTo: {to_role_or_email}\nSubject: {subject}\n{body}\n------------------------")
+
     if current_status == "Draft" or current_status == "Estimated":
         estimate.status = "Pending Nurse Review"
+        send_email_notification("Nurse", f"New Estimate Approval Needed: {case_id}", "Please review the cost breakdown.")
     
     elif current_status == "Pending Nurse Review":
         if current_user.role not in ["Nurse", "Admin"]:
              raise HTTPException(status_code=403, detail="Only Nurses or Admins can approve at this stage")
-        # If Admin approves, does it skip to Insurance? Or to Admin Review?
-        # Let's say if Admin approves nurse stage, it goes to Pending Insurance (skips Admin Review self-check)
-        # OR just standard flow:
+        
         estimate.status = "Pending Admin Review"
+        send_email_notification("Admin", f"Estimate Verified by Nurse: {case_id}", "Nurse has verified. Please authorize.")
+
         if current_user.role == "Admin":
-            # Auto-progress if Admin is doing the Nurse's job?
+            # Auto-progress
             estimate.status = "Pending Insurance Approval"
+            send_email_notification("Insurance", f"Insurance Claim Request: {case_id}", "Please approve coverage.")
         
     elif current_status == "Pending Admin Review":
         if current_user.role != "Admin":
              raise HTTPException(status_code=403, detail="Only Admins can approve at this stage")
         estimate.status = "Pending Insurance Approval"
+        send_email_notification("Insurance", f"Insurance Claim Request: {case_id}", "Please approve coverage.")
         
         # Mock Insurance Integration (Auto-approve for demo)
         # In real world, this would trigger an external API
+        # For now, we leave it in "Pending Insurance Approval" so the new Insurance user can log in and approve!
+        # estimate.status = "Pending Patient Approval" 
+        
+    elif current_status == "Pending Insurance Approval":
+        # Only Insurance Rep or Admin can approve this
+        # using 'BillingOfficer' role for Insurance based on seed data
+        if current_user.role not in ["Billing & Insurance Officer", "Admin", "BillingOfficer"]: 
+             # Note: Role enum string vs DB string. Seed uses Role.BillingOfficer="Billing & Insurance Officer"?
+             # Let's check schemas.py Role enum.
+             # Role.BillingOfficer = "Billing & Insurance Officer"
+             raise HTTPException(status_code=403, detail="Only Insurance/Billing Officers can approve.")
+             
         estimate.status = "Pending Patient Approval"
         
+        # Find patient email
+        case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+        to_email = "Patient"
+        if case and case.patient:
+             # Try to find user linked to patient
+             if case.patient.user_id:
+                 user = db.query(User).filter(User.id == case.patient.user_id).first()
+                 if user: to_email = user.email
+        
+        send_email_notification(to_email, f"Cost Estimate Approved by Insurance: {case_id}", "Your insurance has approved. Please review your responsibility.")
+
     elif current_status == "Pending Patient Approval":
-        # Any authorized user can "mark" it as approved by patient for now?
-        # Or strictly the patient? 
-        # Let's allow Doctor/Admin to record patient approval too.
         estimate.status = "Approved"
+        send_email_notification("Billing", f"Estimate Finalized: {case_id}", "Patient accepted. Proceed with treatment.")
         
     db.commit()
     return estimate
@@ -341,8 +384,7 @@ async def create_connect_account(email: str = None, user: UserModel = Depends(ge
     account = await service.create_connected_account(email_to_use)
     
     # Generate Link
-    import os
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    frontend_url = settings.FRONTEND_URL
     link = await service.create_account_link(
         account.id, 
         refresh_url=f"{frontend_url}/admin/finance", 

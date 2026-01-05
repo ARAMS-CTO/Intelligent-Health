@@ -16,6 +16,7 @@ WORKDIR /app
 
 # Copy backend requirements and install
 COPY server/requirements.txt .
+ARG CACHEBUST=1
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 

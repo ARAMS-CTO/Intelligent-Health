@@ -12,3 +12,7 @@ google-generativeai
 google-cloud-storage
 google-cloud-speech
 httpx
+pytest
+stripe
+email-validator
+

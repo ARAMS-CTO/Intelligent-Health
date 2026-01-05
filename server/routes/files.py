@@ -7,9 +7,10 @@ from ..services.file_processor import FileProcessor
 
 router = APIRouter()
 
+from ..config import settings
 import shutil
 
-BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+BUCKET_NAME = settings.GCS_BUCKET_NAME
 
 @router.post("/upload")
 async def upload_file(

@@ -31,6 +31,9 @@ import { AIAssistantWidget } from './components/AIAssistantWidget';
 import PharmacyDashboard from './pages/PharmacyDashboard';
 import InsuranceDashboard from './pages/InsuranceDashboard';
 import { ResearchCommunity } from './pages/ResearchCommunity';
+import RadiologyDashboard from './pages/RadiologyDashboard';
+import LabDashboard from './pages/LabDashboard';
+import ManagerDashboard from './pages/ManagerDashboard';
 
 // A modal component for the login form
 const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -118,7 +121,10 @@ const AppLayout: React.FC = () => {
                                 user.role === Role.Nurse ? <Navigate to="/nurse-dashboard" replace /> :
                                     user.role === Role.Pharmacist ? <Navigate to="/pharmacy" replace /> :
                                         user.role === Role.BillingOfficer ? <Navigate to="/billing" replace /> :
-                                            <Navigate to="/dashboard" replace />
+                                            user.role === Role.Radiologist ? <Navigate to="/radiology" replace /> :
+                                                user.role === Role.LabTechnician ? <Navigate to="/lab" replace /> :
+                                                    user.role === Role.HospitalManager ? <Navigate to="/manager" replace /> :
+                                                        <Navigate to="/dashboard" replace />
                         ) : (
                             <LandingPage onGetStarted={() => setLoginModalOpen(true)} />
                         )
@@ -255,6 +261,33 @@ const AppLayout: React.FC = () => {
                         element={
                             <ProtectedRoute allowedRoles={[Role.BillingOfficer, Role.Admin]}>
                                 <InsuranceDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/radiology"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Radiologist, Role.Admin]}>
+                                <RadiologyDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/lab"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.LabTechnician, Role.Admin]}>
+                                <LabDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/manager"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.HospitalManager, Role.Admin]}>
+                                <ManagerDashboard />
                             </ProtectedRoute>
                         }
                     />

@@ -446,6 +446,30 @@ async def auto_triage(current_user: User = Depends(get_current_user), db: Sessio
 
 # Let's construct the FULL block from `extract_case` to `generate_daily_questions`.
 
+
+async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str], current_user: User, db: Session):
+    """Helper to analyze content bytes directly."""
+    if not API_KEY: return {"error": "Offline"}
+
+    valid_mimes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
+    if mime_type not in valid_mimes and not mime_type.startswith("image/"):
+         return {"error": f"Unsupported file type: {mime_type}. Only Images and PDFs are supported."}
+    
+    system_instruction = agent_service.get_system_instruction(current_user.id, current_user.role, db)
+    base_prompt = "Analyze this medical document or image. Return JSON properties: document_type, findings, summary. Be precise with medical terminology."
+    final_prompt = f"{base_prompt} Specific focus: {prompt}" if prompt else base_prompt
+    
+    try:
+        model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction) 
+        file_part = {"mime_type": mime_type, "data": content}
+        response = model.generate_content([final_prompt, file_part], generation_config={"response_mime_type": "application/json"})
+        
+        log_ai_event(db, "ai_query", current_user.id, {"endpoint": "analyze_content", "file_type": mime_type})
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"Analysis Helper Error: {e}")
+        return {"error": str(e)}
+
 @router.post("/analyze_file")
 async def analyze_file(
     file: UploadFile = File(...), 
@@ -454,38 +478,11 @@ async def analyze_file(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if not API_KEY: return {"error": "Offline"}
+    content = await file.read()
+    mime_type = file.content_type or "application/pdf"
+    return await _analyze_content(content, mime_type, prompt, current_user, db)
 
-    try:
-        content = await file.read()
-        mime_type = file.content_type or "application/pdf" # Default fallback if missing
-        
-        # Mapping valid mime types for Gemini
-        valid_mimes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
-        if mime_type not in valid_mimes:
-            # Try to guess or just pass it if it's image/*
-            if not mime_type.startswith("image/") and mime_type != "application/pdf":
-                 return {"error": f"Unsupported file type: {mime_type}. Only Images and PDFs are supported."}
-
-        file_part = {"mime_type": mime_type, "data": content}
-        
-        system_instruction = agent_service.get_system_instruction(current_user.id, current_user.role, db)
-        
-        base_prompt = "Analyze this medical document or image. Return JSON properties: document_type, findings, summary. Be precise with medical terminology."
-        final_prompt = f"{base_prompt} Specific focus: {prompt}" if prompt else base_prompt
-        
-        # Multimodal model
-        model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction) 
-        response = model.generate_content([final_prompt, file_part], generation_config={"response_mime_type": "application/json"})
-        
-        log_ai_event(db, "ai_query", current_user.id, {"endpoint": "analyze_file", "file_type": mime_type})
-        return json.loads(response.text)
-        
-    except Exception as e:
-        print(f"Analyze File Error: {e}")
-        return {"error": str(e)}
-
-# Keep alias for backward compatibility if needed, but frontend will update to use analyze_file
+# Keep alias for backward compatibility
 @router.post("/analyze_image")
 async def analyze_image_alias(
     file: UploadFile = File(...), 
@@ -493,7 +490,7 @@ async def analyze_image_alias(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return await analyze_file(file, type, current_user, db)
+    return await analyze_file(file, type, None, current_user, db)
 
 @router.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -593,7 +590,6 @@ async def upload_patient_record(
         upload_dir = "static/uploads"
         file_path = os.path.join(upload_dir, filename)
         
-        # Ensure dir exists (redundant if main.py does it, but safe)
         os.makedirs(upload_dir, exist_ok=True)
         
         with open(file_path, "wb") as buffer:
@@ -601,48 +597,101 @@ async def upload_patient_record(
             
         file_url = f"/uploads/{filename}"
 
-        # 2. Analyze (OCR + Categorize)
-        # Reset cursor after save
-        await file.seek(0)
+        # 2. Save Initial Record (Pending Analysis)
+        patient_id = None
+        if current_user.role == "Patient" and current_user.patient_profile:
+            patient_id = current_user.patient_profile.id
+            
+        # Default Title before analysis
+        title = file.filename
         
-        analysis = await analyze_file(
-            file=file,
-            type="general",
+        record = MedicalRecord(
+            id=file_id,
+            patient_id=patient_id,
+            uploader_id=current_user.id,
+            type="Unknown", # Will be updated by AI
+            title=title,
+            content_text="",
+            ai_summary="", # Empty indicates pending
+            file_url=file_url,
+            created_at=datetime.utcnow()
+        )
+        db.add(record)
+        db.commit()
+        
+        # Return success with pending status
+        return {
+            "status": "success", 
+            "record_id": record.id, 
+            "message": "File uploaded. Ready for analysis.",
+            "file_url": file_url,
+            "analysis": {"type": "Pending", "summary": "Pending Analysis", "title": title}
+        }
+        
+    except Exception as e:
+        print(f"Upload Record Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/patient/analyze_record/{record_id}")
+async def analyze_patient_record(
+    record_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Trigger AI analysis for an existing uploaded record.
+    """
+    record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+        
+    try:
+        # Resolve file path from URL
+        # URL is /uploads/filename.ext
+        filename = record.file_url.split("/")[-1]
+        file_path = os.path.join("static/uploads", filename)
+        
+        if not os.path.exists(file_path):
+             raise HTTPException(status_code=404, detail="File content not found on server")
+             
+        with open(file_path, "rb") as f:
+            content = f.read()
+            
+        # Determine mime type (simple extension check)
+        ext = os.path.splitext(filename)[1].lower()
+        mime_type = "application/pdf"
+        if ext in ['.jpg', '.jpeg']: mime_type = "image/jpeg"
+        elif ext == '.png': mime_type = "image/png"
+        elif ext == '.webp': mime_type = "image/webp"
+        
+        # Analyze
+        analysis = await _analyze_content(
+            content=content,
+            mime_type=mime_type,
             prompt="Extract text, categorize document (Lab Report, Prescription, Imaging, Discharge Summary, Other), summarize key findings, and extract date. JSON: {content_text, type, summary, title, date}",
             current_user=current_user,
             db=db
         )
         
         if "error" in analysis:
-             # If analysis fails, we still might want to keep the file? 
-             # For now, let's allow "Manual" entry or just warn?
-             # But the requirement implies AI is key. Let's proceed but note error?
-             # Actually, if analysis fails, we might miss 'type' and 'title'.
-             # Let's fallback to defaults.
-             print(f"Analysis warning: {analysis.get('error')}")
-        
-        # 3. Determine Patient ID
-        patient_id = None
-        if current_user.role == "Patient" and current_user.patient_profile:
-            patient_id = current_user.patient_profile.id
+             # Just note it but don't crash 500 if AI fails slightly
+             print(f"Analysis warning: {analysis['error']}")
+             # Return error state
+             pass
+        else:
+            # Update Record
+            record.type = analysis.get("type", "Document")
+            record.title = analysis.get("title", record.title)
+            record.content_text = analysis.get("content_text", "")
+            record.ai_summary = analysis.get("summary", "Analysis completed.")
+            record.metadata_ = analysis
             
-        record = MedicalRecord(
-            id=file_id,
-            patient_id=patient_id,
-            uploader_id=current_user.id,
-            type=analysis.get("type", "Report"),
-            title=analysis.get("title", file.filename),
-            content_text=analysis.get("content_text", ""),
-            ai_summary=analysis.get("summary", "No AI summary available."),
-            file_url=file_url,
-            created_at=datetime.utcnow()
-        )
-        db.add(record)
-        db.commit()
-        return {"status": "success", "record_id": record.id, "analysis": analysis, "file_url": file_url}
+            db.commit()
         
+        return {"status": "success", "analysis": analysis}
+
     except Exception as e:
-        print(f"Upload Record Error: {e}")
+        print(f"Analyze Record Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/patient/chat")

@@ -16,104 +16,56 @@ Base.metadata.create_all(bind=engine)
 def seed_users():
     db: Session = SessionLocal()
     try:
+        # Admin
+        admin_email = "aram.services.pro@gmail.com"
+        admin = db.query(User).filter(User.email == admin_email).first()
+        if not admin:
+            print(f"Creating Admin: {admin_email}")
+            admin = User(id="user-admin-real", name="Aram Services Admin", email=admin_email, role="Admin", hashed_password=get_password_hash("AdminPassword123!"), credits=9999)
+            db.add(admin)
+        else:
+            admin.role = "Admin"
+            admin.hashed_password = get_password_hash("AdminPassword123!")
+            print(f"Updated Admin: {admin_email}")
+
+        # Patient
+        patient_email = "aram.ghannad@gmail.com"
+        patient = db.query(User).filter(User.email == patient_email).first()
+        if not patient:
+            print(f"Creating Patient: {patient_email}")
+            patient = User(id="user-patient-real", name="Aram Ghannad", email=patient_email, role="Patient", hashed_password=get_password_hash("PatientPassword123!"), credits=100)
+            db.add(patient)
+            
+            p_profile = Patient(id="profile-patient-real", user_id=patient.id, identifier="MRN-ARAM", name="Aram Ghannad", contact_info={"email": patient_email})
+            db.add(p_profile)
+        else:
+            patient.role = "Patient"
+            patient.hashed_password = get_password_hash("PatientPassword123!")
+            print(f"Updated Patient: {patient_email}")
+
         # Doctor
         doctor_email = "m.sonati@intelligent-health.com"
         doctor = db.query(User).filter(User.email == doctor_email).first()
         if not doctor:
             print(f"Creating Doctor: {doctor_email}")
-            doctor = User(
-                id="user-doctor-001",
-                name="Dr. Mario Sonati",
-                email=doctor_email,
-                role=Role.Doctor,
-                hashed_password=get_password_hash("password"),
-                credits=100
-            )
+            doctor = User(id="user-doc-real", name="Mohammad Sonati", email=doctor_email, role="Doctor", hashed_password=get_password_hash("DoctorPassword123!"), credits=100)
             db.add(doctor)
-            db.flush()
-            
-            profile = DoctorProfile(
-                id="profile-doctor-001",
-                user_id=doctor.id,
-                specialty="Cardiology",
-                years_of_experience=15,
-                bio="Senior Cardiologist with focus on AI diagnostics."
-            )
-            db.add(profile)
+            doc_profile = DoctorProfile(id="profile-doc-real", user_id=doctor.id, specialty="Cardiology", bio="Senior Cardiologist")
+            db.add(doc_profile)
         else:
-            print(f"Doctor exists: {doctor_email}")
-            # Ensure password is verified (resetting it just in case)
-            doctor.hashed_password = get_password_hash("password")
+            doctor.hashed_password = get_password_hash("DoctorPassword123!")
+            print(f"Updated Doctor: {doctor_email}")
 
-        # Patient
-        patient_email = "a.ghannad@intelligent-health.com"
-        patient = db.query(User).filter(User.email == patient_email).first()
-        if not patient:
-            print(f"Creating Patient: {patient_email}")
-            patient = User(
-                id="user-patient-001",
-                name="Aram Ghannad",
-                email=patient_email,
-                role=Role.Patient,
-                hashed_password=get_password_hash("password"),
-                credits=50
-            )
-            db.add(patient)
-            db.flush()
-            
-            p_profile = Patient(
-                 id="profile-patient-001",
-                 user_id=patient.id,
-                 name="Aram Ghannad",
-                 identifier="MRN-2025-001",
-                 dob="1985-05-20",
-                 blood_type="O+",
-                 contact_info={"phone": "+97150000000", "address": "Dubai, UAE"},
-                 emergency_contact={"name": "Sarah", "phone": "+97150111111"},
-                 allergies=["Penicillin"],
-                 medications=[],
-                 baseline_illnesses=["Hypertension"]
-            )
-            db.add(p_profile)
+        # Nurse (Pharmacist mapped to Nurse/Pharmacist role)
+        nurse_email = "c.redfield@intelligent-health.com"
+        nurse = db.query(User).filter(User.email == nurse_email).first()
+        if not nurse:
+            print(f"Creating Nurse: {nurse_email}")
+            nurse = User(id="user-nurse-real", name="Claire Redfield", email=nurse_email, role="Nurse", hashed_password=get_password_hash("NursePassword123!"), credits=100)
+            db.add(nurse)
         else:
-            print(f"Patient exists: {patient_email}")
-            patient.hashed_password = get_password_hash("password")
-
-        # Admin
-        admin_email = "admin@intelligent-health.com"
-        admin = db.query(User).filter(User.email == admin_email).first()
-        if not admin:
-            print(f"Creating Admin: {admin_email}")
-            admin = User(
-                id="user-admin-001",
-                name="System Admin",
-                email=admin_email,
-                role=Role.Admin,
-                hashed_password=get_password_hash("password"),
-                credits=9999
-            )
-            db.add(admin)
-        else:
-             print(f"Admin exists: {admin_email}")
-             admin.hashed_password = get_password_hash("password")
-
-        # Pharmacist
-        pharm_email = "mina.pharmacist@intelligent-health.com"
-        pharmacist = db.query(User).filter(User.email == pharm_email).first()
-        if not pharmacist:
-            print(f"Creating Pharmacist: {pharm_email}")
-            pharmacist = User(
-                id="user-pharm-001",
-                name="Mina Pharmacist",
-                email=pharm_email,
-                role=Role.Pharmacist,
-                hashed_password=get_password_hash("password"),
-                credits=100
-            )
-            db.add(pharmacist)
-        else:
-            print(f"Pharmacist exists: {pharm_email}")
-            pharmacist.hashed_password = get_password_hash("password")
+            nurse.hashed_password = get_password_hash("NursePassword123!")
+            print(f"Updated Nurse: {nurse_email}")
 
         # Billing Officer
         bill_email = "bill.officer@intelligent-health.com"
@@ -121,20 +73,110 @@ def seed_users():
         if not billing_officer:
             print(f"Creating Billing Officer: {bill_email}")
             billing_officer = User(
-                id="user-bill-001",
+                id="user-bill-real",
                 name="Bill Officer",
                 email=bill_email,
                 role=Role.BillingOfficer,
-                hashed_password=get_password_hash("password"),
+                hashed_password=get_password_hash("BillingPassword123!"),
                 credits=100
             )
             db.add(billing_officer)
         else:
             print(f"Billing Officer exists: {bill_email}")
-            billing_officer.hashed_password = get_password_hash("password")
+            billing_officer.hashed_password = get_password_hash("BillingPassword123!")
+
+        # Radiologist
+        rad_email = "r.scan@intelligent-health.com"
+        radiologist = db.query(User).filter(User.email == rad_email).first()
+        if not radiologist:
+            print(f"Creating Radiologist: {rad_email}")
+            radiologist = User(
+                id="user-rad-real",
+                name="Dr. Rad Scan",
+                email=rad_email,
+                role=Role.Radiologist,
+                hashed_password=get_password_hash("RadiologyPassword123!"),
+                credits=100
+            )
+            db.add(radiologist)
+        else:
+            print(f"Radiologist exists: {rad_email}")
+            radiologist.hashed_password = get_password_hash("RadiologyPassword123!")
+
+        # Lab Technician
+        lab_email = "l.test@intelligent-health.com"
+        lab_tech = db.query(User).filter(User.email == lab_email).first()
+        if not lab_tech:
+            print(f"Creating Lab Tech: {lab_email}")
+            lab_tech = User(
+                id="user-lab-real",
+                name="Lab Tech Larry",
+                email=lab_email,
+                role=Role.LabTechnician,
+                hashed_password=get_password_hash("LabPassword123!"),
+                credits=100
+            )
+            db.add(lab_tech)
+        else:
+            print(f"Lab Tech exists: {lab_email}")
+            lab_tech.hashed_password = get_password_hash("LabPassword123!")
+            
+        # Hospital Manager (Admin/Manager role)
+        manager_email = "h.manager@intelligent-health.com"
+        manager = db.query(User).filter(User.email == manager_email).first()
+        if not manager:
+            print(f"Creating Hospital Manager: {manager_email}")
+            manager = User(
+                id="user-manager-real",
+                name="Hospital Manager",
+                email=manager_email,
+                role=Role.HospitalManager,
+                hashed_password=get_password_hash("ManagerPassword123!"),
+                credits=500
+            )
+            db.add(manager)
+        else:
+            print(f"Manager exists: {manager_email}")
+            manager.hashed_password = get_password_hash("ManagerPassword123!")
+
+        # Insurance Representative (External/Approver)
+        ins_email = "insurance@intelligent-health.com"
+        insurer = db.query(User).filter(User.email == ins_email).first()
+        if not insurer:
+            print(f"Creating Insurance Rep: {ins_email}")
+            insurer = User(
+                id="user-insurance-real",
+                name="Global Health Insurance",
+                email=ins_email,
+                role=Role.BillingOfficer, # Using Billing Officer permissions for claims/approvals
+                hashed_password=get_password_hash("InsurancePassword123!"),
+                credits=0
+            )
+            db.add(insurer)
+        else:
+            print(f"Insurance Rep exists: {ins_email}")
+            insurer.hashed_password = get_password_hash("InsurancePassword123!")
+
+        # Finance Director (Internal)
+        fin_email = "finance@intelligent-health.com"
+        finance = db.query(User).filter(User.email == fin_email).first()
+        if not finance:
+            print(f"Creating Finance Director: {fin_email}")
+            finance = User(
+                id="user-finance-real",
+                name="Finance Director",
+                email=fin_email,
+                role=Role.HospitalManager, # Management view
+                hashed_password=get_password_hash("FinancePassword123!"),
+                credits=1000
+            )
+            db.add(finance)
+        else:
+            print(f"Finance Director exists: {fin_email}")
+            finance.hashed_password = get_password_hash("FinancePassword123!")
 
         db.commit()
-        print("Seeding completed successfully.")
+        print("Seeding completed successfully with ALL Real Users (Inc. Finance & Insurance).")
 
     except Exception as e:
         print(f"Error seeding data: {e}")

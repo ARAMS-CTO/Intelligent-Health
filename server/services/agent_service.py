@@ -2,13 +2,13 @@ import json
 import os
 from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
-from ..models import AgentState as AgentStateModel
 import uuid
-# Import the legacy SDK
+from ..models import AgentState as AgentStateModel
+from ..config import settings
 import google.generativeai as genai
 
 # Initialize Gemini Client for legacy SDK
-API_KEY = os.environ.get("GEMINI_API_KEY")
+API_KEY = settings.GEMINI_API_KEY
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
@@ -62,9 +62,9 @@ class ChromaVectorStore(VectorStore):
 # --- Optimized Google Cloud Vector Store (Legacy SDK) ---
 class VertexAIVectorStore(VectorStore):
     def __init__(self):
-        self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+        self.project_id = settings.GOOGLE_CLOUD_PROJECT
         self.location = "us-central1"
-        self.index_endpoint = os.getenv("VERTEX_AI_INDEX_ENDPOINT")
+        self.index_endpoint = settings.VERTEX_AI_INDEX_ENDPOINT
         
     def get_embedding(self, text: str) -> List[float]:
         try:

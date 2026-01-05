@@ -2,10 +2,12 @@ import os
 import httpx
 import base64
 
+from ..config import settings
+
 class PayPalService:
     def __init__(self):
-        self.client_id = os.environ.get("PAYPAL_CLIENT_ID")
-        self.client_secret = os.environ.get("PAYPAL_CLIENT_SECRET")
+        self.client_id = settings.PAYPAL_CLIENT_ID
+        self.client_secret = settings.PAYPAL_CLIENT_SECRET
         # Use sandbox for now unless specified
         self.base_url = "https://api-m.sandbox.paypal.com" 
         

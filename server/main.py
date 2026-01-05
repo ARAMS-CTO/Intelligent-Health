@@ -3,18 +3,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 load_dotenv()
+from .config import settings
 from .routes import init_app
 from .database import Base, engine
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Intelligent Health API", version="0.1.0")
+app = FastAPI(title="Intelligent Health API", version=settings.APP_VERSION)
+
 
 # CORS Configuration
+origins = settings.CORS_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,7 +27,9 @@ app.add_middleware(
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
+    # Allow Google Sign-In popup to communicate back
     response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
+    response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
     return response
 
 @app.get("/health")
@@ -32,6 +38,12 @@ async def health_check():
 
 # Include Routers via init_app
 init_app(app)
+
+from .routes import debug
+app.include_router(debug.router, prefix="/api/debug")
+
+from .routes import newsletter
+app.include_router(newsletter.router, prefix="/api")
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse

@@ -7,8 +7,9 @@ import Modal from '../components/Modal';
 import { showToast } from '../components/Toast';
 
 // Components (We will extract these later or keep inline for speed)
-const HealthRecordsList = ({ records, onUpload }: { records: MedicalRecord[], onUpload: (file: File) => void }) => {
+const HealthRecordsList = ({ records, onUpload, onGenerateSummary }: { records: MedicalRecord[], onUpload: (file: File) => void, onGenerateSummary: (id: string) => void }) => {
     const [isUploading, setIsUploading] = useState(false);
+    const [analyzingIds, setAnalyzingIds] = useState<string[]>([]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -21,6 +22,19 @@ const HealthRecordsList = ({ records, onUpload }: { records: MedicalRecord[], on
             } finally {
                 setIsUploading(false);
             }
+        }
+    };
+
+    const handleGenerateClick = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setAnalyzingIds(prev => [...prev, id]);
+        try {
+            await onGenerateSummary(id);
+        } catch (err) {
+            console.error(err);
+            showToast.error("Analysis failed");
+        } finally {
+            setAnalyzingIds(prev => prev.filter(x => x !== id));
         }
     };
 
@@ -55,11 +69,29 @@ const HealthRecordsList = ({ records, onUpload }: { records: MedicalRecord[], on
                                 </div>
                                 <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-500 px-2 py-1 rounded-md">{rec.type}</span>
                             </div>
-                            {rec.aiSummary && (
-                                <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg">
-                                    <span className="font-bold text-indigo-500">AI Summary:</span> {rec.aiSummary}
-                                </div>
-                            )}
+
+                            {/* AI Summary Section */}
+                            <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg">
+                                <span className="font-bold text-indigo-500">AI Summary:</span>
+                                {(!rec.aiSummary || rec.aiSummary === "Pending Analysis" || rec.aiSummary === "No AI summary available.") ? (
+                                    <div className="mt-2 flex items-center justify-between">
+                                        <span className="italic text-gray-400">Not available</span>
+                                        <button
+                                            onClick={(e) => handleGenerateClick(e, rec.id)}
+                                            disabled={analyzingIds.includes(rec.id)}
+                                            className="px-3 py-1 bg-indigo-500 text-white rounded-lg text-xs hover:bg-indigo-600 disabled:opacity-50 transition-all flex items-center gap-1"
+                                        >
+                                            {analyzingIds.includes(rec.id) ? (
+                                                <>Processing...</>
+                                            ) : (
+                                                <>{ICONS.ai} Generate Summary</>
+                                            )}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span className="ml-1">{rec.aiSummary}</span>
+                                )}
+                            </div>
                         </div>
                     ))
                 )}
@@ -208,6 +240,30 @@ const PatientDashboard: React.FC = () => {
         }
     };
 
+    const handleGenerateSummary = async (recordId: string) => {
+        try {
+            const result = await GeminiService.analyzeRecord(recordId);
+
+            // Optimistic Update
+            setRecords(prev => prev.map(r => {
+                if (r.id === recordId) {
+                    return {
+                        ...r,
+                        aiSummary: result.analysis.summary,
+                        type: result.analysis.type || r.type,
+                        title: result.analysis.title || r.title
+                    };
+                }
+                return r;
+            }));
+
+            showToast.success("AI Summary Generated!");
+        } catch (e) {
+            console.error("Analysis Failed", e);
+            throw e;
+        }
+    };
+
     if (!user) return <div className="p-8 text-center">Please log in.</div>;
 
     return (
@@ -272,13 +328,13 @@ const PatientDashboard: React.FC = () => {
                                 )}
                             </div>
 
-                            <HealthRecordsList records={records.slice(0, 3)} onUpload={handleUploadRecord} />
+                            <HealthRecordsList records={records.slice(0, 3)} onUpload={handleUploadRecord} onGenerateSummary={handleGenerateSummary} />
                         </div>
                     )}
 
                     {activeTab === 'records' && (
                         <div className="animate-fade-in">
-                            <HealthRecordsList records={records} onUpload={handleUploadRecord} />
+                            <HealthRecordsList records={records} onUpload={handleUploadRecord} onGenerateSummary={handleGenerateSummary} />
                         </div>
                     )}
 
@@ -296,5 +352,6 @@ const PatientDashboard: React.FC = () => {
         </div>
     );
 };
+
 
 export default PatientDashboard;
