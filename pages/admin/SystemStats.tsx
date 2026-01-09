@@ -22,6 +22,11 @@ const SystemStats: React.FC = () => {
         }
     };
 
+    const calculatePercentage = (val: number, total: number) => {
+        if (total === 0) return 0;
+        return Math.round((val / total) * 100);
+    };
+
     return (
         <div className="space-y-8">
             <h2 className="text-2xl font-heading font-bold text-text-main">System Statistics & AI Usage</h2>
@@ -49,62 +54,83 @@ const SystemStats: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* AI Token Usage */}
-                <div className="glass-card p-6 rounded-2xl border border-white/20 dark:border-slate-700">
-                    <h3 className="text-lg font-bold text-text-main mb-6">Gemini Token Usage (Last 7 Days)</h3>
-                    <div className="h-64 flex items-end justify-between gap-2 px-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                        {[4500, 7200, 3100, 8900, 5600, 9100, 6400].map((val, idx) => (
-                            <div key={idx} className="w-full bg-primary/20 rounded-t-xl relative group">
-                                <div
-                                    className="absolute bottom-0 w-full bg-primary rounded-t-xl transition-all duration-1000 group-hover:bg-primary-hover"
-                                    style={{ height: `${(val / 10000) * 100}%` }}
-                                >
-                                    <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded shadow-lg pointer-events-none transition-opacity">
-                                        {val}
+                {stats && stats.token_usage_history && (
+                    <div className="glass-card p-6 rounded-2xl border border-white/20 dark:border-slate-700">
+                        <h3 className="text-lg font-bold text-text-main mb-6">Gemini Token Usage (Last 7 Days)</h3>
+                        <div className="h-64 flex items-end justify-between gap-2 px-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                            {stats.token_usage_history.map((day: any, idx: number) => {
+                                const maxTokens = Math.max(...stats.token_usage_history.map((d: any) => d.tokens), 10000); // Dynamic max or default 10k
+                                const heightPercent = (day.tokens / maxTokens) * 100;
+                                return (
+                                    <div key={idx} className="w-full bg-primary/20 rounded-t-xl relative group">
+                                        <div
+                                            className="absolute bottom-0 w-full bg-primary rounded-t-xl transition-all duration-1000 group-hover:bg-primary-hover"
+                                            style={{ height: `${Math.max(heightPercent, 2)}%` }} // Min height 2%
+                                        >
+                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs font-bold px-2 py-1 rounded shadow-lg pointer-events-none transition-opacity whitespace-nowrap">
+                                                {day.tokens} Tokens
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        ))}
+                                );
+                            })}
+                        </div>
+                        <div className="flex justify-between mt-2 text-xs text-text-muted font-bold uppercase">
+                            {stats.token_usage_history.map((day: any, idx: number) => (
+                                <span key={idx}>{day.date}</span>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex justify-between mt-2 text-xs text-text-muted font-bold uppercase">
-                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                    </div>
-                </div>
+                )}
 
                 {/* Storage Usage */}
-                <div className="glass-card p-6 rounded-2xl border border-white/20 dark:border-slate-700">
-                    <h3 className="text-lg font-bold text-text-main mb-6">Storage Distribution</h3>
-                    <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6">
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between text-sm font-bold text-text-main mb-1">
-                                    <span>Medical Images (DICOM/JPG)</span>
-                                    <span>64% (128 GB)</span>
-                                </div>
-                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: '64%' }}></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-sm font-bold text-text-main mb-1">
-                                    <span>Patient Documents (PDF)</span>
-                                    <span>22% (44 GB)</span>
-                                </div>
-                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: '22%' }}></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-sm font-bold text-text-main mb-1">
-                                    <span>System Logs</span>
-                                    <span>14% (28 GB)</span>
-                                </div>
-                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                    <div className="bg-orange-500 h-2 rounded-full" style={{ width: '14%' }}></div>
-                                </div>
+                {stats && stats.storage_stats && (
+                    <div className="glass-card p-6 rounded-2xl border border-white/20 dark:border-slate-700">
+                        <h3 className="text-lg font-bold text-text-main mb-6">Storage Distribution</h3>
+                        <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6">
+                            <div className="space-y-4">
+                                {(() => {
+                                    const { images_size_gb, documents_size_gb, logs_size_gb } = stats.storage_stats;
+                                    const total = images_size_gb + documents_size_gb + logs_size_gb;
+                                    // Avoid division by zero
+                                    const t = total > 0 ? total : 1;
+
+                                    return (
+                                        <>
+                                            <div>
+                                                <div className="flex justify-between text-sm font-bold text-text-main mb-1">
+                                                    <span>Medical Images (DICOM/JPG)</span>
+                                                    <span>{calculatePercentage(images_size_gb, t)}% ({images_size_gb} GB)</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${calculatePercentage(images_size_gb, t)}%` }}></div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-sm font-bold text-text-main mb-1">
+                                                    <span>Patient Documents (PDF)</span>
+                                                    <span>{calculatePercentage(documents_size_gb, t)}% ({documents_size_gb} GB)</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                    <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${calculatePercentage(documents_size_gb, t)}%` }}></div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-sm font-bold text-text-main mb-1">
+                                                    <span>System Logs</span>
+                                                    <span>{calculatePercentage(logs_size_gb, t)}% ({logs_size_gb} GB)</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                    <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${calculatePercentage(logs_size_gb, t)}%` }}></div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Logs Preview */}

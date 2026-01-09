@@ -837,8 +837,19 @@ const CaseView: React.FC = () => {
         setCaseData(prev => prev ? ({ ...prev, icd10Code: val }) : null);
     };
 
-    const handlePostComment = async (comment: Comment) => {
-        await DataService.addComment(comment);
+    const handlePostComment = async (comment: any) => { // Type mismatch fix as well if comment is obj
+        // Wait, the previous signature was addComment(caseId, content).
+        // CaseDiscussion likely returns the text or an object. Checking usage.
+        // Assuming 'comment' here is the content string effectively or I need to extract it.
+        // If 'comment' is the full object, I need to pass comment.caseId and comment.text
+        // But look at CaseView.tsx: handlePostComment = async (comment: Comment) => ...
+        // And Comment interface has caseId and text. 
+        if (typeof comment === 'string') {
+            // If it's just a string, we need caseId. caseData.id is available.
+            await DataService.addComment(caseData?.id || '', comment);
+        } else {
+            await DataService.addComment(comment.caseId, comment.text);
+        }
     };
 
     const handleOpenExplanation = async () => {
@@ -870,7 +881,7 @@ const CaseView: React.FC = () => {
             text: note,
             timestamp: new Date().toISOString()
         };
-        await DataService.addComment(newHelperComment);
+        await DataService.addComment(caseData.id, newHelperComment.text);
         const updatedComments = [...(caseData.comments || []), newHelperComment];
         setCaseData({ ...caseData, comments: updatedComments });
         showToast.success("Voice note added");

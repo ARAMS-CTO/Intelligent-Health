@@ -91,7 +91,8 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const ChatView = () => (
+  // Render Chat View
+  const renderChatView = () => (
     <>
       <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
         {messages.map((msg, index) => (
@@ -156,7 +157,8 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
     </>
   );
 
-  const SymptomCheckerView = () => (
+  // Render Symptom Checker View
+  const renderSymptomCheckerView = () => (
     <>
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
         <div className="p-5 bg-gradient-to-br from-info/10 to-blue-500/10 dark:from-info/20 dark:to-blue-900/20 border border-info/20 rounded-2xl backdrop-blur-sm">
@@ -282,7 +284,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {mode === 'chat' ? <ChatView /> : <SymptomCheckerView />}
+        {mode === 'chat' ? renderChatView() : renderSymptomCheckerView()}
       </div>
     </div>
   );

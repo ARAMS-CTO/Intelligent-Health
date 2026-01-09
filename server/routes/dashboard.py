@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from ..schemas import Comment, AdminStats, SystemConfigUpdate, SystemLog as SystemLogSchema, DashboardStats
 from ..database import get_db
-from ..models import Case as CaseModel, Comment as CommentModel, User as UserModel, SystemLog, SystemConfig
+from ..models import Case as CaseModel, Comment as CommentModel, User as UserModel, SystemLog, SystemConfig, MedicalRecord
 import os
 router = APIRouter()
 
@@ -53,7 +53,8 @@ async def get_admin_stats(db: Session = Depends(get_db)):
     active_cases = db.query(CaseModel).filter(CaseModel.status != "Closed").count()
     
     # Calculate AI queries in last 24h from SystemLogs
-    day_ago = datetime.utcnow() - timedelta(hours=24)
+    now = datetime.utcnow()
+    day_ago = now - timedelta(hours=24)
     ai_queries = db.query(SystemLog).filter(
         SystemLog.event_type == "ai_query",
         SystemLog.timestamp > day_ago
@@ -62,8 +63,35 @@ async def get_admin_stats(db: Session = Depends(get_db)):
     # Gemini Status check
     gemini_status = "Connected" if API_KEY else "Disconnected"
     
-    # DB Status (if we are here, DB is at least partially working)
+    # DB Status
     db_status = "Connected"
+    
+    # Token Usage History (7 days)
+    token_usage_history = []
+    for i in range(7):
+        date_val = (now - timedelta(days=6-i)).date()
+        date_start = datetime.combine(date_val, datetime.min.time())
+        date_end = datetime.combine(date_val, datetime.max.time())
+        
+        daily_queries = db.query(SystemLog).filter(
+            SystemLog.event_type == "ai_query",
+            SystemLog.timestamp >= date_start,
+            SystemLog.timestamp <= date_end
+        ).count()
+        
+        token_usage_history.append({"date": date_val.strftime("%a"), "tokens": daily_queries * 1000})
+
+    # Storage Stats
+    medical_images_count = db.query(MedicalRecord).filter(MedicalRecord.type.in_(["Imaging", "CT", "X-Ray", "MRI"])).count()
+    patient_docs_count = db.query(MedicalRecord).filter(MedicalRecord.type.in_(["Report", "Lab", "Prescription", "Discharge Summary"])).count()
+    logs_count = db.query(SystemLog).count()
+    
+    # Estimate Sizes (GB)
+    storage_stats = {
+        "images_size_gb": round(medical_images_count * 0.005, 4),
+        "documents_size_gb": round(patient_docs_count * 0.0005, 4),
+        "logs_size_gb": round(logs_count * 0.000001, 6)
+    }
 
     return {
         "total_users": total_users,
@@ -71,7 +99,9 @@ async def get_admin_stats(db: Session = Depends(get_db)):
         "ai_queries_today": ai_queries,
         "system_health": "Optimal",
         "gemini_status": gemini_status,
-        "db_status": db_status
+        "db_status": db_status,
+        "token_usage_history": token_usage_history,
+        "storage_stats": storage_stats
     }
 
 @router.get("/admin/config")

@@ -7,7 +7,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '../components/Toast';
 // @ts-ignore
-import { GeminiService } from '../services/api';
+
 
 const EmergencyDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -33,7 +33,7 @@ const EmergencyDashboard: React.FC = () => {
         // Use the Agent Bus!
         try {
             showToast.info(`Simulating Incoming Patient: ${randomSymptom}... routing to Nurse Agent.`);
-            const result = await GeminiService.executeAgentCapability('triage_patient', {
+            const result = await DataService.executeAgentCapability('triage_patient', {
                 symptoms: randomSymptom,
                 vitals: { hr: 110, bp: '150/90' }
             });

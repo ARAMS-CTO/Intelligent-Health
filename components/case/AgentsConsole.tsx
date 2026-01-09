@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ICONS } from '../../constants';
-import { GeminiService } from '../../services/api';
+import { DataService } from '../../services/api';
 import { showToast } from '../Toast';
 import { Case } from '../../types';
 
@@ -17,9 +17,11 @@ const AGENTS = [
     { id: 'price', name: 'Cost Estimator', role: 'Billing', icon: ICONS.billing, color: 'bg-emerald-500', capability: 'estimate_cost' },
     { id: 'rehab', name: 'Rehab Specialist', role: 'Recovery', icon: ICONS.activity, color: 'bg-teal-500', capability: 'generate_rehab_plan' },
     { id: 'psych', name: 'Wellness Support', role: 'Psychology', icon: ICONS.ai, color: 'bg-purple-500', capability: 'coping_strategies' },
-    // Nurse and Doctor are implicit/handled elsewhere usually, but we can add them for completeness
     { id: 'nurse', name: 'Triage Nurse', role: 'Nursing', icon: ICONS.nurse, color: 'bg-pink-500', capability: 'triage' },
     { id: 'patient', name: 'Patient Advocate', role: 'Support', icon: ICONS.user, color: 'bg-orange-400', capability: 'explain_diagnosis' },
+    { id: 'researcher', name: 'Research Librarian', role: 'Research', icon: ICONS.document, color: 'bg-cyan-500', capability: 'research_condition' },
+    { id: 'guidelines', name: 'Guidelines Expert', role: 'Evidence', icon: ICONS.check, color: 'bg-lime-500', capability: 'find_guidelines' },
+    { id: 'interactions', name: 'Drug Checker', role: 'Pharmacy', icon: ICONS.medication, color: 'bg-amber-500', capability: 'check_drug_interaction' },
 ];
 
 export const AgentsConsole: React.FC<AgentsConsoleProps> = ({ caseData, onUpdate }) => {
@@ -45,7 +47,7 @@ export const AgentsConsole: React.FC<AgentsConsoleProps> = ({ caseData, onUpdate
                 condition: caseData.diagnosis // For rehab
             };
 
-            const response = await GeminiService.executeAgentCapability(capability, contextParams);
+            const response = await DataService.executeAgentCapability(capability, contextParams);
             setResult(response);
         } catch (error) {
             console.error("Agent Error:", error);

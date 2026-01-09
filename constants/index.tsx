@@ -64,4 +64,14 @@ export const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
-export const APP_VERSION = "0.1.4";
+
+export const AVATARS = {
+  Doctor: "/assets/avatars/doctor.png",
+  Nurse: "/assets/avatars/nurse.png",
+  Billing: "/assets/avatars/billing.png",
+  Researcher: "/assets/avatars/researcher.png",
+  Default: "/assets/avatars/doctor.png"
+};
+
+export const APP_VERSION = "0.1.9";
+

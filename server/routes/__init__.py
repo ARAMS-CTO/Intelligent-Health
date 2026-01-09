@@ -9,8 +9,10 @@ from .files import router as files_router
 from .billing import router as billing_router
 from .agent_bus import router as agent_bus_router
 from .tokens import router as tokens_router
+from .agents import router as agents_router
+from .integrations import router as integrations_router
 
-__all__ = ["auth_router", "cases_router", "patients_router", "ai_router", "comments_router", "users_router", "dashboard_router", "files_router", "billing_router", "tokens_router"]
+__all__ = ["auth_router", "cases_router", "patients_router", "comments_router", "ai_router", "agents_router", "billing_router", "files_router", "dashboard_router", "tokens_router", "integrations_router"]
 
 def init_app(app):
     app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
@@ -23,4 +25,6 @@ def init_app(app):
     app.include_router(files_router, prefix="/api/files", tags=["Files"])
     app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
     app.include_router(agent_bus_router, prefix="/api/bus", tags=["AgentBus"])
+    app.include_router(integrations_router, prefix="/api/integrations", tags=["Integrations"])
     app.include_router(tokens_router, prefix="/api/tokens", tags=["Tokens"])
+    app.include_router(agents_router, prefix="/api/agents", tags=["Agents"])

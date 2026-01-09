@@ -11,7 +11,7 @@ import base64
 import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ..schemas import Case, AIInsights, ExtractedCaseData, AIContextualSuggestion, SymptomAnalysisResult, AIFeedback as AIFeedbackSchema, AIFeedbackCreate, AIAgentStats, UnratedSuggestion, DiagnosisSuggestion, ChatRequest
-from ..models import SystemLog, SystemConfig, Case as CaseModel, AIFeedback, MedicalRecord
+from ..models import SystemLog, SystemConfig, Case as CaseModel, AIFeedback, MedicalRecord, Patient as PatientModel, HealthData
 from ..services.agent_service import agent_service
 from ..database import get_db
 
@@ -31,6 +31,15 @@ async def submit_feedback(feedback: AIFeedbackCreate, current_user: User = Depen
     )
     db.add(db_feedback)
     db.commit()
+    
+    # Automate Learning from Positive Feedback
+    if feedback.rating == 'good':
+        # Infer a learning point. For now, simple assumption.
+        point = f"User liked the suggestion '{feedback.suggestion_name}'."
+        if feedback.comments:
+            point += f" Comment: {feedback.comments}"
+        agent_service.add_learning_point(current_user.id, point, db)
+        
     return {"status": "success"}
 
 @router.get("/stats/{user_id}", response_model=AIAgentStats)
@@ -74,22 +83,26 @@ async def get_ai_stats(user_id: str, db: Session = Depends(get_db)):
 
 
 
+from ..config import settings
+
 try:
     from google.cloud import speech
 except ImportError:
     speech = None
 
-    speech = None
-
 # Initialize Gemini
-API_KEY = os.environ.get("GEMINI_API_KEY")
+API_KEY = settings.GEMINI_API_KEY
 if not API_KEY:
-    print("WARNING: GEMINI_API_KEY not found in environment variables.")
+    print("WARNING: GEMINI_API_KEY not found in settings. AI features will be disabled.")
 else:
-    genai.configure(api_key=API_KEY)
+    try:
+        genai.configure(api_key=API_KEY)
+        print("Gemini AI Configured Successfully.")
+    except Exception as e:
+        print(f"Error configuring Gemini AI: {e}")
 
 # Model Configuration
-DEFAULT_MODEL = "gemini-2.0-flash-exp" # Using flash-exp for 2.0 or 1.5-flash
+DEFAULT_MODEL = "gemini-1.5-flash" 
 ADVANCED_MODEL = "gemini-1.5-pro"
 MEDLM_MODEL = "medlm-large"
 
@@ -166,6 +179,9 @@ async def get_feedback_history(case_id: str, db: Session = Depends(get_db)):
 
 @router.post("/chat")
 async def chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not API_KEY:
+        return {"response": "AI Service Unavailable. Please configure GEMINI_API_KEY in your environment."}
+
     model_name = request.model or await get_active_model_name(db)
     
     # Securely override user info
@@ -197,7 +213,7 @@ async def chat(request: ChatRequest, current_user: User = Depends(get_current_us
         return {"response": response.text}
     except Exception as e:
         print(f"Chat Error: {e}")
-        return {"response": "I'm sorry, I'm having trouble with the AI service."}
+        return {"response": f"AI Service Error: {str(e)}"}
 
 @router.post("/general_chat")
 async def general_chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -259,10 +275,17 @@ async def agent_chat(request: ChatRequest, current_user: User = Depends(get_curr
     # Simple summary if string not present
     response_text = result.get("message", "Task Executed.")
     
+    # Fetch metadata for frontend (Avatar, Voice)
+    agent_info = None
+    agent = orchestrator.get_agent_for_task(task)
+    if agent:
+        agent_info = agent.get_metadata()
+
     return {
         "response": response_text,
         "result": result,
-        "routed_to": task
+        "routed_to": task,
+        "agent": agent_info
     }
 
 class AgentTaskRequest(BaseModel):
@@ -639,7 +662,7 @@ async def analyze_patient_record(
     db: Session = Depends(get_db)
 ):
     """
-    Trigger AI analysis for an existing uploaded record.
+    Trigger AI analysis and Index for RAG.
     """
     record = db.query(MedicalRecord).filter(MedicalRecord.id == record_id).first()
     if not record:
@@ -674,10 +697,8 @@ async def analyze_patient_record(
         )
         
         if "error" in analysis:
-             # Just note it but don't crash 500 if AI fails slightly
              print(f"Analysis warning: {analysis['error']}")
-             # Return error state
-             pass
+             return {"status": "error", "message": f"AI Analysis Failed: {analysis['error']}"}
         else:
             # Update Record
             record.type = analysis.get("type", "Document")
@@ -685,6 +706,24 @@ async def analyze_patient_record(
             record.content_text = analysis.get("content_text", "")
             record.ai_summary = analysis.get("summary", "Analysis completed.")
             record.metadata_ = analysis
+            
+            # 1. RAG Vector Indexing (DB)
+            # Compute embedding for the record (summary + content snippet)
+            text_to_embed = f"{record.title}\n{record.ai_summary}\n{record.content_text[:1000]}"
+            embedding = agent_service.vector_store.get_embedding(text_to_embed)
+            if embedding:
+                record.embedding = embedding
+            
+            # 2. Agent Knowledge Indexing (Fast Retrieval)
+            if current_user.patient_profile:
+                # Store in agent vector store associated with patient_id (or user_id logic)
+                # Maps patient's record to the USER's knowledge graph if user is patient
+                agent_service.index_medical_record(
+                    current_user.id, 
+                    record.id, 
+                    record.content_text[:2000], # Store meaningful chunk
+                    record.ai_summary
+                )
             
             db.commit()
         
@@ -696,13 +735,47 @@ async def analyze_patient_record(
 
 @router.post("/patient/chat")
 async def patient_chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # 1. Fetch records
+    # 1. Fetch records & Profile & Health Data
     records = []
+    profile_text = ""
+    health_data_text = ""
+    
     if current_user.patient_profile:
+        # A. Records
         records = db.query(MedicalRecord).filter(MedicalRecord.patient_id == current_user.patient_profile.id).all()
+        
+        # B. Profile (Height/Weight/Conditions)
+        p = current_user.patient_profile
+        profile_text = f"""
+        Patient Profile:
+        - Name: {p.name}
+        - Age: {p.age} | Sex: {p.sex} | Blood: {p.blood_type}
+        - Height: {p.height} cm | Weight: {p.weight} kg
+        - Conditions: {', '.join(p.baseline_illnesses or [])}
+        - Allergies: {', '.join(p.allergies or [])}
+        - Medications: {', '.join([m.name for m in p.medications] if p.medications else [])}
+        """
+        
+        # C. Recent Health Data (Integrations)
+        # Fetch last 3 days
+        from datetime import timedelta
+        since = datetime.utcnow() - timedelta(days=3)
+        h_data = db.query(HealthData).filter(
+            HealthData.user_id == current_user.id,
+            HealthData.source_timestamp >= since
+        ).order_by(HealthData.data_type, HealthData.source_timestamp.desc()).all()
+        
+        if h_data:
+            health_data_text = "\nRecent Health Metrics (Integrations):\n"
+            # simple grouping to show latest of each type or avg
+            seen_types = set()
+            for hd in h_data:
+                if hd.data_type not in seen_types:
+                    health_data_text += f"- {hd.data_type}: {hd.value} {hd.unit} ({hd.source_timestamp.strftime('%Y-%m-%d %H:%M')})\n"
+                    seen_types.add(hd.data_type)
     
     # 2. Build Context
-    context_str = "Patient Medical Records:\n"
+    context_str = profile_text + health_data_text + "\nMedical Records:\n"
     if records:
         for r in records[-10:]: # limit to last 10
             context_str += f"- [{r.created_at.strftime('%Y-%m-%d')}] {r.type} - {r.title}: {r.ai_summary}\n"
@@ -714,3 +787,93 @@ async def patient_chat(request: ChatRequest, current_user: User = Depends(get_cu
     
     # 4. Call standard chat
     return await chat(request, current_user, db)
+
+@router.get("/report/comprehensive/{patient_id}")
+async def generate_comprehensive_report(patient_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Generates a full status report taking into account:
+    - Demographics
+    - Chronic Conditions
+    - Medications
+    - Recent Health Data (Steps, Vitals)
+    - Recent Lab Results/Records
+    """
+    if not API_KEY:
+        return {"report": "AI Service Unavailable"}
+        
+    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    if not patient:
+         raise HTTPException(status_code=404, detail="Patient not found")
+         
+    # 1. Gather Context
+    # Meds
+    meds_list = ", ".join([f"{m.name} ({m.dosage}, {m.frequency})" for m in patient.medications]) if patient.medications else "None"
+    
+    # Conditions
+    conditions = ", ".join(patient.baseline_illnesses or [])
+    
+    # Health Data (Last 7 Days)
+    from datetime import timedelta
+    since = datetime.utcnow() - timedelta(days=7)
+    h_data = db.query(HealthData).filter(
+        HealthData.user_id == patient.user_id,
+        HealthData.source_timestamp >= since
+    ).all()
+    
+    vitals_summary = ""
+    if h_data:
+        # Simple aggregation: avg heart rate, total steps (avg/day), latest weight
+        steps = [d.value for d in h_data if d.data_type == 'steps']
+        hr = [d.value for d in h_data if d.data_type == 'heart_rate']
+        weights = [d.value for d in h_data if d.data_type == 'weight']
+        
+        avg_steps = sum(steps)/len(steps) if steps else 0
+        avg_hr = sum(hr)/len(hr) if hr else 0
+        latest_weight = weights[0] if weights else (patient.weight or 0)
+        
+        vitals_summary = f"""
+        - Avg Daily Steps (7d): {int(avg_steps)}
+        - Avg Heart Rate (7d): {int(avg_hr)} bpm
+        - Latest Weight: {latest_weight} kg (change vs profile: {latest_weight - (patient.weight or 0):.1f}kg)
+        """
+    else:
+        vitals_summary = "No recent wearable data found."
+
+    # Labs/Records
+    records = db.query(MedicalRecord).filter(MedicalRecord.patient_id == patient_id).order_by(MedicalRecord.created_at.desc()).limit(5).all()
+    recent_labs = "\n".join([f"- {r.created_at.strftime('%Y-%m-%d')} [{r.type}]: {r.title} ({r.ai_summary})" for r in records])
+
+    prompt = f"""
+    Generate a Comprehensive Clinical Status Report for this patient.
+    
+    PATIENT: {patient.name} ({patient.sex}, Age: {patient.age})
+    Biometrics: Height {patient.height}cm, Weight {patient.weight}kg
+    
+    CLINICAL CONTEXT:
+    - Chronic Conditions: {conditions}
+    - Current Medications: {meds_list}
+    
+    RECENT LABS & RECORDS:
+    {recent_labs}
+    
+    WEARABLE/VITALS DATA (Last 7 Day Trends):
+    {vitals_summary}
+    
+    INSTRUCTIONS:
+    1. Summarize current health status and stability of chronic conditions.
+    2. Analyze medication adherence or potential interactions (if any obvious red flags).
+    3. Interpret recent lab trends in context of conditions.
+    4. Provide actionable recommendations for the patient (lifestyle, follow-up).
+    5. Flag any urgent concerns based on vitals or labs.
+    
+    Format nicely in Markdown.
+    """
+    
+    try:
+        system_instruction = agent_service.get_system_instruction(current_user.id, current_user.role, db)
+        model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction)
+        response = model.generate_content(prompt)
+        return {"report": response.text}
+    except Exception as e:
+        print(f"Comprehensive Report Error: {e}")
+        return {"report": "Could not generate report."}

@@ -77,6 +77,8 @@ class Patient(Base):
     name = Column(String)
     dob = Column(String)
     blood_type = Column(String)
+    height = Column(Float) # cm
+    weight = Column(Float) # kg
     allergies = Column(JSON) # List of strings
     baseline_illnesses = Column(JSON) # List of strings
     contact_info = Column(JSON) # {phone, email, address}
@@ -347,5 +349,40 @@ class ResearchContribution(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 User.token_wallet = relationship("TokenWallet", uselist=False, back_populates="user")
-TokenWallet.transactions = relationship("TokenTransaction", back_populates="wallet")
+# --- Health Integration Models ---
+
+class HealthIntegration(Base):
+    __tablename__ = "health_integrations"
+    
+    id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    provider = Column(String) # 'samsung', 'apple', 'google_fit', 'withings'
+    status = Column(String) # 'active', 'disconnected', 'error'
+    access_token = Column(String, nullable=True) # Encrypted in real app
+    refresh_token = Column(String, nullable=True)
+    last_sync_timestamp = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+
+class HealthData(Base):
+    __tablename__ = "health_data"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    integration_id = Column(String, ForeignKey("health_integrations.id"))
+    
+    data_type = Column(String) # 'steps', 'heart_rate', 'sleep_minutes', 'weight', 'blood_pressure'
+    value = Column(Float)
+    unit = Column(String) # 'count', 'bpm', 'minutes', 'kg', 'mmHg'
+    
+    source_timestamp = Column(DateTime) # When it was recorded on the device
+    recorded_at = Column(DateTime, default=datetime.utcnow) # When we saved it
+
+    user = relationship("User")
+    integration = relationship("HealthIntegration")
+
+User.health_integrations = relationship("HealthIntegration", back_populates="user")
+User.health_data = relationship("HealthData", back_populates="user")
+
 

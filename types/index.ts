@@ -168,6 +168,8 @@ export interface PatientProfile {
     bloodType: string;
     sex?: 'Male' | 'Female' | 'Other';
   };
+  height?: number; // in cm
+  weight?: number; // in kg
   allergies: string[];
   baselineIllnesses: string[];
   contact?: {
@@ -198,6 +200,8 @@ export interface PatientIntakeData {
   dob: string;
   sex: 'Male' | 'Female';
   bloodType?: string;
+  height?: number; // cm
+  weight?: number; // kg
   allergies: string[];
   baselineIllnesses: string[];
   contact: {
@@ -328,4 +332,10 @@ export interface AgentCapability {
   inputSchema: any;
   outputSchema: any;
   isActive: boolean;
+}
+
+export interface HealthIntegrationStatus {
+  provider: string;
+  status: string;
+  last_sync: string;
 }

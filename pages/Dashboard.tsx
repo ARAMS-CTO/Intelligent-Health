@@ -825,7 +825,7 @@ const Dashboard: React.FC = () => {
                                         placeholder={t('searchPlaceholder')}
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full pl-14 pr-6 py-4 border-none bg-white/60 dark:bg-slate-800/60 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-primary/10 text-sm font-bold transition-all shadow-inner placeholder:text-text-muted/40 tracking-tight"
+                                        className="w-full pl-16 pr-6 py-4 border-none bg-white/60 dark:bg-slate-800/60 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-primary/10 text-sm font-bold transition-all shadow-inner placeholder:text-text-muted/40 tracking-tight"
                                     />
                                     <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-primary">
                                         <svg className="h-6 w-6 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -839,7 +839,7 @@ const Dashboard: React.FC = () => {
                                         <select
                                             value={filterStatus}
                                             onChange={(e) => setFilterStatus(e.target.value)}
-                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-4 pl-11 pr-12 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none"
+                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-4 pl-14 pr-12 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none"
                                         >
                                             <option value="All">All Clusters</option>
                                             {caseStatuses.map(status => (
@@ -855,7 +855,7 @@ const Dashboard: React.FC = () => {
                                             id="sort-order"
                                             value={sortOption}
                                             onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-4 pl-11 pr-12 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none"
+                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-4 pl-14 pr-12 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none"
                                         >
                                             <option value="date-desc">Newest First</option>
                                             <option value="date-asc">Oldest First</option>

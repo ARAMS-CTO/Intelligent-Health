@@ -42,6 +42,13 @@ class User(BaseSchema):
     patient_profile_id: Optional[str] = None
     doctor_profile_id: Optional[str] = None
 
+class UserUpdate(BaseSchema):
+    name: Optional[str] = None
+    role: Optional[str] = None
+
+class PasswordReset(BaseModel):
+    new_password: str
+
 class AnonymisedPatientProfile(BaseSchema):
     age: int
     sex: Literal['Male', 'Female', 'Other']
@@ -243,6 +250,15 @@ class DoctorProfile(BaseSchema):
     certifications: List[Certification]
     profile_picture_url: str
 
+class TokenUsage(BaseModel):
+    date: str
+    tokens: int
+
+class StorageStats(BaseModel):
+    images_size_gb: float
+    documents_size_gb: float
+    logs_size_gb: float
+
 class AdminStats(BaseSchema):
     total_users: int
     active_cases: int
@@ -250,6 +266,8 @@ class AdminStats(BaseSchema):
     system_health: str # 'Optimal', 'Degraded', 'Critical'
     gemini_status: str
     db_status: str
+    token_usage_history: List[TokenUsage]
+    storage_stats: StorageStats
 
 class DashboardStats(BaseSchema):
     overdue: int

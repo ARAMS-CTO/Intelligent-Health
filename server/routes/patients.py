@@ -3,7 +3,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from ..schemas import PatientProfile, PatientIntakeData, Medication as MedicationSchema, PatientFile as PatientFileSchema, MedicalRecord as MedicalRecordSchema
 from ..database import get_db
-from ..models import Patient as PatientModel, Medication as MedicationModel, PatientFile as PatientFileModel, MedicalRecord as MedicalRecordModel
+from ..models import Patient as PatientModel, Medication as MedicationModel, PatientFile as PatientFileModel, MedicalRecord as MedicalRecordModel, HealthData, HealthIntegration
+from datetime import datetime, timedelta
 import uuid
 
 router = APIRouter()
@@ -88,6 +89,46 @@ async def add_file(patient_id: str, file: PatientFileSchema, db: Session = Depen
 async def get_patient_records(patient_id: str, db: Session = Depends(get_db)):
     records = db.query(MedicalRecordModel).filter(MedicalRecordModel.patient_id == patient_id).order_by(MedicalRecordModel.created_at.desc()).all()
     return records
+
+@router.get("/{patient_id}/health_data")
+async def get_patient_health_data(patient_id: str, days: int = 7, db: Session = Depends(get_db)):
+    """
+    Fetch aggregated health data (steps, heart rate, weight, etc.) for the last N days.
+    """
+    # Verify patient exists (and maybe matches current user logic if needed, but keeping it simple for now)
+    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    if not patient:
+        # It's possible the caller passed a user_id by mistake, or patient_id is from user.patient_profile.id
+        # Let's double check if patient_id is actually user_id?
+        # Typically we use patient_id (PatientModel.id) here.
+        raise HTTPException(status_code=404, detail="Patient not found")
+        
+    # We need to find the user_id associated with this patient to query HealthData
+    # HealthData is linked to User, not directly Patient (though they are 1:1 usually)
+    user_id = patient.user_id
+    if not user_id:
+         return {"data": [], "message": "No linked user account for this patient."}
+
+    since_date = datetime.utcnow() - timedelta(days=days)
+    
+    # query
+    data = db.query(HealthData).filter(
+        HealthData.user_id == user_id,
+        HealthData.source_timestamp >= since_date
+    ).order_by(HealthData.source_timestamp.desc()).all()
+    
+    # Group by type for easier frontend consumption
+    grouped = {}
+    for d in data:
+        if d.data_type not in grouped:
+            grouped[d.data_type] = []
+        grouped[d.data_type].append({
+            "value": d.value,
+            "unit": d.unit,
+            "timestamp": d.source_timestamp
+        })
+        
+    return grouped
 
 from ..routes.auth import get_current_user
 from ..models import User

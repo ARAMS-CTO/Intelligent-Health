@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ExtractedCaseData, PatientProfile, AIContextualSuggestion } from '../types/index';
 import { GeminiService, searchPatients } from '../services/api';
 import { ICONS } from '../constants/index';
@@ -15,6 +16,7 @@ interface VoiceCaseCreationModalProps {
 type Step = 'patient-selection' | 'recording' | 'transcribing' | 'augmenting' | 'reviewing' | 'error';
 
 const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen, onClose, onProceed }) => {
+    const navigate = useNavigate();
     const [step, setStep] = useState<Step>('patient-selection');
     const [transcript, setTranscript] = useState('');
     const [extractedData, setExtractedData] = useState<ExtractedCaseData | null>(null);
@@ -226,6 +228,21 @@ const VoiceCaseCreationModal: React.FC<VoiceCaseCreationModalProps> = ({ isOpen,
                                     </button>
                                 ))}
                             </div>
+
+                            {patientSearchQuery.length > 2 && patientSearchResults.length === 0 && (
+                                <div className="text-center py-8 animate-fade-in">
+                                    <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <p className="text-text-muted mb-4 font-medium">No patient found matching "{patientSearchQuery}"</p>
+                                    <button
+                                        onClick={() => { onClose(); navigate('/patient-intake'); }}
+                                        className="bg-primary/10 text-primary hover:bg-primary hover:text-white border border-primary/20 px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 mx-auto uppercase tracking-wide text-xs"
+                                    >
+                                        {ICONS.userPlus} Create New Patient
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -184,5 +184,78 @@ def seed_users():
     finally:
         db.close()
 
+from .models import AgentCapability
+
+def seed_agents():
+    db: Session = SessionLocal()
+    try:
+        agents = [
+            {
+                "id": "agent-doctor-clinical",
+                "agent_role": "Doctor",
+                "capability_name": "clinical_summary",
+                "description": "Generates clinical summaries from case data.",
+                "input_schema": {"case_id": "string"},
+                "output_schema": {"diagnosisConfidence": "float", "primaryDiagnosis": "string"},
+                "is_active": True
+            },
+            {
+                "id": "agent-doctor-treatment",
+                "agent_role": "Doctor",
+                "capability_name": "treatment_plan",
+                "description": "Generates detailed treatment plans.",
+                "input_schema": {"case_id": "string"},
+                "output_schema": {"plan": "string"},
+                "is_active": True
+            },
+            {
+                "id": "agent-nurse-triage",
+                "agent_role": "Nurse",
+                "capability_name": "triage",
+                "description": "Triages cases based on urgency.",
+                "input_schema": {"criteria": "string"},
+                "output_schema": {"priority": "string"},
+                "is_active": True
+            },
+            {
+                "id": "agent-billing-estimate",
+                "agent_role": "Billing",
+                "capability_name": "generate_estimate",
+                "description": "Generates cost estimates for cases.",
+                "input_schema": {"case_id": "string"},
+                "output_schema": {"total_cost": "float"},
+                "is_active": True
+            },
+            {
+                "id": "agent-researcher-augment",
+                "agent_role": "Researcher",
+                "capability_name": "augment_case",
+                "description": "Augments case data with medical knowledge.",
+                "input_schema": {"extracted_data": "json"},
+                "output_schema": {"suggestions": "list"},
+                "is_active": True
+            }
+        ]
+        
+        for agent_data in agents:
+            existing = db.query(AgentCapability).filter(AgentCapability.id == agent_data["id"]).first()
+            if not existing:
+                db.add(AgentCapability(**agent_data))
+                print(f"Created Agent Capability: {agent_data['capability_name']}")
+            else:
+                # Update basic info
+                existing.description = agent_data["description"]
+                existing.input_schema = agent_data["input_schema"]
+                existing.output_schema = agent_data["output_schema"]
+                print(f"Updated Agent Capability: {agent_data['capability_name']}")
+                
+        db.commit()
+    except Exception as e:
+        print(f"Error seeding agents: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 if __name__ == "__main__":
     seed_users()
+    seed_agents()

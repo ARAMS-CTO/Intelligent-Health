@@ -34,6 +34,9 @@ import { ResearchCommunity } from './pages/ResearchCommunity';
 import RadiologyDashboard from './pages/RadiologyDashboard';
 import LabDashboard from './pages/LabDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
+import { IntegrationsPage } from './pages/patient/Integrations';
+import { AdminIntegrationsDashboard } from './pages/admin/IntegrationDashboard';
+import CreateCaseForm from './components/CreateCaseForm';
 
 // A modal component for the login form
 const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -124,7 +127,8 @@ const AppLayout: React.FC = () => {
                                             user.role === Role.Radiologist ? <Navigate to="/radiology" replace /> :
                                                 user.role === Role.LabTechnician ? <Navigate to="/lab" replace /> :
                                                     user.role === Role.HospitalManager ? <Navigate to="/manager" replace /> :
-                                                        <Navigate to="/dashboard" replace />
+                                                        user.role === Role.Admin ? <Navigate to="/admin" replace /> :
+                                                            <Navigate to="/dashboard" replace />
                         ) : (
                             <LandingPage onGetStarted={() => setLoginModalOpen(true)} />
                         )
@@ -288,6 +292,25 @@ const AppLayout: React.FC = () => {
                         element={
                             <ProtectedRoute allowedRoles={[Role.HospitalManager, Role.Admin]}>
                                 <ManagerDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/integrations"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Patient, Role.Admin]}>
+                                <IntegrationsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/integrations"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Admin]}>
+                                <AdminLayout>
+                                    <AdminIntegrationsDashboard />
+                                </AdminLayout>
                             </ProtectedRoute>
                         }
                     />

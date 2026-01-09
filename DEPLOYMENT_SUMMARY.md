@@ -2,7 +2,7 @@
 
 ## 🚀 Live Application
 **Production URL:** https://intelligent-health-977696014858.us-central1.run.app
-**Current Version:** v0.1.1 (Includes Login Fixes & Role Redirection)
+**Current Version:** v0.1.3 (Enhanced Patient Dashboard & Data Context)
 
 ## ✅ Implemented Features & Infrastructure
 
@@ -28,6 +28,9 @@
   - Patient-friendly medical explanations
   - Automated case triage by urgency (Nurse Agent) **(New)**
   - Enhanced Billing Estimates & Approvals **(New)**
+  - **Health Integrations**: Connect/Disconnect third-party providers & Sync Data **(New)**
+  - **Enhanced Patient Dashboard**: Vitals visualization & comprehensive profile view **(New)**
+  - **Context-Aware AI Chat**: Patient agents now see full medical profile & recent health metrics **(New)**
   - **Research Agent**: `ResearcherAgent` for guidelines & condition research.
   - **PayPal Integration**: Payment processing for credits & donations.
 

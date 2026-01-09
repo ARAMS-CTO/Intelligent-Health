@@ -61,7 +61,41 @@ async def update_doctor_profile(profile_id: str, updates: DoctorProfile, current
     
     db.commit()
     db.refresh(profile)
+    db.refresh(profile)
     return profile
+
+from passlib.context import CryptContext
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from ..schemas import UserUpdate, PasswordReset
+
+@router.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: str, updates: UserUpdate, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != "Admin":
+         raise HTTPException(status_code=403, detail="Only Admins can update users")
+    
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if updates.name: user.name = updates.name
+    if updates.role: user.role = updates.role
+    
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.post("/users/{user_id}/reset-password")
+async def reset_password(user_id: str, payload: PasswordReset, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != "Admin":
+         raise HTTPException(status_code=403, detail="Only Admins can reset passwords")
+    
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.hashed_password = pwd_context.hash(payload.new_password)
+    db.commit()
+    return {"message": "Password reset successfully"}
 
 @router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):

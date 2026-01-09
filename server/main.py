@@ -28,13 +28,43 @@ app.add_middleware(
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     # Allow Google Sign-In popup to communicate back
-    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
+    # Remove COOP to default to unsafe-none effectively
+    response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+
+    # Cache Control
+    path = request.url.path
+    if path.endswith("service-worker.js"):
+         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    elif path.endswith("index.html") or path == "/":
+         response.headers["Cache-Control"] = "no-cache, must-revalidate"
+
     return response
 
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "Intelligent Health API"}
+
+@app.on_event("startup")
+async def startup_event():
+    from .database import SessionLocal
+    from .seed_data import seed_agents, seed_users
+    from .models import User, AgentCapability
+    
+    db = SessionLocal()
+    try:
+        # Auto-seed if empty (Ephemeral DB handling)
+        if not db.query(User).first():
+            print("Startup: Auto-seeding Users...")
+            seed_users()
+            
+        if not db.query(AgentCapability).first():
+            print("Startup: Auto-seeding Agents...")
+            seed_agents()
+    except Exception as e:
+        print(f"Startup Seed Error: {e}")
+    finally:
+        db.close()
 
 # Include Routers via init_app
 init_app(app)

@@ -121,6 +121,54 @@ const PatientAppointments = ({ cases }: { cases: any[] }) => {
     );
 };
 
+const PatientVitals = ({ healthData, profile }: { healthData: any, profile: any }) => {
+    // Helper to get latest value
+    const getLatest = (type: string) => {
+        if (!healthData || !healthData[type] || healthData[type].length === 0) return null;
+        return healthData[type][0];
+    };
+
+    const steps = getLatest('steps');
+    const heartRate = getLatest('heart_rate');
+    const weight = getLatest('weight'); // From integration
+    // Fallback to profile weight/height if not in integration data
+    const displayWeight = weight ? `${weight.value.toFixed(1)} ${weight.unit}` : (profile?.weight ? `${profile.weight} kg` : '--');
+    const displayHeight = profile?.height ? `${profile.height} cm` : '--';
+
+    return (
+        <div className="glass-card p-6 rounded-2xl mb-8">
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                {ICONS.activity} Recent Vitals & Activity
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+                    <div className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase mb-1">Steps (Today)</div>
+                    <div className="text-2xl font-black text-blue-900 dark:text-blue-100">{steps ? steps.value : '--'}</div>
+                    <div className="text-xs text-blue-400 dark:text-blue-500 mt-1">{steps ? 'Synced via App' : 'No data'}</div>
+                </div>
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800">
+                    <div className="text-xs text-red-600 dark:text-red-400 font-bold uppercase mb-1">Heart Rate</div>
+                    <div className="text-2xl font-black text-red-900 dark:text-red-100">{heartRate ? `${heartRate.value} bpm` : '--'}</div>
+                    <div className="text-xs text-red-400 dark:text-red-500 mt-1">{heartRate ? 'Avg. Last 24h' : 'No data'}</div>
+                </div>
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase mb-1">Weight</div>
+                    <div className="text-2xl font-black text-emerald-900 dark:text-emerald-100">{displayWeight}</div>
+                    <div className="text-xs text-emerald-400 dark:text-emerald-500 mt-1">Recorded</div>
+                </div>
+                <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-100 dark:border-purple-800">
+                    <div className="text-xs text-purple-600 dark:text-purple-400 font-bold uppercase mb-1">Height</div>
+                    <div className="text-2xl font-black text-purple-900 dark:text-purple-100">{displayHeight}</div>
+                    <div className="text-xs text-purple-400 dark:text-purple-500 mt-1">Profile</div>
+                </div>
+            </div>
+            <div className="mt-4 text-center">
+                <a href="/patient/integrations" className="text-primary text-sm font-bold hover:underline">Manage Integrations & Sync Data &rarr;</a>
+            </div>
+        </div>
+    );
+};
+
 const PatientAgentChat = ({ patientName }: { patientName: string }) => {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([
@@ -188,13 +236,23 @@ const PatientDashboard: React.FC = () => {
     // Mock Data (Replace with API calls)
     const [records, setRecords] = useState<MedicalRecord[]>([]);
     const [cases, setCases] = useState<any[]>([]);
+    const [healthData, setHealthData] = useState<any>({});
+    const [statsProfile, setStatsProfile] = useState<any>(null); // To store profile even if we don't have full object from context
 
     useEffect(() => {
         const loadData = async () => {
             if (user?.patientProfileId) {
                 try {
-                    const recs = await DataService.getPatientRecords(user.patientProfileId);
+                    const recs = await DataService.getMedicalRecords(user.patientProfileId);
                     setRecords(recs);
+
+                    // Fetch Health Data & Profile
+                    const hData = await DataService.getPatientHealthData(user.patientProfileId);
+                    setHealthData(hData);
+
+                    const profile = await DataService.getPatientProfile(user.patientProfileId);
+                    setStatsProfile(profile);
+
                 } catch (e) {
                     console.error("Failed to load records", e);
                 }
@@ -204,7 +262,7 @@ const PatientDashboard: React.FC = () => {
                 // For now, if no ID, we can't fetch.
                 // But wait, user object might not have patientProfileId if it wasn't populated on login or refetch.
                 // Let's assume we can rely on DataService if we implemented it to look up by user ID?
-                // Current getPatientRecords takes patientId. 
+                // Current getPatientRecords takes patientId.
                 // Note: user.patientProfileId property exists on User interface?
             }
         };
@@ -217,7 +275,7 @@ const PatientDashboard: React.FC = () => {
 
             // Re-fetch records to get the full DB object with URL
             if (user?.patientProfileId) {
-                const recs = await DataService.getPatientRecords(user.patientProfileId);
+                const recs = await DataService.getMedicalRecords(user.patientProfileId);
                 setRecords(recs);
             } else {
                 // Fallback optimistic update if partial data
@@ -244,23 +302,29 @@ const PatientDashboard: React.FC = () => {
         try {
             const result = await GeminiService.analyzeRecord(recordId);
 
-            // Optimistic Update
+            if (result.status === 'error') {
+                showToast.error(result.message || "AI Analysis Failed");
+                return;
+            }
+
+            // Update State
             setRecords(prev => prev.map(r => {
                 if (r.id === recordId) {
                     return {
                         ...r,
-                        aiSummary: result.analysis.summary,
+                        aiSummary: result.analysis.summary || "Summary generated.",
                         type: result.analysis.type || r.type,
-                        title: result.analysis.title || r.title
+                        title: result.analysis.title || r.title,
+                        contentText: result.analysis.content_text,
                     };
                 }
                 return r;
             }));
 
             showToast.success("AI Summary Generated!");
-        } catch (e) {
+        } catch (e: any) {
             console.error("Analysis Failed", e);
-            throw e;
+            showToast.error(e.message || "Analysis request failed");
         }
     };
 
@@ -327,6 +391,8 @@ const PatientDashboard: React.FC = () => {
                                     </div>
                                 )}
                             </div>
+
+                            <PatientVitals healthData={healthData} profile={statsProfile} />
 
                             <HealthRecordsList records={records.slice(0, 3)} onUpload={handleUploadRecord} onGenerateSummary={handleGenerateSummary} />
                         </div>

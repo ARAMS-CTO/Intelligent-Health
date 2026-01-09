@@ -18,11 +18,17 @@ class PatientAgent(BaseAgent):
             self.model = genai.GenerativeModel("gemini-2.0-flash-exp") # Fast, conversational
 
     def can_handle(self, task_type: str) -> bool:
-        return task_type in ["explain_diagnosis", "chat_with_patient", "daily_checkup"]
+        return task_type in ["explain_diagnosis", "chat_with_patient", "daily_checkup", "medication_reminder", "generate_health_summary"]
 
     async def process(self, task: str, payload: Dict[str, Any], context: Dict[str, Any], db: Session) -> Dict[str, Any]:
         if task == "explain_diagnosis":
             return await self._explain(payload)
+        elif task == "daily_checkup":
+            return await self._daily_checkup(payload, context, db)
+        elif task == "medication_reminder":
+            return await self._medication_reminder(payload, context, db)
+        elif task == "generate_health_summary":
+            return await self._generate_health_summary(payload, context, db)
         return {"error": "Unknown task"}
 
     async def _explain(self, payload: Dict[str, Any]):
@@ -37,6 +43,105 @@ class PatientAgent(BaseAgent):
         """
         response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         return json.loads(response.text)
+
+    async def _daily_checkup(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
+        """Generates daily checkup questions based on patient profile."""
+        from ..models import Patient as PatientModel
+        
+        user_id = context.get("user_id")
+        patient_summary = payload.get("profile_summary", "")
+        
+        # If no summary, try to fetch from DB
+        if not patient_summary and user_id:
+            from ..models import User
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.patient_profile:
+                p = user.patient_profile
+                patient_summary = f"Age: {p.age}, Sex: {p.sex}, Conditions: {', '.join(p.baseline_illnesses or [])}, Medications: {len(p.medications or [])}"
+        
+        prompt = f"""
+        ACT AS: Caring Health Companion.
+        PATIENT PROFILE: {patient_summary or 'General patient'}
+        
+        Generate 3 personalized daily health check-in questions.
+        Be friendly and encouraging. Focus on wellness and medication adherence.
+        
+        OUTPUT JSON: {{ "questions": ["q1", "q2", "q3"], "greeting": "string" }}
+        """
+        try:
+            response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            return json.loads(response.text)
+        except Exception as e:
+            return {"questions": ["How are you feeling today?", "Did you take your medications?", "Any new symptoms?"], "greeting": "Good morning! Let's check in on your health."}
+
+    async def _medication_reminder(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
+        """Generates medication reminders with explanations."""
+        medications = payload.get("medications", [])
+        
+        if not medications:
+            return {"message": "No medications to remind about.", "reminders": []}
+        
+        prompt = f"""
+        ACT AS: Friendly Pharmacy Assistant.
+        MEDICATIONS: {medications}
+        
+        For each medication, generate a brief, friendly reminder with:
+        - Simple explanation of why it's important
+        - Best time to take it
+        - Any simple tips (with food, avoid alcohol, etc.)
+        
+        OUTPUT JSON: {{ "reminders": [{{ "name": "med name", "message": "friendly reminder", "timing": "when to take" }}] }}
+        """
+        try:
+            response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            return json.loads(response.text)
+        except Exception as e:
+            return {"error": str(e)}
+
+    async def _generate_health_summary(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
+        """Generates a comprehensive health summary for the patient."""
+        from ..models import User, MedicalRecord
+        
+        user_id = context.get("user_id")
+        if not user_id:
+            return {"error": "User context required"}
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user or not user.patient_profile:
+            return {"error": "Patient profile not found"}
+        
+        p = user.patient_profile
+        records = db.query(MedicalRecord).filter(MedicalRecord.patient_id == p.id).order_by(MedicalRecord.created_at.desc()).limit(5).all()
+        
+        records_summary = "\n".join([f"- {r.type}: {r.title} - {r.ai_summary}" for r in records]) if records else "No recent records"
+        
+        prompt = f"""
+        ACT AS: Personal Health Advisor.
+        Generate a friendly, comprehensive health summary for this patient.
+        
+        PATIENT:
+        - Name: {p.name}
+        - Age: {p.age}, Sex: {p.sex}
+        - Conditions: {', '.join(p.baseline_illnesses or ['None reported'])}
+        - Allergies: {', '.join(p.allergies or ['None'])}
+        - Current Medications: {len(p.medications or [])} active
+        
+        RECENT RECORDS:
+        {records_summary}
+        
+        OUTPUT JSON:
+        {{
+            "summary": "overall health status paragraph",
+            "recommendations": ["actionable tip 1", "tip 2", "tip 3"],
+            "upcoming_actions": ["next steps"],
+            "wellness_score": number (1-100)
+        }}
+        """
+        try:
+            response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            return json.loads(response.text)
+        except Exception as e:
+            return {"error": str(e)}
 
 class InsuranceAgent(BaseAgent):
     def __init__(self):

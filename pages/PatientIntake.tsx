@@ -14,6 +14,8 @@ const initialFormData: Omit<PatientIntakeData, 'id'> = {
     fullName: { firstName: '', lastName: '' },
     dob: '',
     sex: 'Male',
+    height: undefined,
+    weight: undefined,
     bloodType: '',
     allergies: [],
     baselineIllnesses: [],
@@ -27,6 +29,8 @@ const formSchema = {
     fullName: { firstName: "string", lastName: "string" },
     dob: "date (YYYY-MM-DD)",
     sex: "string (Male, Female, Other)",
+    height: "number (cm)",
+    weight: "number (kg)",
     bloodType: "string (A+, A-, B+, B-, AB+, AB-, O+, O-)",
     allergies: "array of strings",
     baselineIllnesses: "array of strings",
@@ -212,6 +216,26 @@ const PatientIntake: React.FC = () => {
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                         </div>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className={labelClasses}>Height (cm)</label>
+                                    <input
+                                        type="number"
+                                        value={formData.height || ''}
+                                        onChange={e => setFormData(prev => ({ ...prev, height: parseFloat(e.target.value) }))}
+                                        className={inputFieldClasses}
+                                        placeholder="175"
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelClasses}>Weight (kg)</label>
+                                    <input
+                                        type="number"
+                                        value={formData.weight || ''}
+                                        onChange={e => setFormData(prev => ({ ...prev, weight: parseFloat(e.target.value) }))}
+                                        className={inputFieldClasses}
+                                        placeholder="70"
+                                    />
                                 </div>
                                 <div>
                                     <label className={labelClasses}>Allergies (comma-separated)</label>

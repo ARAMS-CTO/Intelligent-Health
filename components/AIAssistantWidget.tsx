@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { GeminiService } from '../services/api';
+import { GeminiService, DataService } from '../services/api';
 import { useAuth } from './Auth';
+import { AVATARS } from '../constants/index';
 
 export const AIAssistantWidget: React.FC = () => {
     const { user } = useAuth();
@@ -9,9 +10,12 @@ export const AIAssistantWidget: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
-    const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([]);
+    const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string, avatar?: string }[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const recognitionRef = useRef<any>(null);
+    const [activeAgent, setActiveAgent] = useState<{ name: string, role: string, avatar: string } | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
     // Initialize Speech Recognition
     useEffect(() => {
@@ -52,21 +56,58 @@ export const AIAssistantWidget: React.FC = () => {
         setMessages(prev => [...prev, newMsg]);
         setTranscript('');
         setIsProcessing(true);
+        setActiveAgent(null); // Reset agent on new turn
 
         try {
             // Context aware prompt
             let context = `Current Page: ${location.pathname}. `;
             if (location.pathname.includes('/cases/')) context += "Focus on the active case details.";
 
-            // Call AI
-            // We use general chat but inject page context
-            const responseText = await GeminiService.getGeneralChatResponse(messages, text + ` [Context: ${context}]`, user?.id);
+            // Use Agent Chat routing
+            let responseText = "";
+            let agentInfo = null;
 
-            const aiMsg = { role: 'model' as const, text: responseText };
+            if (selectedImage) {
+                // Multimodal Flow
+                // 1. Upload File
+                const uploadRes = await DataService.uploadFile(selectedImage);
+
+                // 2. Chat with URL reference
+                const visionPrompt = text ? text : "Analyze this image.";
+                // We pass the URL in the text for the backend to extract? 
+                // Or we need a specific 'agentChatWithImage' method?
+                // Let's append the context:
+                const contextWithImage = `${context} [Image Context: ${uploadRes.url}]`;
+
+                const result = await GeminiService.agentChat(visionPrompt + ` ${contextWithImage}`);
+                responseText = result.response;
+                agentInfo = result.agent;
+                setSelectedImage(null);
+            } else {
+                const result = await GeminiService.agentChat(text + ` [Context: ${context}]`);
+                responseText = result.response || result.message;
+                agentInfo = result.agent;
+            }
+
+            // Handle Agent Info if present
+            let avatar = undefined;
+            if (agentInfo) {
+                setActiveAgent({
+                    name: agentInfo.name,
+                    role: agentInfo.role,
+                    avatar: AVATARS[agentInfo.role as keyof typeof AVATARS] || AVATARS.Default
+                });
+                avatar = AVATARS[agentInfo.role as keyof typeof AVATARS] || AVATARS.Default;
+            } else {
+                // Fallback to copilot? (Orchestrator fallback)
+                setActiveAgent({ name: "Copilot", role: "Assistant", avatar: AVATARS.Default });
+            }
+
+            const aiMsg = { role: 'model' as const, text: responseText || "I processed that.", avatar };
             setMessages(prev => [...prev, aiMsg]);
 
-            // Speak response
-            speak(responseText);
+            // Speak response with Agent Voice
+            speak(responseText, agentInfo?.role);
         } catch (e) {
             console.error(e);
             setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting." }]);
@@ -75,9 +116,26 @@ export const AIAssistantWidget: React.FC = () => {
         }
     };
 
-    const speak = (text: string) => {
+    const speak = (text: string, role?: string) => {
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
+
+            // Dynamic Voice Selection
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                let voice = null;
+                if (role?.includes("Doctor")) {
+                    voice = voices.find(v => v.name.includes("Male") || v.name.includes("David") || v.lang === "en-US") || voices[0];
+                } else if (role?.includes("Nurse")) {
+                    voice = voices.find(v => v.name.includes("Female") || v.name.includes("Zira") || v.name.includes("Samantha")) || voices[0];
+                } else if (role?.includes("Research")) {
+                    voice = voices.find(v => v.name.includes("UK") || v.lang === "en-GB") || voices[0];
+                } else {
+                    voice = voices.find(v => v.default) || voices[0];
+                }
+                if (voice) utterance.voice = voice;
+            }
+
             window.speechSynthesis.speak(utterance);
         }
     };
@@ -94,8 +152,8 @@ export const AIAssistantWidget: React.FC = () => {
                             <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                             </div>
-                            <span className="font-bold">AI Copilot</span>
-                            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Beta</span>
+                            <span className="font-bold">{activeAgent ? activeAgent.role : "AI Copilot"}</span>
+                            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">{activeAgent ? activeAgent.name : "Beta"}</span>
                         </div>
                         <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -113,7 +171,14 @@ export const AIAssistantWidget: React.FC = () => {
                             </div>
                         )}
                         {messages.map((m, i) => (
-                            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 animate-fade-in`}>
+                                {m.role === 'model' && (
+                                    <img
+                                        src={m.avatar || AVATARS.Default}
+                                        className="w-8 h-8 rounded-full border border-slate-200 bg-white"
+                                        alt="Agent"
+                                    />
+                                )}
                                 <div className={`max-w-[85%] rounded-2xl p-3 px-4 text-sm ${m.role === 'user'
                                     ? 'bg-gradient-to-r from-primary to-indigo-600 text-white rounded-br-sm shadow-lg'
                                     : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-bl-sm shadow-md'
@@ -143,6 +208,27 @@ export const AIAssistantWidget: React.FC = () => {
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                         </button>
+
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                    setSelectedImage(e.target.files[0]);
+                                    setTranscript(prev => prev || "Analyze this image");
+                                }
+                            }}
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`p-2.5 rounded-xl transition-all ${selectedImage ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                            title="Upload Image"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </button>
+
                         <input
                             type="text"
                             className="flex-1 bg-gray-100 dark:bg-gray-800 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none placeholder:text-gray-400"

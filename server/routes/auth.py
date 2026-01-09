@@ -247,11 +247,22 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
 
         print(f"Google Login: Verified email {email}. Proceeding to DB lookup...")
 
+        # FIX: Enforce Admin Role for specific user (Aram)
+        if email.lower() == "aram.services.pro@gmail.com":
+             request.role = "Admin"
+
         # 2. Find or create user
         user = db.query(UserModel).options(
             joinedload(UserModel.patient_profile),
             joinedload(UserModel.doctor_profile)
         ).filter(UserModel.email == email).first()
+
+        # FIX: Upgrade existing user if role mismatch
+        if user and email.lower() == "aram.services.pro@gmail.com" and user.role != "Admin":
+             print(f"Upgrading user {email} to Admin.")
+             user.role = "Admin"
+             db.commit()
+             db.refresh(user)
         
         if not user:
             print(f"Creating new user for Google Login: {email}")

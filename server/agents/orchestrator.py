@@ -6,6 +6,7 @@ from .doctor import DoctorAgent
 from .specialists import EmergencyAgent, LaboratoryAgent, RadiologyAgent
 from .support import PatientAgent, InsuranceAgent, PricingAgent, RecoveryAgent, PsychologyAgent
 from .researcher import ResearcherAgent
+from .integration_agent import IntegrationAgent
 
 import google.generativeai as genai
 import json
@@ -34,7 +35,8 @@ class AgentOrchestrator:
             PricingAgent(),
             RecoveryAgent(),
             PsychologyAgent(),
-            ResearcherAgent()
+            ResearcherAgent(),
+            IntegrationAgent()
         ]
 
     async def route_task(self, query: str) -> Dict[str, Any]:
@@ -45,7 +47,16 @@ class AgentOrchestrator:
             return {"error": "Router LLM not configured"}
 
         # Dynamic Capability List
-        possible_tasks = ['triage', 'diagnose', 'analyze_labs', 'analyze_image', 'check_eligibility', 'estimate_cost', 'coping_strategies', 'research_condition', 'find_guidelines', 'drug_interaction_deep_dive', 'generate_rehab_plan', 'emergency_protocol', 'mental_health_screening']
+        possible_tasks = [
+            'triage', 'diagnose', 'analyze_labs', 'analyze_image', 'check_eligibility', 
+            'estimate_cost', 'coping_strategies', 'research_condition', 'find_guidelines', 
+            'drug_interaction_deep_dive', 'generate_rehab_plan', 'emergency_protocol', 
+            'mental_health_screening', 'treatment_plan', 'review_labs', 'clinical_summary', 
+            'augment_case', 'daily_checkin', 'vitals_check', 'monitor', 'initial_assessment',
+            'check_interactions', 'check_drug_interaction', 'prior_auth', 'chat_with_patient',
+            'daily_checkup', 'crash_cart_recommendation', 'rapid_triage', 'validate_results',
+            'analyze_xray', 'analyze_ct'
+        ]
         caps_desc = "\n".join([f"- {a.name}: {a.description} (Tasks: {[t for t in possible_tasks if a.can_handle(t)]})" for a in self.agents])
 
         prompt = f"""
@@ -118,8 +129,25 @@ class AgentOrchestrator:
         if not agent:
              return {"status": "error", "message": f"No agent found capable of handling task: {task}"}
         
-        # Log the dispatch?
-        # print(f"Dispatching task '{task}' to agent '{agent.name}'")
+        # Check Admin Configuration (Active Status)
+        from ..models import AgentCapability
+        capability = db.query(AgentCapability).filter(AgentCapability.capability_name == task).first()
+        if capability and not capability.is_active:
+             return {"status": "error", "message": f"Agent Capability '{task}' is currently disabled by Administrators."}
+        
+        # Log execution
+        try:
+             # Using inline import to avoid circles
+             from ..models import SystemLog
+             log = SystemLog(
+                 event_type="ai_query", 
+                 user_id=user_id if user_id else "system", 
+                 details={"task": task, "agent": agent.name, "action": "dispatch", "status": "started"}
+             )
+             db.add(log)
+             db.commit()
+        except Exception as e:
+             print(f"Orchestrator Log Error: {e}")
         
         return await agent.process(task, payload, context, db)
 

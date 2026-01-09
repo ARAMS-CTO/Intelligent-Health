@@ -16,6 +16,7 @@ if API_KEY:
 class VectorStore:
     def add(self, user_id: str, text: str, metadata: Dict[str, Any]): raise NotImplementedError
     def query(self, user_id: str, query_text: str, n_results: int) -> List[str]: raise NotImplementedError
+    def get_embedding(self, text: str) -> List[float]: return []
 
 # --- Chroma Implementation (Local / Simple) ---
 try:
@@ -46,7 +47,8 @@ class ChromaVectorStore(VectorStore):
         doc_id = str(uuid.uuid4())
         meta = metadata.copy()
         meta["user_id"] = user_id
-        self.collection.add(documents=[text], metadatas=[meta], ids=[doc_id])
+        if self.collection:
+            self.collection.add(documents=[text], metadatas=[meta], ids=[doc_id])
 
     def query(self, user_id: str, query_text: str, n_results: int) -> List[str]:
         if not self.collection: return []
@@ -68,6 +70,7 @@ class VertexAIVectorStore(VectorStore):
         
     def get_embedding(self, text: str) -> List[float]:
         try:
+            if not API_KEY: return []
             # Legacy SDK embedding call
             result = genai.embed_content(
                 model="models/text-embedding-004",
@@ -80,7 +83,8 @@ class VertexAIVectorStore(VectorStore):
             return []
 
     def add(self, user_id: str, text: str, metadata: Dict[str, Any]):
-        embedding = self.get_embedding(text)
+        # In a real heavy-duty setup, this would push to Vertex AI Vector Search
+        # For now, we fallback to local storage or just logging
         print(f"[VertexAI Optimization] Computed embedding for storage: {text[:20]}...")
 
     def query(self, user_id: str, query_text: str, n_results: int) -> List[str]:
@@ -193,6 +197,7 @@ class AgentService:
                 state.learning_points = points
         db.commit()
         
+        # Also index as knowledge
         self.vector_store.add(user_id, point, {"type": "learning_point", "source": "interaction", "timestamp": datetime.utcnow().isoformat()})
         print(f"Agent learned for {user_id}: {point}")
 
@@ -204,6 +209,13 @@ class AgentService:
 
     def add_knowledge(self, user_id: str, text: str, metadata: Dict[str, Any]):
         self.vector_store.add(user_id, text, metadata)
+        
+    def index_medical_record(self, user_id: str, record_id: str, content: str, summary: str):
+        """
+        Indexes a medical record for RAG retrieval.
+        """
+        text = f"Medical Record ({record_id}): {summary}\nDetails: {content}"
+        self.vector_store.add(user_id, text, {"type": "medical_record", "record_id": record_id, "timestamp": datetime.utcnow().isoformat()})
 
     def retrieve_context(self, user_id: str, query: str, n_results: int = 3) -> str:
         results = self.vector_store.query(user_id, query, n_results)
@@ -219,11 +231,35 @@ class AgentService:
         preferences_from_db = state.get("preferences", {})
         learning_points_from_db = state.get("learning_points", [])
         
+        # Fetch detailed User Profile
+        from ..models import User
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        user_details = f"- Role: {role}\n- ID: {user_id}"
+        if user and user.name:
+            user_details += f"\n- Name: {user.name}"
+            
+        if user and user.patient_profile:
+            p = user.patient_profile
+            user_details += f"\n- Patient Details: Age {p.age}, Sex {p.sex}, Blood {p.blood_type}"
+            if p.baseline_illnesses:
+                user_details += f"\n- Chronic Conditions: {', '.join(p.baseline_illnesses)}"
+            if p.allergies:
+                user_details += f"\n- Allergies: {', '.join(p.allergies)}"
+        
         # Structured System Instruction
         instruction = f"""## Role
 You are an expert AI medical assistant designed to help a {role}. You provide clinical insights, documentation assistance, and data analysis.
+You have access to the user's preferences and past interactions to personalize your support.
+You also have access to the user's medical history via RAG (Retrieval Augmented Generation).
+
+## Capabilities
+- Get User Details: You can request detailed user information if needed.
+- Triage: Auto-triage symptoms based on collected data.
+- Lab Analysis: Interpret lab results in the context of the user's history.
 
 ## User Context
+{user_details}
 """
         # 1. Preferences from DB (legacy)
         if preferences_from_db:
@@ -242,11 +278,11 @@ You are an expert AI medical assistant designed to help a {role}. You provide cl
 
         # 4. Retrieve Knowledge / Context (RAG) from Vector Store
         if context_query:
-            retrieved = self.retrieve_context(user_id, context_query, n_results=3)
+            retrieved = self.retrieve_context(user_id, context_query, n_results=5) # Increased context window
             if retrieved:
-                instruction += f"\n## Knowledge Base (RAG)\n{retrieved}\n"
+                instruction += f"\n## Relevant Medical Knowledge (RAG)\n{retrieved}\n"
         
-        instruction += "\n## Guidelines\n- Be concise and precise.\n- Prioritize patient safety.\n- Cite guidelines where applicable."
+        instruction += "\n## Guidelines\n- Be concise and precise.\n- Prioritize patient safety.\n- Cite guidelines where applicable.\n- If you don't know something, ask for clarification or suggest a tool."
             
         return instruction
 

@@ -11,6 +11,12 @@ const UserManagement: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Modal States
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [resettingUser, setResettingUser] = useState<User | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', role: '' });
+    const [password, setPassword] = useState('');
+
     useEffect(() => {
         loadUsers();
     }, []);
@@ -36,6 +42,45 @@ const UserManagement: React.FC = () => {
             showToast.success(t('userManagement.deleteSuccess', 'User deleted successfully'));
         } catch (error) {
             showToast.error(t('userManagement.deleteError', 'Failed to delete user'));
+        }
+    };
+
+    const handleEditClick = (user: User) => {
+        setEditingUser(user);
+        setEditForm({ name: user.name, role: user.role });
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser) return;
+        try {
+            const updated = await DataService.updateUser(editingUser.id, editForm);
+            setUsers(users.map(u => u.id === editingUser.id ? updated : u));
+            setEditingUser(null);
+            showToast.success("User updated successfully");
+        } catch (error) {
+            showToast.error("Failed to update user");
+        }
+    };
+
+    const handleResetClick = (user: User) => {
+        setResettingUser(user);
+        setPassword('');
+    };
+
+    const handleResetSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!resettingUser) return;
+        if (password.length < 6) {
+            showToast.error("Password must be at least 6 characters");
+            return;
+        }
+        try {
+            await DataService.resetUserPassword(resettingUser.id, password);
+            setResettingUser(null);
+            showToast.success("Password reset successfully");
+        } catch (error) {
+            showToast.error("Failed to reset password");
         }
     };
 
@@ -110,9 +155,17 @@ const UserManagement: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <button onClick={() => handleDelete(user.id)} className="text-danger hover:bg-danger/10 p-2 rounded-lg transition-colors" title={t('common.delete', 'Delete')}>
-                                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => handleEditClick(user)} className="text-primary hover:bg-primary/10 p-2 rounded-lg transition-colors" title="Edit">
+                                                {ICONS.edit || <span className="text-sm">Edit</span>}
+                                            </button>
+                                            <button onClick={() => handleResetClick(user)} className="text-orange-500 hover:bg-orange-500/10 p-2 rounded-lg transition-colors" title="Reset Password">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                                            </button>
+                                            <button onClick={() => handleDelete(user.id)} className="text-danger hover:bg-danger/10 p-2 rounded-lg transition-colors" title={t('common.delete', 'Delete')}>
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -120,6 +173,68 @@ const UserManagement: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
+                        <h3 className="text-xl font-bold mb-4 text-text-main">Edit User</h3>
+                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text-muted uppercase mb-1">Name</label>
+                                <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text-muted uppercase mb-1">Role</label>
+                                <select
+                                    value={editForm.role}
+                                    onChange={e => setEditForm({ ...editForm, role: e.target.value })}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                >
+                                    {Object.values(Role).map(role => (
+                                        <option key={role} value={role}>{role}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 text-text-muted hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Reset Password Modal */}
+            {resettingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-fade-in">
+                        <h3 className="text-xl font-bold mb-4 text-text-main">Reset Password</h3>
+                        <p className="text-sm text-text-muted mb-4">Reset password for <strong>{resettingUser.name}</strong></p>
+                        <form onSubmit={handleResetSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text-muted uppercase mb-1">New Password</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                    placeholder="Enter new password (min 6 chars)"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button type="button" onClick={() => setResettingUser(null)} className="px-4 py-2 text-text-muted hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">Reset Password</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

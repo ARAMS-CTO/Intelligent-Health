@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     
     # App Info
-    APP_VERSION: str = "0.1.4"
+    APP_VERSION: str = "0.1.9"
     
     # AI / Gemini
     GEMINI_API_KEY: Optional[str] = None
