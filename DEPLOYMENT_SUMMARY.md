@@ -1,8 +1,8 @@
 # Intelligent Health Platform - Deployment Summary
 
 ## 🚀 Live Application
-**Production URL:** https://intelligent-health-977696014858.us-central1.run.app
-**Current Version:** v0.1.3 (Enhanced Patient Dashboard & Data Context)
+**Production URL:** https://intelligent-health-fr55o3a7yja-uc.a.run.app
+**Current Version:** v2.0.0 (Unified Deployment)
 
 ## ✅ Implemented Features & Infrastructure
 
