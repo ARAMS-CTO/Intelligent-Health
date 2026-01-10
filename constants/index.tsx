@@ -66,11 +66,13 @@ export type IconName = keyof typeof ICONS;
 
 
 export const AVATARS = {
-  Doctor: "/assets/avatars/doctor.png",
-  Nurse: "/assets/avatars/nurse.png",
-  Billing: "/assets/avatars/billing.png",
-  Researcher: "/assets/avatars/researcher.png",
-  Default: "/assets/avatars/doctor.png"
+  Doctor: "https://api.dicebear.com/7.x/avataaars/svg?seed=Doctor&backgroundColor=b6e3f4",
+  Nurse: "https://api.dicebear.com/7.x/avataaars/svg?seed=Nurse&backgroundColor=c0aede",
+  Specialist: "https://api.dicebear.com/7.x/avataaars/svg?seed=Specialist&backgroundColor=ffdfbf",
+  Assistant: "https://api.dicebear.com/7.x/bottts/svg?seed=Assistant&backgroundColor=ffdfbf",
+  Billing: "https://api.dicebear.com/7.x/avataaars/svg?seed=Billing&backgroundColor=ffdfbf",
+  Researcher: "https://api.dicebear.com/7.x/avataaars/svg?seed=Researcher&backgroundColor=ffdfbf",
+  Default: "https://api.dicebear.com/7.x/bottts/svg?seed=Robot"
 };
 
 export const APP_VERSION = "0.1.9";
