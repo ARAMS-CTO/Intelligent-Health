@@ -1,7 +1,7 @@
 # Intelligent Health Platform - Deployment Summary
 
 ## 🚀 Live Application
-**Production URL:** https://intelligent-health-jsc5mqgzua-uc.a.run.app
+**Production URL:** https://intelligent-health-app-jsc5mqgzua-uc.a.run.app
 **Current Version:** v2.0.0 (NO MOCK Repaired Deployment)
 
 ## ✅ Implemented Features & Infrastructure
