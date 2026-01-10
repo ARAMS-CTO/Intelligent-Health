@@ -1,5 +1,5 @@
 import React from 'react';
-import { APP_VERSION } from '../constants';
+import { APP_VERSION } from '../constants/index';
 import { useTranslation } from 'react-i18next';
 
 const Footer: React.FC = () => {
@@ -13,7 +13,7 @@ const Footer: React.FC = () => {
                 <span>&copy; {currentYear}</span>
             </div>
             <div className="flex items-center gap-4">
-                <span>v{APP_VERSION}</span>
+                <span className="font-mono text-primary font-bold">v{APP_VERSION}</span>
                 <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
                 <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
             </div>

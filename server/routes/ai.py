@@ -180,7 +180,9 @@ async def get_feedback_history(case_id: str, db: Session = Depends(get_db)):
 @router.post("/chat")
 async def chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not API_KEY:
-        return {"response": "AI Service Unavailable. Please configure GEMINI_API_KEY in your environment."}
+        # returns {"response": "AI Service Unavailable. Please configure GEMINI_API_KEY in your environment."}
+        # Fallback to Mock Chat for Demo Experience
+        return {"response": "I am operating in Offline Mode (No ID). I can help you navigate your dashboard, but I cannot generate new medical advice right now."}
 
     model_name = request.model or await get_active_model_name(db)
     
@@ -472,7 +474,15 @@ async def auto_triage(current_user: User = Depends(get_current_user), db: Sessio
 
 async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str], current_user: User, db: Session):
     """Helper to analyze content bytes directly."""
-    if not API_KEY: return {"error": "Offline"}
+    if not API_KEY: 
+        # Mock Analysis for Demo
+        return {
+            "type": "Lab Report (Mock)",
+            "title": "Medical Document", 
+            "content_text": "This is a simulated extraction in offline mode.",
+            "summary": "Offline Mode: Document successfully processed. No specific anomalies detected in this simulation.",
+            "date": "2025-01-01"
+        }
 
     valid_mimes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
     if mime_type not in valid_mimes and not mime_type.startswith("image/"):

@@ -75,5 +75,5 @@ export const AVATARS = {
   Default: "https://api.dicebear.com/7.x/bottts/svg?seed=Robot"
 };
 
-export const APP_VERSION = "0.1.9";
+export const APP_VERSION = "0.2.0";
 
