@@ -180,9 +180,7 @@ async def get_feedback_history(case_id: str, db: Session = Depends(get_db)):
 @router.post("/chat")
 async def chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not API_KEY:
-        # returns {"response": "AI Service Unavailable. Please configure GEMINI_API_KEY in your environment."}
-        # Fallback to Mock Chat for Demo Experience
-        return {"response": "I am operating in Offline Mode (No ID). I can help you navigate your dashboard, but I cannot generate new medical advice right now."}
+        return {"response": "AI Service Unavailable. Please configure GEMINI_API_KEY in your environment."}
 
     model_name = request.model or await get_active_model_name(db)
     
