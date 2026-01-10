@@ -309,6 +309,7 @@ class TokenWallet(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="token_wallet")
+    transactions = relationship("TokenTransaction", back_populates="wallet")
 
 class TokenTransaction(Base):
     __tablename__ = "token_transactions"
