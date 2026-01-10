@@ -239,6 +239,8 @@ const PatientDashboard: React.FC = () => {
     const [healthData, setHealthData] = useState<any>({});
     const [statsProfile, setStatsProfile] = useState<any>(null); // To store profile even if we don't have full object from context
 
+    const [dailyCheckup, setDailyCheckup] = useState<{ questions: string[], greeting: string } | null>(null);
+
     useEffect(() => {
         const loadData = async () => {
             if (user?.patientProfileId) {
@@ -253,17 +255,17 @@ const PatientDashboard: React.FC = () => {
                     const profile = await DataService.getPatientProfile(user.patientProfileId);
                     setStatsProfile(profile);
 
+                    // Fetch Daily Checkup (Patient Agent)
+                    const checkup = await GeminiService.getDailyCheckupQuestions();
+                    setDailyCheckup(checkup);
+
                 } catch (e) {
                     console.error("Failed to load records", e);
                 }
             } else if (user?.role === 'Patient') {
-                // Try to fetch profile if ID is missing (backend might have resolved it)
-                // Or fetch current user profile logic
-                // For now, if no ID, we can't fetch.
-                // But wait, user object might not have patientProfileId if it wasn't populated on login or refetch.
-                // Let's assume we can rely on DataService if we implemented it to look up by user ID?
-                // Current getPatientRecords takes patientId.
-                // Note: user.patientProfileId property exists on User interface?
+                // Try to load simple checkup even without profile
+                const checkup = await GeminiService.getDailyCheckupQuestions();
+                setDailyCheckup(checkup);
             }
         };
         loadData();
@@ -337,6 +339,21 @@ const PatientDashboard: React.FC = () => {
                     Welcome, <span className="text-primary">{user.name || 'Patient'}</span>
                 </h1>
                 <p className="text-gray-500 mt-2">Manage your health journey with AI-powered insights.</p>
+                {dailyCheckup && (
+                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl">
+                        <h4 className="font-bold text-blue-800 dark:text-blue-100 flex items-center gap-2">
+                            {ICONS.ai} {dailyCheckup.greeting}
+                        </h4>
+                        <div className="mt-2 space-y-2">
+                            {dailyCheckup.questions.map((q, i) => (
+                                <div key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <span className="bg-white dark:bg-slate-700 px-2 rounded-full text-xs font-bold text-primary border border-gray-100 dark:border-slate-600">?</span>
+                                    {q}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </header>
 
             {!user.patientProfileId && (

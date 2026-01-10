@@ -877,3 +877,77 @@ async def generate_comprehensive_report(patient_id: str, current_user: User = De
     except Exception as e:
         print(f"Comprehensive Report Error: {e}")
         return {"report": "Could not generate report."}
+
+class AgentTaskRequest(BaseModel):
+    task: str
+    payload: Dict[str, Any] = {}
+
+@router.post("/agent_task")
+async def execute_agent_task(request: AgentTaskRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Directly invokes a specific agent capability via Orchestrator.
+    """
+    try:
+        from ..agents.orchestrator import orchestrator
+        # Inject user_id into context
+        context = {"user_id": current_user.id}
+        
+        result = await orchestrator.dispatch(request.task, request.payload, context, db)
+        
+        if "error" in result:
+             # Log warning but return 200 with error info so frontend handles gracefully
+             print(f"Agent Task Warning: {result.get('message') or result.get('error')}")
+        
+        return result
+    except Exception as e:
+        print(f"Agent Task Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class AgentWorkflowRequest(BaseModel):
+    workflow: str
+    payload: Dict[str, Any] = {}
+
+@router.post("/agent_workflow")
+async def execute_agent_workflow(request: AgentWorkflowRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Executes a complex multi-agent workflow.
+    """
+    try:
+        from ..agents.orchestrator import orchestrator
+        context = {"user_id": current_user.id}
+        
+        result = await orchestrator.execute_workflow(request.workflow, request.payload, context, db)
+        return result
+    except Exception as e:
+        print(f"Workflow Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/agent_chat")
+async def agent_chat_router(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Intelligent routing of chat messages to specific agents.
+    """
+    try:
+        from ..agents.orchestrator import orchestrator
+        
+        # 1. Ask Router which task this maps to
+        route = await orchestrator.route_task(request.message)
+        
+        if "error" in route:
+             # Fallback to general chat if no specific task found
+             return await chat(request, current_user, db)
+             
+        task = route.get("task")
+        payload = route.get("payload", {})
+        
+        # 2. Execute Task
+        context = {"user_id": current_user.id}
+        result = await orchestrator.dispatch(task, payload, context, db)
+        
+        # 3. Format result as chat response
+        return result
+        
+    except Exception as e:
+        print(f"Agent Chat Router Error: {e}")
+        # Fallback
+        return await chat(request, current_user, db)

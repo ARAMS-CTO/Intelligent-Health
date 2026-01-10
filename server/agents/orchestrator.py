@@ -11,6 +11,8 @@ from .integration_agent import IntegrationAgent
 import google.generativeai as genai
 import json
 import os
+import uuid
+from datetime import datetime
 
 class AgentOrchestrator:
     """
@@ -97,7 +99,7 @@ class AgentOrchestrator:
 
     async def dispatch(self, task: str, payload: Dict[str, Any], context: Dict[str, Any], db: Session) -> Dict[str, Any]:
         """
-        Main entry point for the backend.
+        Main entry point for the backend. Handles single task execution and Result Persistence.
         """
         # 1. GDPR/Consent Check
         user_id = context.get("user_id")
@@ -106,13 +108,8 @@ class AgentOrchestrator:
             user = db.query(User).filter(User.id == user_id).first()
             if user:
                 # 1. GDPR/Consent Check
-                # Check explicit consents from the User model
-                # Note: We allow 'ResearcherAgent' to run generally, but 'DoctorAgent' or 'NurseAgent' on specific patient data might need consent.
-                # For now, we enforce a baseline: If no GDPR consent, simple block.
-                
                 if hasattr(user, 'gdpr_consent') and user.gdpr_consent is False:
-                     # Allow 'coping_strategies' (Psychology) or internal tasks, but block heavy data tasks?
-                     # For simplicity and compliance: Block AI usage if no consent.
+                     # Allow 'coping_strategies' (Psychology) or internal tasks, but block heavy data tasks
                      return {
                          "status": "error", 
                          "message": "GDPR Permission Denied: You must enable 'GDPR Consent' in your profile to use AI Agents."
@@ -137,7 +134,6 @@ class AgentOrchestrator:
         
         # Log execution
         try:
-             # Using inline import to avoid circles
              from ..models import SystemLog
              log = SystemLog(
                  event_type="ai_query", 
@@ -149,7 +145,78 @@ class AgentOrchestrator:
         except Exception as e:
              print(f"Orchestrator Log Error: {e}")
         
-        return await agent.process(task, payload, context, db)
+        # 2. EXECUTE AGENT
+        result = await agent.process(task, payload, context, db)
+
+        # 3. RESULT PERSISTENCE (Orchestration Layer)
+        # Automatically save high-value outputs to DB if not already handled by agent
+        try:
+            if task == "research_condition" and "summary" in result:
+                # Save as KnowledgeItem
+                from ..models import KnowledgeItem
+                if user_id:
+                    k_item = KnowledgeItem(
+                        id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        content=result["summary"],
+                        metadata_={"type": "research", "query": payload.get("query"), "source": "ResearcherAgent"}
+                    )
+                    db.add(k_item)
+                    db.commit()
+
+            elif task == "generate_health_summary" and "summary" in result:
+                # Update Patient Profile or Agent State
+                from ..models import AgentState
+                if user_id:
+                    state = db.query(AgentState).filter(AgentState.user_id == user_id).first()
+                    if not state:
+                        state = AgentState(user_id=user_id, interaction_history_summary="")
+                        db.add(state)
+                    
+                    # Append to summary history
+                    new_summary = f"\n[Health Summary {datetime.utcnow().date()}]: {result['summary'][:200]}..."
+                    state.interaction_history_summary = (state.interaction_history_summary or "") + new_summary
+                    db.commit()
+
+        except Exception as e:
+            print(f"Result Persistence Error: {e}")
+
+        return result
+
+    async def execute_workflow(self, workflow_name: str, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
+        """
+        Executes a pre-defined multi-step workflow.
+        """
+        results = {}
+        
+        if workflow_name == "comprehensive_patient_analysis":
+            # Parallel execution of Lab, Radiology, and Doctor
+            # 1. Get Case
+            case_id = payload.get("case_id")
+            if not case_id: return {"error": "Missing case_id"}
+
+            # 2. Parallel tasks (simulated)
+            lab_res = await self.dispatch("analyze_labs", {"case_id": case_id}, context, db)
+            img_res = await self.dispatch("analyze_image", {"case_id": case_id}, context, db)
+            
+            # 3. Aggregated Doctor Review
+            doc_payload = {
+                "case_id": case_id, 
+                "extracted_data": { 
+                    "lab_analysis": lab_res, 
+                    "image_analysis": img_res 
+                },
+                "baseline_illnesses": [] # fetch from DB if needed
+            }
+            final_res = await self.dispatch("augment_case", doc_payload, context, db)
+            
+            return {
+                "lab_analysis": lab_res,
+                "image_analysis": img_res,
+                "clinical_synthesis": final_res
+            }
+            
+        return {"error": "Unknown workflow"}
 
     def list_capabilities(self):
         caps = []

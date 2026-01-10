@@ -1,7 +1,7 @@
 import React from 'react';
 
 
-export const APP_VERSION = "0.1.6";
+export const APP_VERSION = "0.1.7";
 
 export const ROLES = {
   MEDICAL: ["Doctor", "Specialist", "Nurse", "Trainee", "Radiologist", "Lab Technician", "Pharmacist", "Physiotherapist"],
