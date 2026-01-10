@@ -475,14 +475,7 @@ async def auto_triage(current_user: User = Depends(get_current_user), db: Sessio
 async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str], current_user: User, db: Session):
     """Helper to analyze content bytes directly."""
     if not API_KEY: 
-        # Mock Analysis for Demo
-        return {
-            "type": "Lab Report (Mock)",
-            "title": "Medical Document", 
-            "content_text": "This is a simulated extraction in offline mode.",
-            "summary": "Offline Mode: Document successfully processed. No specific anomalies detected in this simulation.",
-            "date": "2025-01-01"
-        }
+        return {"error": "AI Service Unavailable. API Key missing."}
 
     valid_mimes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
     if mime_type not in valid_mimes and not mime_type.startswith("image/"):
@@ -495,10 +488,22 @@ async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str]
     try:
         model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction) 
         file_part = {"mime_type": mime_type, "data": content}
+        
+        # Enforce JSON structure in prompt
+        final_prompt += " Return strictly valid JSON."
+        
         response = model.generate_content([final_prompt, file_part], generation_config={"response_mime_type": "application/json"})
         
         log_ai_event(db, "ai_query", current_user.id, {"endpoint": "analyze_content", "file_type": mime_type})
-        return json.loads(response.text)
+        
+        # Robust Parsing
+        text_resp = response.text.strip()
+        if text_resp.startswith("```json"):
+            text_resp = text_resp[7:]
+        if text_resp.endswith("```"):
+            text_resp = text_resp[:-3]
+            
+        return json.loads(text_resp)
     except Exception as e:
         print(f"Analysis Helper Error: {e}")
         return {"error": str(e)}

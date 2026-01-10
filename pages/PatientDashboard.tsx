@@ -310,14 +310,17 @@ const PatientDashboard: React.FC = () => {
             }
 
             // Update State
+            // Update State
             setRecords(prev => prev.map(r => {
                 if (r.id === recordId) {
+                    // Check if analysis is nested or direct
+                    const analysis = result.analysis || result;
                     return {
                         ...r,
-                        aiSummary: result.analysis.summary || "Summary generated.",
-                        type: result.analysis.type || r.type,
-                        title: result.analysis.title || r.title,
-                        contentText: result.analysis.content_text,
+                        aiSummary: analysis.summary || "Summary generated.",
+                        type: analysis.type || "Document",
+                        title: analysis.title || r.title,
+                        contentText: analysis.content_text || "",
                     };
                 }
                 return r;
