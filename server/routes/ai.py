@@ -935,7 +935,11 @@ async def agent_chat_router(request: ChatRequest, current_user: User = Depends(g
         
         if "error" in route:
              # Fallback to general chat if no specific task found
-             return await chat(request, current_user, db)
+             fallback_result = await chat(request, current_user, db)
+             # Ensure fallback uses 'response' key
+             if "message" in fallback_result and "response" not in fallback_result:
+                 fallback_result["response"] = fallback_result["message"]
+             return fallback_result
              
         task = route.get("task")
         payload = route.get("payload", {})
@@ -945,7 +949,19 @@ async def agent_chat_router(request: ChatRequest, current_user: User = Depends(g
         result = await orchestrator.dispatch(task, payload, context, db)
         
         # 3. Format result as chat response
-        return result
+        # Most agents return { "status": "success", "message": "..." } or similar
+        # Frontend expects { "response": "...", "agent": { "role": "..." } }
+        
+        response_text = result.get("message") or result.get("error") or json.dumps(result)
+        agent_role = orchestrator.get_agent_for_task(task)
+        
+        return {
+            "response": response_text,
+            "agent": {
+                "name": agent_role.name if agent_role else "System",
+                "role": agent_role.role if agent_role else "Assistant"
+            }
+        }
         
     except Exception as e:
         print(f"Agent Chat Router Error: {e}")

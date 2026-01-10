@@ -269,13 +269,13 @@ const AIAgentCard: React.FC<{ user: User }> = ({ user }) => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 py-6 border-t border-white/20 dark:border-slate-700/30 relative z-10">
-                        <div className="text-center p-4 bg-white/40 dark:bg-black/20 rounded-2xl border border-white/20 shadow-sm backdrop-blur-md">
-                            <p className="font-heading font-black text-3xl text-text-main mb-1">{stats.casesAnalyzed}</p>
-                            <p className="text-[9px] uppercase tracking-[0.2em] font-black text-text-muted opacity-60 px-1">{t('aiAgentCard.casesAnalyzed')}</p>
+                        <div className="flex flex-col items-center justify-center p-4 bg-white/40 dark:bg-black/20 rounded-2xl border border-white/20 shadow-sm backdrop-blur-md min-h-[100px]">
+                            <p className="font-heading font-black text-3xl text-text-main mb-2">{stats.casesAnalyzed}</p>
+                            <p className="text-[9px] uppercase tracking-[0.15em] font-black text-text-muted opacity-60 text-center leading-tight">{t('aiAgentCard.casesAnalyzed')}</p>
                         </div>
-                        <div className="text-center p-4 bg-white/40 dark:bg-black/20 rounded-2xl border border-white/20 shadow-sm backdrop-blur-md">
-                            <p className="font-heading font-black text-3xl text-text-main mb-1">{stats.feedbackProvided}</p>
-                            <p className="text-[9px] uppercase tracking-[0.2em] font-black text-text-muted opacity-60 px-1">{t('aiAgentCard.feedbackProvided')}</p>
+                        <div className="flex flex-col items-center justify-center p-4 bg-white/40 dark:bg-black/20 rounded-2xl border border-white/20 shadow-sm backdrop-blur-md min-h-[100px]">
+                            <p className="font-heading font-black text-3xl text-text-main mb-2">{stats.feedbackProvided}</p>
+                            <p className="text-[9px] uppercase tracking-[0.15em] font-black text-text-muted opacity-60 text-center leading-tight">{t('aiAgentCard.feedbackProvided')}</p>
                         </div>
                     </div>
                 </div>
@@ -825,21 +825,21 @@ const Dashboard: React.FC = () => {
                                         placeholder={t('searchPlaceholder')}
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
-                                        className="w-full pl-16 pr-6 py-4 border-none bg-white/60 dark:bg-slate-800/60 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-primary/10 text-sm font-bold transition-all shadow-inner placeholder:text-text-muted/40 tracking-tight"
+                                        className="w-full pl-12 pr-6 py-3.5 border-none bg-white/60 dark:bg-slate-800/60 rounded-[20px] focus:outline-none focus:ring-4 focus:ring-primary/10 text-sm font-bold transition-all shadow-inner placeholder:text-text-muted/40 tracking-tight"
                                     />
-                                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-primary">
-                                        <svg className="h-6 w-6 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-primary">
+                                        <svg className="h-5 w-5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3 w-full md:w-auto">
                                     <div className="relative group">
-                                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                         </div>
                                         <select
                                             value={filterStatus}
                                             onChange={(e) => setFilterStatus(e.target.value)}
-                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-4 pl-14 pr-12 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none"
+                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-3.5 pl-10 pr-10 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none min-w-[140px]"
                                         >
                                             <option value="All">All Clusters</option>
                                             {caseStatuses.map(status => (
@@ -848,14 +848,14 @@ const Dashboard: React.FC = () => {
                                         </select>
                                     </div>
                                     <div className="relative group">
-                                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none z-10 opacity-40 group-hover:opacity-100 transition-opacity">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                                         </div>
                                         <select
                                             id="sort-order"
                                             value={sortOption}
                                             onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-4 pl-14 pr-12 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none"
+                                            className="bg-white/60 dark:bg-slate-800/60 rounded-[20px] border-none shadow-sm focus:ring-4 focus:ring-primary/10 py-3.5 pl-10 pr-10 text-[10px] font-black uppercase tracking-widest text-text-main cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-all appearance-none min-w-[140px]"
                                         >
                                             <option value="date-desc">Newest First</option>
                                             <option value="date-asc">Oldest First</option>
