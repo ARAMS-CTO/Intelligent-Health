@@ -15,4 +15,5 @@ httpx
 pytest
 stripe
 email-validator
+openai
 
