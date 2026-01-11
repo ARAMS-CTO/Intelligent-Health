@@ -26,7 +26,24 @@ async def get_patient(patient_id: str, db: Session = Depends(get_db)):
     patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return patient
+    
+    # Manually map to Schema to ensure nested structures are correct
+    return {
+        "id": patient.id,
+        "identifier": patient.identifier,
+        "name": patient.name,
+        "personal_details": {
+            "dob": patient.dob,
+            "blood_type": patient.blood_type or "Unknown"
+        },
+        "allergies": patient.allergies or [],
+        "baseline_illnesses": patient.baseline_illnesses or [],
+        "contact": patient.contact_info, # Map contact_info -> contact
+        "emergency_contact": patient.emergency_contact,
+        "primary_care_physician": patient.primary_care_physician,
+        "medications": patient.medications or [],
+        "files": patient.files or []
+    }
 
 from ..schemas import PatientUpdate
 @router.patch("/{patient_id}", response_model=PatientProfile)
