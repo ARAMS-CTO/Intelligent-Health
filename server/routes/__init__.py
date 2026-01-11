@@ -9,6 +9,8 @@ from .files import router as files_router
 from .billing import router as billing_router
 from .agent_bus import router as agent_bus_router
 from .integrations import router as integrations_router
+from .tokens import router as tokens_router
+from .agents import router as agents_router
 
 __all__ = ["auth_router", "cases_router", "patients_router", "comments_router", "ai_router", "agents_router", "billing_router", "files_router", "dashboard_router", "tokens_router", "integrations_router"]
 
