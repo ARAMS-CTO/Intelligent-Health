@@ -144,33 +144,33 @@ class AIInsights(BaseSchema):
 class PatientFile(BaseSchema):
     id: str
     name: str
-    type: Literal['Lab Test', 'Radiology Report', 'Discharge Summary', 'Prescription']
-    upload_date: str
+    type: str # Relaxed from Literal to support legacy data
+    upload_date: Optional[str] = None
     url: str
 
 class Medication(BaseSchema):
     id: str
     name: str
-    dosage: str
-    frequency: str
+    dosage: Optional[str] = None
+    frequency: Optional[str] = None
 
 class PersonalDetails(BaseSchema):
-    dob: str
-    blood_type: str
+    dob: Optional[str] = None
+    blood_type: Optional[str] = None
 
 class Contact(BaseSchema):
-    phone: str
-    email: str
-    address: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
 
 class EmergencyContact(BaseSchema):
-    name: str
-    relationship: str
-    phone: str
+    name: Optional[str] = None
+    relationship: Optional[str] = None
+    phone: Optional[str] = None
 
 class PrimaryCarePhysician(BaseSchema):
-    name: str
-    phone: str
+    name: Optional[str] = None
+    phone: Optional[str] = None
 
 class PatientProfile(BaseSchema):
     id: str
