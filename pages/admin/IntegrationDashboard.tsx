@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../../services/api';
 import { useAuth } from '../../components/Auth';
-import { HealthIntegrationStatus } from '../../types';
 
 interface ProviderStats {
     totalUsers: number;

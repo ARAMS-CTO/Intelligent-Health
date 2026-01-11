@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/api';
 import { ICONS } from '../constants/index';
-// @ts-ignore
 import { Case } from '../types/index';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '../components/Toast';
-// @ts-ignore
 
 
 const EmergencyDashboard: React.FC = () => {
