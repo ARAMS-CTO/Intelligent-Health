@@ -22,9 +22,10 @@ export const AdminIntegrationsDashboard: React.FC = () => {
 
     // Mock Connection Distribution
     const distribution = [
-        { name: 'Samsung Health', value: 45, color: 'bg-blue-500' },
-        { name: 'Apple Health', value: 30, color: 'bg-gray-800' },
-        { name: 'Google Fit', value: 15, color: 'bg-yellow-500' },
+        { name: 'Samsung Health', value: 35, color: 'bg-blue-500' },
+        { name: 'Apple Health', value: 25, color: 'bg-gray-800' },
+        { name: 'ChatGPT Health', value: 20, color: 'bg-emerald-500' },
+        { name: 'Google Fit', value: 10, color: 'bg-yellow-500' },
         { name: 'Withings', value: 5, color: 'bg-gray-400' },
         { name: 'Other', value: 5, color: 'bg-indigo-500' },
     ];

@@ -148,7 +148,10 @@ class IntegrationAgent(BaseAgent):
             data.append({"type": "systolic_bp", "value": random.randint(110, 140), "unit": "mmHg", "timestamp": now})
             
         elif provider == "chatgpt_health":
-            # ChatGPT: Unstructured Logs (Simulate Stress Score)
-            data.append({"type": "stress_level", "value": random.randint(1, 10), "unit": "scale_1_10", "timestamp": now})
-            
+            # ChatGPT Health: Digital Twin Data
+            # Note: Real implementation would parse JSON exports from the user's ChatGPT Health archives
+            data.append({"type": "mental_wellbeing_score", "value": random.randint(7, 10), "unit": "scale_1_10", "timestamp": now})
+            data.append({"type": "sleep_quality_index", "value": random.randint(70, 95), "unit": "index", "timestamp": now})
+            data.append({"type": "dietary_adherence_score", "value": random.randint(80, 100), "unit": "percentage", "timestamp": now})
+
         return data
