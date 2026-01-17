@@ -36,7 +36,17 @@ import LabDashboard from './pages/LabDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import { IntegrationsPage } from './pages/patient/Integrations';
 import { AdminIntegrationsDashboard } from './pages/admin/IntegrationDashboard';
+import SharedView from './pages/SharedView';
+import EmergencyView from './pages/EmergencyView';
 import CreateCaseForm from './components/CreateCaseForm';
+import Marketplace from './pages/Marketplace';
+import DeveloperPortal from './pages/DeveloperPortal';
+import PhysioDashboard from './pages/PhysioDashboard';
+import TraineeDashboard from './pages/TraineeDashboard';
+import ComplianceDashboard from './pages/ComplianceDashboard';
+import AIEngineerDashboard from './pages/AIEngineerDashboard';
+
+
 
 // A modal component for the login form
 const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -126,13 +136,22 @@ const AppLayout: React.FC = () => {
                                         user.role === Role.BillingOfficer ? <Navigate to="/billing" replace /> :
                                             user.role === Role.Radiologist ? <Navigate to="/radiology" replace /> :
                                                 user.role === Role.LabTechnician ? <Navigate to="/lab" replace /> :
-                                                    user.role === Role.HospitalManager ? <Navigate to="/manager" replace /> :
-                                                        user.role === Role.Admin ? <Navigate to="/admin" replace /> :
-                                                            <Navigate to="/dashboard" replace />
+                                                    user.role === Role.Physiotherapist ? <Navigate to="/physio" replace /> :
+                                                        user.role === Role.Trainee ? <Navigate to="/trainee" replace /> :
+                                                            user.role === Role.ComplianceOfficer ? <Navigate to="/compliance" replace /> :
+                                                                user.role === Role.AIEngineer ? <Navigate to="/ai-engineering" replace /> :
+                                                                    user.role === Role.HospitalManager ? <Navigate to="/manager" replace /> :
+                                                                        user.role === Role.Admin ? <Navigate to="/admin" replace /> :
+                                                                            <Navigate to="/dashboard" replace />
                         ) : (
                             <LandingPage onGetStarted={() => setLoginModalOpen(true)} />
                         )
                     } />
+
+                    {/* Public Shared Routes */}
+                    <Route path="/shared/:token" element={<SharedView />} />
+                    <Route path="/emergency/:id" element={<EmergencyView />} />
+
                     {/* Role-Specific Dashboards */}
                     <Route
                         path="/nurse-dashboard"
@@ -304,6 +323,43 @@ const AppLayout: React.FC = () => {
                             </ProtectedRoute>
                         }
                     />
+
+                    <Route
+                        path="/physio"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Physiotherapist, Role.Admin]}>
+                                <PhysioDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/trainee"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.Trainee, Role.Admin]}>
+                                <TraineeDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/compliance"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.ComplianceOfficer, Role.Admin]}>
+                                <ComplianceDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/ai-engineering"
+                        element={
+                            <ProtectedRoute allowedRoles={[Role.AIEngineer, Role.Admin]}>
+                                <AIEngineerDashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+
                     <Route
                         path="/admin/integrations"
                         element={
@@ -314,6 +370,10 @@ const AppLayout: React.FC = () => {
                             </ProtectedRoute>
                         }
                     />
+
+                    {/* Public Marketplace & Developer Portal */}
+                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/developer-portal" element={<DeveloperPortal />} />
 
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

@@ -112,8 +112,13 @@ export class DataService {
     }
 
     static async getUsers(): Promise<User[]> {
-        const res = await fetch(`${API_BASE_URL}/users/`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/users/`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async getDoctorProfile(profileId: string): Promise<DoctorProfile | undefined> {
@@ -135,8 +140,13 @@ export class DataService {
 
     // --- Cases ---
     static async getCases(): Promise<Case[]> {
-        const res = await fetch(`${API_BASE_URL}/cases/`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/cases/`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async getCaseById(id: string): Promise<Case | undefined> {
@@ -179,20 +189,34 @@ export class DataService {
     }
 
     static async getAllComments(): Promise<Comment[]> {
-        const res = await fetch(`${API_BASE_URL}/cases/comments/all`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/cases/comments/all`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     // --- Patients ---
     static async getPatients(): Promise<PatientProfile[]> {
-        const res = await fetch(`${API_BASE_URL}/patients/`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/patients/`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async getPatientById(id: string): Promise<PatientProfile | undefined> {
-        const res = await fetch(`${API_BASE_URL}/patients/${id}`, { headers: getAuthHeader() });
-        if (!res.ok) return undefined;
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/patients/${id}`, { headers: getAuthHeader() });
+            if (!res.ok) return undefined;
+            return res.json();
+        } catch (e) {
+            return undefined;
+        }
     }
 
     static async updatePatientProfile(id: string, updates: Partial<PatientProfile>): Promise<PatientProfile> {
@@ -205,8 +229,13 @@ export class DataService {
     }
 
     static async getMedicalRecords(patientId: string): Promise<MedicalRecord[]> {
-        const res = await fetch(`${API_BASE_URL}/patients/${patientId}/records`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/patients/${patientId}/records`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async addMedicalRecord(patientId: string, record: Partial<MedicalRecord>): Promise<MedicalRecord> {
@@ -219,27 +248,45 @@ export class DataService {
     }
 
     static async getPatientHealthData(patientId: string, days: number = 7): Promise<Record<string, { value: number, unit: string, timestamp: string }[]>> {
-        const res = await fetch(`${API_BASE_URL}/patients/${patientId}/health_data?days=${days}`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/patients/${patientId}/health_data?days=${days}`, { headers: getAuthHeader() });
+            if (!res.ok) return {};
+            return res.json();
+        } catch (e) {
+            return {};
+        }
     }
 
     // --- Dashboard ---
     static async getDashboardStats(userId: string): Promise<{ overdue: number, updates: number, assignments: number }> {
-        const res = await fetch(`${API_BASE_URL}/dashboard/stats`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/dashboard/stats`, { headers: getAuthHeader() });
+            if (!res.ok) return { overdue: 0, updates: 0, assignments: 0 };
+            return res.json();
+        } catch (e) {
+            return { overdue: 0, updates: 0, assignments: 0 };
+        }
     }
 
     static async getRecentActivity(): Promise<Comment[]> {
-        const res = await fetch(`${API_BASE_URL}/dashboard/activity`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/dashboard/activity`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     // --- File Upload ---
-    static async uploadFile(file: File, caseId?: string): Promise<{ url: string, name: string, type: string }> {
+    static async uploadFile(file: File, caseId?: string, patientId?: string): Promise<{ url: string, name: string, type: string }> {
         const formData = new FormData();
         formData.append('file', file);
         if (caseId) {
             formData.append('case_id', caseId);
+        }
+        if (patientId) {
+            formData.append('patient_id', patientId);
         }
 
         const res = await fetch(`${API_BASE_URL}/files/upload`, {
@@ -272,8 +319,13 @@ export class DataService {
 
     // --- Integrations (Native Support) ---
     static async getIntegrationStatus(): Promise<{ integrations: IntegrationStatus[] }> {
-        const res = await fetch(`${API_BASE_URL}/integrations/status`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/integrations/status`, { headers: getAuthHeader() });
+            if (!res.ok) return { integrations: [] };
+            return res.json();
+        } catch (e) {
+            return { integrations: [] };
+        }
     }
 
     static async connectProvider(provider: string): Promise<any> {
@@ -339,9 +391,16 @@ export class DataService {
     }
 
     static async getAgents(): Promise<AgentCapability[]> {
-        const res = await fetch(`${API_BASE_URL}/agents/`, { headers: getAuthHeader() });
-        if (!res.ok) throw new Error("Failed to fetch agents");
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/agents/`, { headers: getAuthHeader() });
+            if (!res.ok) {
+                // Return empty list if unauthorized/error to prevent crash
+                return [];
+            }
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async updateAgent(agentId: string, updates: any): Promise<any> {
@@ -375,12 +434,17 @@ export class DataService {
     }
 
     static async findAgentCapability(query: string): Promise<any[]> {
-        const res = await fetch(`${API_BASE_URL}/bus/find`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-            body: JSON.stringify({ query })
-        });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/bus/find`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ query })
+            });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async updateUserConsents(gdpr: boolean, share: boolean, marketing: boolean): Promise<any> {
@@ -410,18 +474,28 @@ export class DataService {
 
     // --- Admin Stats ---
     static async getAdminStats(): Promise<any> {
-        const res = await fetch(`${API_BASE_URL}/admin/stats`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/dashboard/admin/stats`, { headers: getAuthHeader() });
+            if (!res.ok) return {};
+            return res.json();
+        } catch (e) {
+            return {};
+        }
     }
 
     static async getSystemLogs(): Promise<any[]> {
-        const res = await fetch(`${API_BASE_URL}/admin/logs`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/admin/logs`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     // --- Financials ---
     static async getPendingEstimates(role: string): Promise<any[]> {
-        const res = await fetch(`${API_BASE_URL}/billing/pending?role=${role}`, { headers: getAuthHeader() });
+        const res = await fetch(`${API_BASE_URL}/billing/admin/estimates/pending?role=${role}`, { headers: getAuthHeader() });
         return res.json();
     }
 
@@ -460,8 +534,13 @@ export class DataService {
 
     // --- Research Community ---
     static async getResearchGroups(): Promise<any[]> {
-        const res = await fetch(`${API_BASE_URL}/research/groups`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/research/groups`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     static async getTokenBalance(): Promise<{ balance: number, total_earned: number }> {
@@ -490,8 +569,13 @@ export class DataService {
 
     // --- Financials --- (Already exists above, but adding missing Transaction method here or near other financial methods)
     static async getTransactions(): Promise<any[]> {
-        const res = await fetch(`${API_BASE_URL}/billing/transactions`, { headers: getAuthHeader() });
-        return res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/billing/transactions`, { headers: getAuthHeader() });
+            if (!res.ok) return [];
+            return res.json();
+        } catch (e) {
+            return [];
+        }
     }
 
     // --- PayPal ---
@@ -564,6 +648,131 @@ export class DataService {
     static assignSpecialist = async (caseId: string, specialistId: string) => { };
     static getCaseComments = async (caseId: string) => { return [] as Comment[]; };
 
+    // --- Pharmacy ---
+    static async getPharmacyQueue(status?: string): Promise<any[]> {
+        try {
+            const url = status ? `${API_BASE_URL}/pharmacy/queue?status=${status}` : `${API_BASE_URL}/pharmacy/queue`;
+            const res = await fetch(url, { headers: getAuthHeader() });
+            if (!res.ok) {
+                console.error("Failed to fetch pharmacy queue", res.status);
+                return [];
+            }
+            return res.json();
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    }
+
+    static async dispensePrescription(rxId: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/pharmacy/${rxId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ status: 'Dispensed' })
+        });
+        if (!res.ok) throw new Error("Failed to dispense");
+        return res.json();
+    }
+
+    static async checkDrugInteraction(patientId: string, medicationName: string, dosage: string): Promise<any> {
+        try {
+            const res = await fetch(`${API_BASE_URL}/pharmacy/check_interaction`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ patient_id: patientId, medication_name: medicationName, dosage })
+            });
+            if (!res.ok) return { status: "unknown", message: "Check failed" };
+            return res.json();
+        } catch (e) {
+            return { status: "error", message: "Network error during check" };
+        }
+    }
+
+    static async createPrescription(rx: any): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/pharmacy/prescribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(rx)
+        });
+        if (!res.ok) throw new Error("Failed to prescribe");
+        return res.json();
+    }
+
+    // --- Labs ---
+    static async recommendLabs(caseId: string): Promise<any> {
+        try {
+            const res = await fetch(`${API_BASE_URL}/lab/recommend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ case_id: caseId })
+            });
+            return await res.json();
+        } catch (e) {
+            console.error("Lab Recommendation Error:", e);
+            return { status: "error", message: "Service unavailable" };
+        }
+    }
+
+    static async orderLab(caseId: string, testName: string, notes?: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/lab/order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ case_id: caseId, test_name: testName, notes })
+        });
+        if (!res.ok) throw new Error("Failed to order lab");
+        return res.json();
+    }
+
+    static async getPendingLabs(): Promise<any[]> {
+        const res = await fetch(`${API_BASE_URL}/lab/pending`, { headers: getAuthHeader() });
+        if (!res.ok) return [];
+        return res.json();
+    }
+
+    static async recordLabResult(labId: number, result: any): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/lab/${labId}/result`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify(result)
+        });
+        if (!res.ok) throw new Error("Failed to record result");
+        return res.json();
+    }
+
+
+
+    static async getIntegrationAuthUrl(provider: string): Promise<string> {
+        const res = await fetch(`${API_BASE_URL}/integrations/auth/${provider}`, { headers: getAuthHeader() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to get auth URL");
+        return data.url;
+    }
+
+    static async syncProvider(provider: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/integrations/sync/${provider}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+        });
+        if (!res.ok) throw new Error("Sync failed");
+        return res.json();
+    }
+
+    // --- Credits ---
+    static async getCreditBalance(): Promise<{ balance: number, tier: string }> {
+        const res = await fetch(`${API_BASE_URL}/credits/balance`, { headers: getAuthHeader() });
+        return res.json();
+    }
+
+    static async deductCredits(amount: number, reason: string): Promise<any> {
+        const res = await fetch(`${API_BASE_URL}/credits/deduct`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+            body: JSON.stringify({ amount, reason })
+        });
+        if (!res.ok) throw new Error("Insufficient credits");
+        return res.json();
+    }
+
 }
 
 // --- Integrations Export ---
@@ -579,6 +788,27 @@ export type HealthIntegrationStatus = IntegrationStatus;
 // --- GEMINI AI SERVICE ---
 
 export class GeminiService {
+    static async consultSpecialist(query: string, caseData: string, domain?: string): Promise<{ status: string, domain: string, message: string, actions: any[] }> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/specialist_consult`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ query, case_data: caseData, domain })
+            });
+
+            if (!response.ok) throw new Error("Specialist consult failed");
+            return await response.json();
+        } catch (error) {
+            console.error("Specialist Consult Error:", error);
+            return {
+                status: "error",
+                domain: "Unknown",
+                message: "Could not reach the specialist.",
+                actions: []
+            };
+        }
+    }
+
     static async getAIAgentStats(userId: string): Promise<AIAgentStats> {
         try {
             const res = await fetch(`${API_BASE_URL}/ai/stats/${userId}`, { headers: getAuthHeader() });
@@ -680,6 +910,20 @@ export class GeminiService {
     static async getGeneralChatResponse(history: any[], newMessage: string, userId: string = 'anonymous'): Promise<string> {
         try {
             const response = await fetch(`${API_BASE_URL}/ai/general_chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ history, message: newMessage, userId })
+            });
+            const data = await response.json();
+            return data.response;
+        } catch (error) {
+            return "Service unavailable.";
+        }
+    }
+
+    static async getPatientChatResponse(history: any[], newMessage: string, userId: string = 'anonymous'): Promise<string> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/patient/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ history, message: newMessage, userId })
@@ -870,6 +1114,20 @@ export class GeminiService {
             return data.response;
         } catch (error) {
             return "Patient Agent unavailable.";
+        }
+    }
+
+    static async executeWorkflow(workflowName: string, caseId: string, payload?: any): Promise<any> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/ai/workflow`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ workflow_name: workflowName, case_id: caseId, payload })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error("Workflow Error:", error);
+            return { error: "Workflow failed." };
         }
     }
 

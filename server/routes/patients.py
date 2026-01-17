@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException, Body, Depends
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from ..schemas import PatientProfile, PatientIntakeData, Medication as MedicationSchema, PatientFile as PatientFileSchema, MedicalRecord as MedicalRecordSchema
+from ..schemas import PatientProfile, PatientIntakeData, Medication as MedicationSchema, PatientFile as PatientFileSchema, MedicalRecord as MedicalRecordSchema, PatientUpdate
 from ..database import get_db
-from ..models import Patient as PatientModel, Medication as MedicationModel, PatientFile as PatientFileModel, MedicalRecord as MedicalRecordModel, HealthData, HealthIntegration
+import server.models as models
+# Patient, Medication, PatientFile, MedicalRecord, HealthData, HealthIntegration, Case, User accessed via models.*
 from datetime import datetime, timedelta
 import uuid
+from ..routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -15,15 +17,15 @@ async def search_patients(q: str, db: Session = Depends(get_db)):
         return []
     query = q.lower()
     # Simple case-insensitive search on name or identifier
-    patients = db.query(PatientModel).filter(
-        (PatientModel.name.ilike(f"%{query}%")) | 
-        (PatientModel.identifier.ilike(f"%{query}%"))
+    patients = db.query(models.Patient).filter(
+        (models.Patient.name.ilike(f"%{query}%")) | 
+        (models.Patient.identifier.ilike(f"%{query}%"))
     ).all()
     return patients
 
 @router.get("/{patient_id}", response_model=PatientProfile)
 async def get_patient(patient_id: str, db: Session = Depends(get_db)):
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
@@ -45,10 +47,10 @@ async def get_patient(patient_id: str, db: Session = Depends(get_db)):
         "files": patient.files or []
     }
 
-from ..schemas import PatientUpdate
+
 @router.patch("/{patient_id}", response_model=PatientProfile)
 async def update_patient(patient_id: str, update: PatientUpdate, db: Session = Depends(get_db)):
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
@@ -69,11 +71,11 @@ async def update_patient(patient_id: str, update: PatientUpdate, db: Session = D
 
 @router.post("/{patient_id}/medications")
 async def add_medication(patient_id: str, medication: MedicationSchema, db: Session = Depends(get_db)):
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
-    new_med = MedicationModel(
+    new_med = models.Medication(
         id=str(uuid.uuid4()),
         patient_id=patient_id,
         name=medication.name,
@@ -86,11 +88,11 @@ async def add_medication(patient_id: str, medication: MedicationSchema, db: Sess
 
 @router.post("/{patient_id}/files")
 async def add_file(patient_id: str, file: PatientFileSchema, db: Session = Depends(get_db)):
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
-    new_file = PatientFileModel(
+    new_file = models.PatientFile(
         id=str(uuid.uuid4()),
         patient_id=patient_id,
         name=file.name,
@@ -104,7 +106,7 @@ async def add_file(patient_id: str, file: PatientFileSchema, db: Session = Depen
 
 @router.get("/{patient_id}/records", response_model=List[MedicalRecordSchema])
 async def get_patient_records(patient_id: str, db: Session = Depends(get_db)):
-    records = db.query(MedicalRecordModel).filter(MedicalRecordModel.patient_id == patient_id).order_by(MedicalRecordModel.created_at.desc()).all()
+    records = db.query(models.MedicalRecord).filter(models.MedicalRecord.patient_id == patient_id).order_by(models.MedicalRecord.created_at.desc()).all()
     return records
 
 @router.get("/{patient_id}/health_data")
@@ -113,7 +115,7 @@ async def get_patient_health_data(patient_id: str, days: int = 7, db: Session = 
     Fetch aggregated health data (steps, heart rate, weight, etc.) for the last N days.
     """
     # Verify patient exists (and maybe matches current user logic if needed, but keeping it simple for now)
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         # It's possible the caller passed a user_id by mistake, or patient_id is from user.patient_profile.id
         # Let's double check if patient_id is actually user_id?
@@ -129,10 +131,10 @@ async def get_patient_health_data(patient_id: str, days: int = 7, db: Session = 
     since_date = datetime.utcnow() - timedelta(days=days)
     
     # query
-    data = db.query(HealthData).filter(
-        HealthData.user_id == user_id,
-        HealthData.source_timestamp >= since_date
-    ).order_by(HealthData.source_timestamp.desc()).all()
+    data = db.query(models.HealthData).filter(
+        models.HealthData.user_id == user_id,
+        models.HealthData.source_timestamp >= since_date
+    ).order_by(models.HealthData.source_timestamp.desc()).all()
     
     # Group by type for easier frontend consumption
     grouped = {}
@@ -147,17 +149,14 @@ async def get_patient_health_data(patient_id: str, days: int = 7, db: Session = 
         
     return grouped
 
-from ..routes.auth import get_current_user
-from ..models import User
-
 @router.post("/intake", response_model=PatientIntakeData)
-async def add_intake(data: PatientIntakeData, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def add_intake(data: PatientIntakeData, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Check if user already has a profile
     if current_user.patient_profile:
         raise HTTPException(status_code=400, detail="User already has a patient profile")
 
     # Map intake data to PatientModel
-    new_patient = PatientModel(
+    new_patient = models.Patient(
         id=f"patient-{uuid.uuid4()}",
         user_id=current_user.id, # Link to user
         identifier=f"MRN-{uuid.uuid4().hex[:8].upper()}",
@@ -183,19 +182,58 @@ async def add_intake(data: PatientIntakeData, current_user: User = Depends(get_c
     db.commit()
     db.refresh(new_patient)
     
+@router.post("/", response_model=PatientProfile)
+async def create_patient(
+    # Simplistic creation for doctor usage
+    name: str = Body(..., embed=True),
+    email: str = Body(None, embed=True),
+    phone: str = Body(None, embed=True),
+    age: int = Body(None, embed=True),
+    current_user: models.User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ["Doctor", "Nurse", "Admin"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+        
+    new_patient = models.Patient(
+        id=f"patient-{uuid.uuid4()}",
+        identifier=f"MRN-{uuid.uuid4().hex[:8].upper()}",
+        name=name,
+        contact_info={"email": email, "phone": phone},
+        # Default empty preferences
+        ai_preferences={},
+        privacy_settings={}
+    )
+    db.add(new_patient)
+    db.commit()
+    db.refresh(new_patient)
+    
+    # Return schema-compatible dict
+    return {
+        "id": new_patient.id,
+        "identifier": new_patient.identifier,
+        "name": new_patient.name,
+        "personal_details": {"age": age}, # Mock age since it's not in model directly
+        "contact": new_patient.contact_info,
+        "allergies": [],
+        "baseline_illnesses": [],
+        "medications": [],
+        "files": []
+    }
+
 @router.get("/{patient_id}/ai_summary")
-async def get_patient_ai_summary(patient_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+async def get_patient_ai_summary(patient_id: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
         
     # Gather data string
     # We can fetch cases too to make it comprehensive
-    cases = db.query(CaseModel).filter(CaseModel.patient_id == patient_id).all()
+    cases = db.query(models.Case).filter(models.Case.patient_id == patient_id).all()
     case_summaries = [f"Case {c.title}: {c.diagnosis} ({c.status})" for c in cases]
     
     profile_text = f"""
-    Name: {patient.name}, Age: {patient.age}, Sex: {patient.sex}
+    Name: {patient.name}, Age: {patient.dob}, Sex: {patient.sex}
     Baseline Illnesses: {', '.join(patient.baseline_illnesses or [])}
     Medications: {', '.join([m.name for m in patient.medications] if patient.medications else [])}
     Recent Cases: {'; '.join(case_summaries[-5:])}

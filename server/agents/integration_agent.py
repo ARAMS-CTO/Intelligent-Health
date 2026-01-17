@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 import uuid
 import random
 
-from ..models import HealthIntegration, HealthData
+import server.models as models
+# HealthIntegration, HealthData accessed via models.*
 from .base import BaseAgent
 
 class IntegrationAgent(BaseAgent):
@@ -42,7 +43,7 @@ class IntegrationAgent(BaseAgent):
             return {"status": "error", "message": "Missing user_id or provider"}
 
         # Check existing
-        existing = db.query(HealthIntegration).filter_by(user_id=user_id, provider=provider).first()
+        existing = db.query(models.HealthIntegration).filter_by(user_id=user_id, provider=provider).first()
         if existing:
             existing.status = "active"
             existing.last_sync_timestamp = datetime.utcnow()
@@ -50,7 +51,7 @@ class IntegrationAgent(BaseAgent):
             return {"status": "success", "message": f"Reconnected to {provider}", "integration_id": existing.id}
 
         # Create new connection (Simulation of OAuth success)
-        new_integration = HealthIntegration(
+        new_integration = models.HealthIntegration(
             id=str(uuid.uuid4()),
             user_id=user_id,
             provider=provider,
@@ -66,7 +67,7 @@ class IntegrationAgent(BaseAgent):
     async def _sync_data(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
         user_id = context.get("user_id")
         
-        integrations = db.query(HealthIntegration).filter_by(user_id=user_id, status="active").all()
+        integrations = db.query(models.HealthIntegration).filter_by(user_id=user_id, status="active").all()
         synced_count = 0
         
         for integ in integrations:
@@ -75,7 +76,7 @@ class IntegrationAgent(BaseAgent):
             
             for item in new_data:
                 # Deduplicate based on timestamp (simple check)
-                exists = db.query(HealthData).filter_by(
+                exists = db.query(models.HealthData).filter_by(
                     user_id=user_id, 
                     integration_id=integ.id, 
                     data_type=item['type'],
@@ -83,7 +84,7 @@ class IntegrationAgent(BaseAgent):
                 ).first()
                 
                 if not exists:
-                    hd = HealthData(
+                    hd = models.HealthData(
                         user_id=user_id,
                         integration_id=integ.id,
                         data_type=item['type'],
@@ -101,7 +102,7 @@ class IntegrationAgent(BaseAgent):
 
     def _get_status(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
         user_id = context.get("user_id")
-        integrations = db.query(HealthIntegration).filter_by(user_id=user_id).all()
+        integrations = db.query(models.HealthIntegration).filter_by(user_id=user_id).all()
         
         return {
             "integrations": [
@@ -118,7 +119,7 @@ class IntegrationAgent(BaseAgent):
         user_id = context.get("user_id")
         provider = payload.get("provider")
         
-        integ = db.query(HealthIntegration).filter_by(user_id=user_id, provider=provider).first()
+        integ = db.query(models.HealthIntegration).filter_by(user_id=user_id, provider=provider).first()
         if integ:
             integ.status = "disconnected"
             db.commit()

@@ -76,12 +76,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (res.ok) {
                 const me = await res.json();
                 setUser(me);
-            } else {
                 // If token is invalid, clear it
                 localStorage.removeItem('token');
+                setUser(null);
             }
         } catch (e) {
             console.error("Refresh failed", e);
+            localStorage.removeItem('token');
+            setUser(null);
         } finally {
             setIsLoading(false);
         }

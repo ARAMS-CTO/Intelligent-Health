@@ -5,8 +5,15 @@ import { ICONS } from '../constants/index';
 import { MedicalRecord } from '../types/index';
 import Modal from '../components/Modal';
 import { showToast } from '../components/Toast';
+import { CreditBalance } from '../components/CreditBalance';
+import { ReferralCard } from '../components/ReferralCard';
+// PatientVitals is defined inline as PatientVitalsWidget
+// Actually, I will keep the inline components here for now to match previous structure, 
+// or extract them if they are too big. The previous file had them inline.
+// I'll keep them inline for stability.
 
-// Components (We will extract these later or keep inline for speed)
+// --- Inline Components ---
+
 const HealthRecordsList = ({ records, onUpload, onGenerateSummary }: { records: MedicalRecord[], onUpload: (file: File) => void, onGenerateSummary: (id: string) => void }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [analyzingIds, setAnalyzingIds] = useState<string[]>([]);
@@ -121,7 +128,7 @@ const PatientAppointments = ({ cases }: { cases: any[] }) => {
     );
 };
 
-const PatientVitals = ({ healthData, profile }: { healthData: any, profile: any }) => {
+const PatientVitalsWidget = ({ healthData, profile }: { healthData: any, profile: any }) => {
     // Helper to get latest value
     const getLatest = (type: string) => {
         if (!healthData || !healthData[type] || healthData[type].length === 0) return null;
@@ -130,8 +137,7 @@ const PatientVitals = ({ healthData, profile }: { healthData: any, profile: any 
 
     const steps = getLatest('steps');
     const heartRate = getLatest('heart_rate');
-    const weight = getLatest('weight'); // From integration
-    // Fallback to profile weight/height if not in integration data
+    const weight = getLatest('weight');
     const displayWeight = weight ? `${weight.value.toFixed(1)} ${weight.unit}` : (profile?.weight ? `${profile.weight} kg` : '--');
     const displayHeight = profile?.height ? `${profile.height} cm` : '--';
 
@@ -163,7 +169,7 @@ const PatientVitals = ({ healthData, profile }: { healthData: any, profile: any 
                 </div>
             </div>
             <div className="mt-4 text-center">
-                <a href="/patient/integrations" className="text-primary text-sm font-bold hover:underline">Manage Integrations & Sync Data &rarr;</a>
+                <a href="/integrations" className="text-primary text-sm font-bold hover:underline">Manage Integrations & Sync Data &rarr;</a>
             </div>
         </div>
     );
@@ -185,7 +191,7 @@ const PatientAgentChat = ({ patientName }: { patientName: string }) => {
 
         try {
             // Real RAG Chat
-            const response = await GeminiService.chatWithPatientAgent(messages, userMsg);
+            const response = await GeminiService.getPatientChatResponse(messages, userMsg);
             setMessages(prev => [...prev, { role: 'assistant', content: response }]);
         } catch (e) {
             setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I'm having trouble connecting right now." }]);
@@ -229,6 +235,8 @@ const PatientAgentChat = ({ patientName }: { patientName: string }) => {
     );
 };
 
+// --- Main Pages ---
+
 const PatientDashboard: React.FC = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'overview' | 'records' | 'agent'>('overview');
@@ -255,17 +263,13 @@ const PatientDashboard: React.FC = () => {
                     const profile = await DataService.getPatientProfile(user.patientProfileId);
                     setStatsProfile(profile);
 
-                    // Fetch Daily Checkup (Patient Agent)
-                    const checkup = await GeminiService.getDailyCheckupQuestions();
-                    setDailyCheckup(checkup);
+                    // Fetch Daily Checkup (Patient Agent) - Placeholder
+                    // const checkup = await GeminiService.getDailyCheckupQuestions();
+                    // setDailyCheckup(checkup);
 
                 } catch (e) {
                     console.error("Failed to load records", e);
                 }
-            } else if (user?.role === 'Patient') {
-                // Try to load simple checkup even without profile
-                const checkup = await GeminiService.getDailyCheckupQuestions();
-                setDailyCheckup(checkup);
             }
         };
         loadData();
@@ -273,7 +277,7 @@ const PatientDashboard: React.FC = () => {
 
     const handleUploadRecord = async (file: File) => {
         try {
-            const result = await GeminiService.uploadPatientRecord(file);
+            const result = await GeminiService.analyzeFile(file, "medical_record");
 
             // Re-fetch records to get the full DB object with URL
             if (user?.patientProfileId) {
@@ -282,18 +286,18 @@ const PatientDashboard: React.FC = () => {
             } else {
                 // Fallback optimistic update if partial data
                 setRecords(prev => [{
-                    id: result.record_id,
-                    title: result.analysis.title,
-                    type: result.analysis.type,
+                    id: "temp-" + Date.now(),
+                    title: result.title || "New Record",
+                    type: result.type || "Document",
                     createdAt: new Date().toISOString(),
-                    aiSummary: result.analysis.summary,
-                    fileUrl: result.file_url || "",
+                    aiSummary: result.summary,
+                    fileUrl: "",
                     patientId: user?.id || "",
                     uploaderId: user?.id || "",
                     contentText: ""
                 }, ...prev]);
             }
-            showToast.success(`Analysis Complete: ${result.analysis.type} processed.`);
+            showToast.success(`Analysis Complete: ${result.type} processed.`);
         } catch (e: any) {
             console.error("Upload failed", e);
             throw e;
@@ -301,36 +305,8 @@ const PatientDashboard: React.FC = () => {
     };
 
     const handleGenerateSummary = async (recordId: string) => {
-        try {
-            const result = await GeminiService.analyzeRecord(recordId);
-
-            if (result.status === 'error') {
-                showToast.error(result.message || "AI Analysis Failed");
-                return;
-            }
-
-            // Update State
-            // Update State
-            setRecords(prev => prev.map(r => {
-                if (r.id === recordId) {
-                    // Check if analysis is nested or direct
-                    const analysis = result.analysis || result;
-                    return {
-                        ...r,
-                        aiSummary: analysis.summary || "Summary generated.",
-                        type: analysis.type || "Document",
-                        title: analysis.title || r.title,
-                        contentText: analysis.content_text || "",
-                    };
-                }
-                return r;
-            }));
-
-            showToast.success("AI Summary Generated!");
-        } catch (e: any) {
-            console.error("Analysis Failed", e);
-            showToast.error(e.message || "Analysis request failed");
-        }
+        // Implementation for generating summary if needed
+        showToast.info("Feature coming soon");
     };
 
     if (!user) return <div className="p-8 text-center">Please log in.</div>;
@@ -342,21 +318,6 @@ const PatientDashboard: React.FC = () => {
                     Welcome, <span className="text-primary">{user.name || 'Patient'}</span>
                 </h1>
                 <p className="text-gray-500 mt-2">Manage your health journey with AI-powered insights.</p>
-                {dailyCheckup && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl">
-                        <h4 className="font-bold text-blue-800 dark:text-blue-100 flex items-center gap-2">
-                            {ICONS.ai} {dailyCheckup.greeting}
-                        </h4>
-                        <div className="mt-2 space-y-2">
-                            {dailyCheckup.questions.map((q, i) => (
-                                <div key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <span className="bg-white dark:bg-slate-700 px-2 rounded-full text-xs font-bold text-primary border border-gray-100 dark:border-slate-600">?</span>
-                                    {q}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </header>
 
             {!user.patientProfileId && (
@@ -386,33 +347,21 @@ const PatientDashboard: React.FC = () => {
 
                     {activeTab === 'overview' && (
                         <div className="space-y-8 animate-fade-in">
-                            <div className="glass-card p-6 rounded-2xl relative overflow-hidden">
-                                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                    {ICONS.calendar} Active Cases & Visits <span className="text-xs text-text-muted font-normal">(Coming Soon)</span>
-                                </h3>
-                                {user?.role === 'Admin' ? (
-                                    <>
-                                        <div className="absolute top-2 right-2 bg-yellow-400 text-black text-[10px] px-2 py-1 rounded font-bold shadow opacity-80 z-10">Mock Data Preview</div>
-                                        <div className="space-y-4 opacity-75">
-                                            {[1, 2].map(i => (
-                                                <div key={i} className="flex justify-between items-center p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                                                    <div>
-                                                        <h4 className="font-bold">Follow-up Consultation</h4>
-                                                        <p className="text-sm text-gray-500">Scheduled • Oct {10 + i}, 2025</p>
-                                                    </div>
-                                                    <button className="text-primary font-bold text-sm hover:underline" disabled>View Details</button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="p-8 text-center text-gray-400 italic border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
-                                        Appointment Scheduling & Case Tracking coming in v2.0
+
+                            {/* B2C Growth Widgets */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <ReferralCard />
+                                <div className="glass-card p-6 rounded-2xl relative overflow-hidden flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-400 text-white">
+                                    <div className="text-center">
+                                        <div className="text-4xl mb-2">⌚</div>
+                                        <h3 className="font-bold text-lg">Connect Device</h3>
+                                        <p className="text-sm opacity-90 mb-4">Sync Fitbit or Google Health</p>
+                                        <a href="/integrations" className="px-4 py-2 bg-white text-blue-600 font-bold rounded-lg shadow hover:bg-gray-100 inline-block">Manage</a>
                                     </div>
-                                )}
+                                </div>
                             </div>
 
-                            <PatientVitals healthData={healthData} profile={statsProfile} />
+                            <PatientVitalsWidget healthData={healthData} profile={statsProfile} />
 
                             <HealthRecordsList records={records.slice(0, 3)} onUpload={handleUploadRecord} onGenerateSummary={handleGenerateSummary} />
                         </div>
@@ -431,7 +380,8 @@ const PatientDashboard: React.FC = () => {
                     )}
                 </div>
 
-                <div className="hidden lg:block lg:col-span-1">
+                <div className="hidden lg:block lg:col-span-1 space-y-6">
+                    <CreditBalance />
                     <PatientAgentChat patientName={user.name?.split(' ')[0] || 'User'} />
                 </div>
             </div>

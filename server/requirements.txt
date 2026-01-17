@@ -16,4 +16,5 @@ pytest
 stripe
 email-validator
 openai
-
+usearch
+numpy

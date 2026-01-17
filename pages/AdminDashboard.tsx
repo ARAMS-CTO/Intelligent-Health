@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ICONS } from '../constants/index';
 import { showToast } from '../components/Toast';
 import { DataService } from '../services/api';
+import AdminFinanceSettings from '../components/AdminFinanceSettings';
 
 const AdminDashboard: React.FC = () => {
     const [stats, setStats] = useState({
@@ -173,6 +174,9 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Finance Settings */}
+            <AdminFinanceSettings />
         </div>
     );
 };

@@ -50,8 +50,16 @@ class NurseAgent(BaseAgent):
         # 2. AI Reasoning
         cases_data = [{"id": c.id, "complaint": c.complaint, "age": c.patient.age if c.patient else "Unknown"} for c in target_cases]
         
+        user_id = context.get("user_id", "system")
+        user_role = context.get("user_role", "Nurse")
+        sys_instr = agent_service.get_system_instruction(user_id, user_role, db)
+        
+        # Override to ensure Triage Persona is dominant but includes system context (e.g. pinned protocols)
+        sys_instr += "\nAct as a Senior Triage Nurse. Prioritize patient safety above all."
+        
+        model = genai.GenerativeModel("gemini-2.0-flash-exp", system_instruction=sys_instr)
+
         prompt = f"""
-        You are a Senior Triage Nurse.
         Rank the following patient cases by urgency (1-5, where 5 is critical/immediate).
         Provide a short rationale for each.
         
@@ -62,7 +70,7 @@ class NurseAgent(BaseAgent):
         """
 
         try:
-            response = self.model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
             rankings = json.loads(response.text)
             
             updated_count = 0

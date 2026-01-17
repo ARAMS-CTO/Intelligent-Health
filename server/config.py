@@ -23,10 +23,14 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     
     # App Info
-    APP_VERSION: str = "0.1.9"
+    APP_VERSION: str = "2.1.2"
     
     # AI / Gemini
     GEMINI_API_KEY: Optional[str] = None
+    ANTHROPIC_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    
+    # Feature Flags
     GOOGLE_CLOUD_PROJECT: str = "intelligent-health-ai"
     VERTEX_AI_INDEX_ENDPOINT: Optional[str] = None
 

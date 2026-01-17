@@ -1,0 +1,36 @@
+Total Medical Records: 5
+
+--- Record ID: rec-7e05a1da-676a-4852-a041-20e2324abde0 ---
+Patient ID: user-patient-real
+Type: Endoscopy Report
+File: /uploads/c567c75c-bc07-4cb0-8a85-37f051a9d29a.pdf
+Summary: This is a report for a colonoscopy performed on Aram Ghannadzadeh, a 40-year-old male, on March 26, 2025. The colonoscopy was indicated due to rectal pain. The procedure was performed under direct vision up to the terminal ileum and was carefully done. The findings include glandular hypertrophied mucosa in the terminal ileum and internal and external hemorrhoids. The impression suggests glandular hypertrophy in the terminal ileum, hemorrhoids (grade II-III), which should be treated locally or with band ligation. The rest of the colon was normal. The recommendation is for the patient to be discharged after being fully awake.
+Created At: 2026-01-11 21:49:13.569049
+
+--- Record ID: rec-018562bd-b32a-4ae7-b053-34d31ad9ab53 ---
+Patient ID: user-patient-real
+Type: Clinical Note
+File: /uploads/34bbb97f-4dba-4825-ac24-4e17b79c32f8.pdf
+Summary: This is a follow-up visit for Mr. Aram Ghannadzadeh after an arthroscopic ACL reconstruction and meniscal repair on February 14, 2022. He is experiencing some pain at the graft site. The plan includes continued physiotherapy, full weight-bearing as tolerated, compression stockings, and a follow-up after physiotherapy is completed. Diagnoses include encounter for other orthopedic aftercare, sprain of anterior cruciate ligament of right knee, initial encounter, pulmonary embolism with acute cor pulmonale, acute embolism and thrombosis of unspecified deep veins of right lower extremity.
+Created At: 2026-01-11 21:49:17.703080
+
+--- Record ID: rec-522f8ed8-6ff4-49b1-8e95-994b253c6c1e ---
+Patient ID: user-patient-real
+Type: Lab Report
+File: /uploads/41cc4333-7985-48ff-bcfa-db764f4b043b.pdf
+Summary: This is a pathology report from a biopsy of the terminal ileum (part of the small intestine) of Mr. Aram Ghannadzadeh, 40 years old. The biopsy shows prominent reactive lymphoid aggregates, suggesting an immune response. The report recommends clinical correlation, meaning the findings should be considered in light of the patient's symptoms and other clinical information. There was also clinical information about Hemorrhoid grade II-III which should be treated locally.
+Created At: 2026-01-11 21:49:32.691290
+
+--- Record ID: rec-3b18b2e4-9720-48f8-9fea-f2b4aedfff5b ---
+Patient ID: user-patient-real
+Type: Radiology Report
+File: /uploads/86aa64f0-a7eb-4291-bc33-899b0740d8c3.pdf
+Summary: This is an ultrasound report of the urinary tract for Aram Ghannadzadeh. The right kidney is normal. The left kidney is normal in shape and size, however, a small 3mm stone was detected in the upper pole. The urinary bladder and prostate appear normal. Pre-void urine volume was not done, post-void urine volume was 57.2ml. The conclusion is there's a tiny stone in the left kidney without obstructions.
+Created At: 2026-01-11 21:49:50.284452
+
+--- Record ID: rec-924c78f8-4aeb-4f1e-a33e-8388e976b116 ---
+Patient ID: user-patient-real
+Type: Lab Report
+File: /uploads/0868ee07-25e7-4527-9763-53e95929819a.pdf
+Summary: This is a urine analysis report for Mr. Aram Ghannadzadeh, a 40-year-old male, performed at Fakeeh University Hospital. The report indicates that his urine color is yellow, and it's slightly cloudy. The pH is 5.0, and the specific gravity is 1.016. Glucose, urine ketones, bilirubin, urobilinogen, and nitrite are all negative. There's a trace amount of blood in the urine. The report also shows the absence of yeast cells, casts, and bacteria, but the presence of mucus. Calcium oxalate crystals were found in the urine.
+Created At: 2026-01-11 21:50:17.124508

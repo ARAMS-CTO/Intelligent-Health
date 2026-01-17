@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DataService } from '../services/api';
 import { ICONS } from '../constants/index';
 // @ts-ignore
 import { User } from '../types/index';
@@ -8,16 +9,42 @@ import { showToast } from '../components/Toast';
 const PharmacyDashboard: React.FC = () => {
     const navigate = useNavigate();
 
-    // Mock Data for Demo
-    const [prescriptions, setPrescriptions] = useState([
-        { id: 'RX-001', patient: 'Aram Ghannad', medication: 'Amoxicillin 500mg', doctor: 'Dr. Mario Sonati', status: 'Pending', date: '2025-10-24 10:30 AM' },
-        { id: 'RX-002', patient: 'Sarah Jones', medication: 'Lisinopril 10mg', doctor: 'Dr. Mario Sonati', status: 'Ready', date: '2025-10-24 09:15 AM' },
-        { id: 'RX-003', patient: 'Michael Brown', medication: 'Metformin 850mg', doctor: 'Dr. Emily Chen', status: 'Pending', date: '2025-10-24 11:00 AM' },
-    ]);
+    // Real Data State
+    const [prescriptions, setPrescriptions] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const handleDispense = (id: string) => {
-        setPrescriptions(prev => prev.map(p => p.id === id ? { ...p, status: 'Dispensed' } : p));
-        showToast.success(`Prescription ${id} Marked as Dispensed`);
+    const loadQueue = async () => {
+        setIsLoading(true);
+        try {
+            const data = await DataService.getPharmacyQueue(); // Fetch all
+            setPrescriptions(data.map(rx => ({
+                id: rx.id,
+                patient: rx.patient?.name || "Unknown",
+                medication: rx.medication_name + " " + rx.dosage,
+                doctor: rx.doctor?.name || "Unknown",
+                status: rx.status,
+                date: new Date(rx.created_at).toLocaleString()
+            })));
+        } catch (e) {
+            console.error("Pharmacy Load Error", e);
+            showToast.error("Failed to load queue");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        loadQueue();
+    }, []);
+
+    const handleDispense = async (id: string) => {
+        try {
+            await DataService.dispensePrescription(id);
+            setPrescriptions(prev => prev.map(p => p.id === id ? { ...p, status: 'Dispensed' } : p));
+            showToast.success(`Prescription Marked as Dispensed`);
+        } catch (e) {
+            showToast.error("Failed to dispense");
+        }
     };
 
     return (
@@ -92,8 +119,8 @@ const PharmacyDashboard: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${rx.status === 'Pending' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                rx.status === 'Ready' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                    'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                            rx.status === 'Ready' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
                                             }`}>
                                             {rx.status}
                                         </span>

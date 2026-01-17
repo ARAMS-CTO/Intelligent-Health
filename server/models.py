@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
 from .database import Base
 from datetime import datetime
+import uuid
 
 class User(Base):
     __tablename__ = "users"
@@ -28,9 +29,9 @@ class User(Base):
     doctor_profile = relationship("DoctorProfile", back_populates="user", uselist=False)
     patient_profile = relationship("Patient", back_populates="user", uselist=False)
     comments = relationship("Comment", back_populates="user")
-    cases = relationship("Case", back_populates="creator", foreign_keys="[Case.creator_id]")
-    assigned_cases = relationship("Case", back_populates="specialist", foreign_keys="[Case.specialist_id]")
-    assignments = relationship("NurseAssignment", back_populates="nurse", foreign_keys="[NurseAssignment.nurse_id]")
+    cases = relationship("Case", back_populates="creator", foreign_keys="Case.creator_id")
+    assigned_cases = relationship("Case", back_populates="specialist", foreign_keys="Case.specialist_id")
+    assignments = relationship("NurseAssignment", back_populates="nurse", foreign_keys="NurseAssignment.nurse_id")
     knowledge_items = relationship("KnowledgeItem", back_populates="user")
     medical_records_uploaded = relationship("MedicalRecord", back_populates="uploader")
 
@@ -87,6 +88,7 @@ class Patient(Base):
     primary_care_physician = Column(JSON) # {name, phone}
     
     ai_preferences = Column(JSON, default={}) # Preferences for Patient Agent
+    privacy_settings = Column(JSON, default={"emergency_enabled": False}) # Emergency Profile Toggle
     
     user = relationship("User", back_populates="patient_profile")
     
@@ -94,6 +96,19 @@ class Patient(Base):
     files = relationship("PatientFile", back_populates="patient") # Legacy?
     medical_records = relationship("MedicalRecord", back_populates="patient") # New robust records
     cases = relationship("Case", back_populates="patient")
+    share_links = relationship("DataShareLink", back_populates="patient")
+
+class DataShareLink(Base):
+    __tablename__ = "data_share_links"
+    
+    id = Column(String, primary_key=True) # UUID Token
+    patient_id = Column(String, ForeignKey("patients.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime)
+    permissions = Column(JSON) # {history, meds, records: []}
+    access_count = Column(Integer, default=0)
+    
+    patient = relationship("Patient", back_populates="share_links")
 
 class Medication(Base):
     __tablename__ = "medications"
@@ -104,6 +119,28 @@ class Medication(Base):
     frequency = Column(String)
     
     patient = relationship("Patient", back_populates="medications")
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    case_id = Column(String, ForeignKey("cases.id"), nullable=True)
+    patient_id = Column(String, ForeignKey("patients.id"))
+    doctor_id = Column(String, ForeignKey("users.id"))
+    
+    medication_name = Column(String)
+    dosage = Column(String)
+    frequency = Column(String)
+    duration = Column(String)
+    notes = Column(String)
+    
+    status = Column(String, default="Pending") # Pending, Ready, Dispensed, Cancelled
+    dispensed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    patient = relationship("Patient")
+    doctor = relationship("User", foreign_keys=[doctor_id])
+    case = relationship("Case")
 
 class PatientFile(Base):
     __tablename__ = "patient_files"
@@ -134,15 +171,34 @@ class Case(Base):
     tags = Column(JSON)
     status = Column(String, default="Open")
     
+    comments = relationship("Comment", back_populates="case") # Existing?
+    learning_logs = relationship("LearningLog", back_populates="case")
+    
     specialist_id = Column(String, ForeignKey("users.id"), nullable=True)
-    specialist_assignment_timestamp = Column(String, nullable=True)
     
     creator = relationship("User", foreign_keys=[creator_id], back_populates="cases")
     specialist = relationship("User", foreign_keys=[specialist_id], back_populates="assigned_cases")
     patient = relationship("Patient", back_populates="cases")
-    comments = relationship("Comment", back_populates="case")
-    files = relationship("CaseFile", back_populates="case")
-    lab_results = relationship("LabResult", back_populates="case")
+    files = relationship("CaseFile", back_populates="case") # Also missing
+    lab_results = relationship("LabResult", back_populates="case") # Also missing
+    cost_estimate = relationship("CostEstimate", uselist=False, back_populates="case")
+
+class LearningLog(Base):
+    __tablename__ = "learning_logs"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    case_id = Column(String, ForeignKey("cases.id"))
+    
+    state_snapshot = Column(JSON) # Snapshot of relevant patient state
+    action_plan = Column(String) # The proposed plan
+    
+    predicted_outcome = Column(String) # AI Prediction of what will happen
+    actual_outcome = Column(String, nullable=True) # What doctor reports later
+    lesson_learned = Column(String, nullable=True) # The extracted wisdom
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    case = relationship("Case", back_populates="learning_logs")
 
 class CaseFile(Base):
     __tablename__ = "case_files"
@@ -163,6 +219,10 @@ class LabResult(Base):
     unit = Column(String)
     reference_range = Column(String)
     interpretation = Column(String)
+    
+    status = Column(String, default="Pending") # Pending, Processing, Completed
+    ordered_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
     
     case = relationship("Case", back_populates="lab_results")
 
@@ -224,8 +284,7 @@ class CostEstimate(Base):
     
     case = relationship("Case", back_populates="cost_estimate")
 
-# Add back-populate to Case model
-Case.cost_estimate = relationship("CostEstimate", uselist=False, back_populates="case")
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -364,7 +423,7 @@ class HealthIntegration(Base):
     last_sync_timestamp = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User")
+    user = relationship("User", back_populates="health_integrations")
 
 class HealthData(Base):
     __tablename__ = "health_data"
@@ -380,10 +439,203 @@ class HealthData(Base):
     source_timestamp = Column(DateTime) # When it was recorded on the device
     recorded_at = Column(DateTime, default=datetime.utcnow) # When we saved it
 
-    user = relationship("User")
+    user = relationship("User", back_populates="health_data")
     integration = relationship("HealthIntegration")
 
 User.health_integrations = relationship("HealthIntegration", back_populates="user")
 User.health_data = relationship("HealthData", back_populates="user")
+
+
+class Product(Base):
+    __tablename__ = "products"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String)
+    description = Column(String)
+    price = Column(Float)
+    currency = Column(String, default="USD")
+    image_url = Column(String)
+    stock_quantity = Column(Integer, default=0)
+    sku = Column(String, unique=True, index=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Order(Base):
+    __tablename__ = "orders"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=True) # Optional for Guest Checkout
+    ucp_session_id = Column(String, unique=True, index=True) # Google Session ID
+    status = Column(String, default="PENDING") # PENDING, CONFIRMED, SHIPPED, CANCELLED
+    total_amount = Column(Float)
+    currency = Column(String, default="USD")
+    
+    items = Column(JSON) # Snapshot of items: [{product_id, name, quantity, price}]
+    shipping_address = Column(JSON)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+
+class PartnerApplication(Base):
+    __tablename__ = "partner_applications"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    company_name = Column(String)
+    contact_name = Column(String)
+    email = Column(String, index=True)
+    phone = Column(String)
+    website = Column(String)
+    device_category = Column(String) # 'vital_signs', 'metabolic', 'activity', 'specialized'
+    device_description = Column(String)
+    api_experience = Column(String) # 'beginner', 'intermediate', 'advanced'
+    expected_volume = Column(String) # 'small', 'medium', 'large'
+    message = Column(String)
+    status = Column(String, default="pending") # pending, approved, rejected
+    reviewed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    reviewer = relationship("User")
+
+class PartnerAPIKey(Base):
+    """API Keys for approved hardware partners"""
+    __tablename__ = "partner_api_keys"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    application_id = Column(String, ForeignKey("partner_applications.id"))
+    api_key = Column(String, unique=True, index=True) # Hashed
+    api_secret = Column(String) # Hashed
+    key_name = Column(String) # e.g., "Production Key", "Testing Key"
+    is_active = Column(Boolean, default=True)
+    rate_limit = Column(Integer, default=1000) # Requests per hour
+    scopes = Column(JSON, default=["device:register", "data:write"]) # Permissions
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+    last_used_at = Column(DateTime, nullable=True)
+    
+class RegisteredDevice(Base):
+    """Devices registered by partners via SDK"""
+    __tablename__ = "registered_devices"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    device_id = Column(String, unique=True, index=True) # Partner's unique device ID
+    api_key_id = Column(String, ForeignKey("partner_api_keys.id"))
+    patient_id = Column(String, ForeignKey("patients.id"), nullable=True) # Linked patient
+    
+    device_type = Column(String) # "blood_pressure_monitor", "glucometer", etc.
+    manufacturer = Column(String)
+    model = Column(String)
+    firmware_version = Column(String)
+    serial_number = Column(String, nullable=True)
+    
+    capabilities = Column(JSON, default=[]) # ["bluetooth", "wifi", "offline_storage"]
+    status = Column(String, default="active") # active, inactive, maintenance
+    
+    registered_at = Column(DateTime, default=datetime.utcnow)
+    last_seen_at = Column(DateTime, nullable=True)
+    
+    patient = relationship("Patient")
+
+class DeviceDataSubmission(Base):
+    """Health data submitted by devices"""
+    __tablename__ = "device_data_submissions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    device_id = Column(String, ForeignKey("registered_devices.device_id"))
+    patient_id = Column(String, ForeignKey("patients.id"))
+    
+    data_type = Column(String) # "blood_pressure", "glucose", "heart_rate", etc.
+    timestamp = Column(DateTime) # When measurement was taken
+    
+    # FHIR-compliant data structure
+    fhir_observation = Column(JSON) # Full FHIR Observation resource
+    
+    # Simplified values for quick access
+    values = Column(JSON) # {"systolic": 120, "diastolic": 80}
+    unit = Column(String) # "mmHg", "mg/dL", "bpm"
+    
+    device_metadata = Column(JSON, nullable=True) # Battery, signal strength, etc.
+    
+    received_at = Column(DateTime, default=datetime.utcnow)
+    processed = Column(Boolean, default=False)
+    
+    patient = relationship("Patient")
+
+
+# --- B2C Growth Models (Credits, Referrals, Family) ---
+
+class UserCredits(Base):
+    __tablename__ = "user_credits"
+    
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
+    balance = Column(Float, default=0.0) # Float for precise API cost tracking
+    tier = Column(String, default="FREE") # FREE, PRO, FAMILY
+    subscription_status = Column(String, default="ACTIVE")
+    next_billing_date = Column(DateTime, nullable=True)
+    
+    user = relationship("User", back_populates="credits_profile")
+    transactions = relationship("CreditTransaction", back_populates="credit_account")
+
+class CreditTransaction(Base):
+    __tablename__ = "credit_transactions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("user_credits.user_id"))
+    amount = Column(Float) # Negative for usage, positive for purchase/reward
+    reason = Column(String) # "AI_CHAT", "REFERRAL_REWARD", "MONTHLY_ALLOWANCE"
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    credit_account = relationship("UserCredits", back_populates="transactions")
+
+class Referral(Base):
+    __tablename__ = "referrals"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    referrer_id = Column(String, ForeignKey("users.id"))
+    referred_user_id = Column(String, ForeignKey("users.id"), nullable=True) # Linked after signup
+    invite_code = Column(String, index=True) # Non-unique to allow reusable codes
+    invite_email = Column(String, nullable=True) # If invited via email
+    
+    status = Column(String, default="PENDING") # PENDING, VERIFIED, COMPLETED
+    reward_claimed = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    
+    referrer = relationship("User", foreign_keys=[referrer_id], back_populates="sent_referrals")
+    referred_user = relationship("User", foreign_keys=[referred_user_id], back_populates="received_referral")
+
+class FamilyGroup(Base):
+    __tablename__ = "family_groups"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String) # e.g. "The Smith Family"
+    created_by_id = Column(String, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    members = relationship("FamilyMember", back_populates="group")
+
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    group_id = Column(String, ForeignKey("family_groups.id"))
+    user_id = Column(String, ForeignKey("users.id"))
+    
+    role = Column(String) # PARENT, CHILD, DEPENDENT
+    access_level = Column(String) # FULL, READ_ONLY
+    data_sharing_enabled = Column(Boolean, default=True)
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    
+    group = relationship("FamilyGroup", back_populates="members")
+    user = relationship("User")
+
+# Add relationships to User model
+User.credits_profile = relationship("UserCredits", uselist=False, back_populates="user")
+User.sent_referrals = relationship("Referral", foreign_keys=[Referral.referrer_id], back_populates="referrer")
+User.received_referral = relationship("Referral", foreign_keys=[Referral.referred_user_id], back_populates="referred_user", uselist=False)
+
+
+
 
 

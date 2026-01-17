@@ -44,7 +44,7 @@ def get_engine():
     print("DEBUG: Using SQLite Database")
     db_url = settings.DATABASE_URL
     if not db_url:
-        db_url = "sqlite:///./intelligent_health.db"
+        db_url = "sqlite:///./intelligent_health_dev.db"
         return create_engine(
             db_url, 
             connect_args={"check_same_thread": False}

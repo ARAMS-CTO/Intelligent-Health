@@ -11,14 +11,40 @@ import base64
 import google.generativeai as genai
 from sqlalchemy.orm import Session
 from ..schemas import Case, AIInsights, ExtractedCaseData, AIContextualSuggestion, SymptomAnalysisResult, AIFeedback as AIFeedbackSchema, AIFeedbackCreate, AIAgentStats, UnratedSuggestion, DiagnosisSuggestion, ChatRequest
-from ..models import SystemLog, SystemConfig, Case as CaseModel, AIFeedback, MedicalRecord, Patient as PatientModel, HealthData
+import server.models as models
+from ..models import SystemConfig, Case as CaseModel, AIFeedback, MedicalRecord, Patient as PatientModel, HealthData
+# SystemLog and LearningLog accessed via models.*
 from ..services.agent_service import agent_service
 from ..database import get_db
 
 from ..routes.auth import get_current_user
 from ..schemas import User
+from ..services.learning_service import LearningService
 
 router = APIRouter()
+
+class OutcomeRequest(BaseModel):
+    case_id: str
+    outcome: str
+    log_id: Optional[str] = None
+
+@router.post("/outcome")
+async def record_outcome(request: OutcomeRequest, db: Session = Depends(get_db)):
+    svc = LearningService(db)
+    
+    log_id = request.log_id
+    if not log_id:
+        # Find latest log for case
+        log = db.query(models.LearningLog).filter(models.LearningLog.case_id == request.case_id).order_by(models.LearningLog.created_at.desc()).first()
+        if not log: return {"error": "No learning log found for case"}
+        log_id = log.id
+        
+    lesson = svc.record_outcome(log_id, request.outcome)
+    
+    # Also log event
+    log_ai_event(db, "learning_outcome", "system", {"case_id": request.case_id, "lesson": lesson})
+        
+    return {"status": "success", "lesson": lesson}
 
 @router.post("/feedback")
 async def submit_feedback(feedback: AIFeedbackCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -55,9 +81,9 @@ async def get_ai_stats(user_id: str, db: Session = Depends(get_db)):
         
     # Robust count for SQLite compatibility
     # Fetch all ai_query logs for user and filter in python to avoid JSON dialect issues
-    all_logs = db.query(SystemLog).filter(
-        SystemLog.user_id == user_id, 
-        SystemLog.event_type == 'ai_query'
+    all_logs = db.query(models.SystemLog).filter(
+        models.SystemLog.user_id == user_id, 
+        models.SystemLog.event_type == 'ai_query'
     ).all()
     
     cases_analyzed = 0
@@ -108,7 +134,7 @@ MEDLM_MODEL = "medlm-large"
 
 def log_ai_event(db: Session, event_type: str, user_id: str, details: Dict[str, Any]):
     try:
-        log = SystemLog(event_type=event_type, user_id=user_id, details=details)
+        log = models.SystemLog(event_type=event_type, user_id=user_id, details=details)
         db.add(log)
         db.commit()
     except Exception as e:
@@ -204,21 +230,75 @@ async def chat(request: ChatRequest, current_user: User = Depends(get_current_us
         agent_service.add_learning_point(request.userId, f"User preference: {request.message}", db)
 
     try:
+        # EXCLUSIVE GEMINI CHAT
         # Re-init model with system instruction
-        chat_model = genai.GenerativeModel(model_name, system_instruction=system_instruction)
+        # We ensure model_name defaults to meaningful Gemini model if user tries to pass others
+        final_model = model_name
+        if "gpt" in model_name.lower() or "claude" in model_name.lower():
+            final_model = DEFAULT_MODEL
+            
+        chat_model = genai.GenerativeModel(final_model, system_instruction=system_instruction)
         chat = chat_model.start_chat(history=start_chat_history)
         
         response = chat.send_message(request.message)
-        log_ai_event(db, "ai_query", request.userId, {"endpoint": "chat", "model": model_name})
+        log_ai_event(db, "ai_query", request.userId, {"endpoint": "chat", "model": final_model, "provider": "google"})
         return {"response": response.text}
     except Exception as e:
         print(f"Chat Error: {e}")
         return {"response": f"AI Service Error: {str(e)}"}
 
-@router.post("/general_chat")
-async def general_chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Reuse the same chat logic, which now enforces current_user
-    return await chat(request, current_user, db)
+
+
+
+class SpecialistRequest(BaseModel):
+    query: str
+    case_data: str
+    domain: Optional[str] = None
+
+@router.post("/specialist_consult")
+async def specialist_consult(request: SpecialistRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Direct line to a Specialist Agent (Cardiology, Orthopedics, etc.).
+    """
+    if not API_KEY: return {"message": "AI Service Offline"}
+    
+    context = {
+        "user_id": current_user.id,
+        "user_role": current_user.role
+    }
+    
+    payload = {
+        "query": request.query,
+        "case_data": request.case_data,
+        "domain": request.domain
+    }
+
+    return await orchestrator.dispatch("specialist_consult", payload, context, db)
+
+
+class WorkflowRequest(BaseModel):
+    workflow_name: str
+    case_id: str
+    payload: Optional[Dict[str, Any]] = {}
+
+@router.post("/workflow")
+async def execute_workflow(request: WorkflowRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Triggers a complex multi-agent workflow (e.g. Comprehensive Patient Analysis).
+    """
+    if not API_KEY: return {"message": "AI Service Offline"}
+    
+    context = {
+        "user_id": current_user.id,
+        "user_role": current_user.role
+    }
+    
+    # Merge specific payload params
+    payload = request.payload or {}
+    payload["case_id"] = request.case_id
+    
+    return await orchestrator.execute_workflow(request.workflow_name, payload, context, db)
+
 
 @router.post("/generate_daily_questions")
 async def generate_daily_questions(payload: Dict[str, Any], current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -475,12 +555,31 @@ async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str]
     if not API_KEY: 
         return {"error": "AI Service Unavailable. API Key missing."}
 
-    valid_mimes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
-    if mime_type not in valid_mimes and not mime_type.startswith("image/"):
-         return {"error": f"Unsupported file type: {mime_type}. Only Images and PDFs are supported."}
+    valid_mimes = [
+        "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", 
+        "application/pdf",
+        "video/mp4", "video/mpeg", "video/mov", "video/quicktime", "video/webm"
+    ]
+    
+    if mime_type not in valid_mimes and not mime_type.startswith("image/") and not mime_type.startswith("video/"):
+         return {"error": f"Unsupported file type: {mime_type}. Only Images, PDFs, and Videos are supported."}
     
     system_instruction = agent_service.get_system_instruction(current_user.id, current_user.role, db)
-    base_prompt = "Analyze this medical document or image. Return JSON properties: document_type, findings, summary. Be precise with medical terminology."
+    
+    if mime_type.startswith("video/"):
+        base_prompt = """
+        Analyze this medical video. It may be a surgical procedure, a diagnostic scan (MRI/Ultrasound feed), or a clinical examination/consultation recording.
+        
+        1. Identify the TYPE of video (e.g., 'Surgical Procedure Video', 'Ultrasound Video', 'Gait Analysis Video', 'Nurse Examination Video').
+        2. Describe the key actions or events occurring.
+        3. Identify visible anatomical structures, medical devices, or symptoms.
+        4. Summarize the clinical interaction or findings.
+        
+        Return JSON properties: document_type (MUST include 'Video' suffix, e.g., 'Surgical Video'), findings, summary.
+        """
+    else:
+        base_prompt = "Analyze this medical document or image. Return JSON properties: document_type, findings, summary. Be precise with medical terminology."
+    
     final_prompt = f"{base_prompt} Specific focus: {prompt}" if prompt else base_prompt
     
     try:
@@ -699,6 +798,11 @@ async def analyze_patient_record(
         if ext in ['.jpg', '.jpeg']: mime_type = "image/jpeg"
         elif ext == '.png': mime_type = "image/png"
         elif ext == '.webp': mime_type = "image/webp"
+        elif ext in ['.mp4', '.m4v']: mime_type = "video/mp4"
+        elif ext in ['.mov', '.qt']: mime_type = "video/quicktime"
+        elif ext == '.webm': mime_type = "video/webm"
+        elif ext == '.avi': mime_type = "video/x-msvideo"
+        elif ext == '.mpeg': mime_type = "video/mpeg"
         
         # Analyze
         analysis = await _analyze_content(
@@ -716,7 +820,7 @@ async def analyze_patient_record(
             # Update Record
             record.type = analysis.get("type", "Document")
             record.title = analysis.get("title", record.title)
-            record.content_text = analysis.get("content_text", "")
+            record.content_text = analysis.get("content_text") or analysis.get("findings") or ""
             record.ai_summary = analysis.get("summary", "Analysis completed.")
             record.metadata_ = analysis
             

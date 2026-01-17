@@ -16,6 +16,7 @@ BUCKET_NAME = settings.GCS_BUCKET_NAME
 async def upload_file(
     file: UploadFile = File(...), 
     case_id: Optional[str] = Form(None),
+    patient_id: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     # Create a unique filename
@@ -57,10 +58,11 @@ async def upload_file(
         url = f"/uploads/{unique_name}"
     
     # Trigger Background AI Processing
-    if case_id:
+    if case_id or patient_id:
         background_tasks.add_task(
             FileProcessor.process_and_attach, 
-            case_id=case_id, 
+            case_id=case_id,
+            patient_id=patient_id,
             blob_name=unique_name, 
             bucket_name=BUCKET_NAME if uploaded_gcs else None,
             file_type=file.content_type,

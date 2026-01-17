@@ -1,24 +1,25 @@
+
 import sys
 import os
 
-root_dir = os.getcwd()
-if root_dir not in sys.path:
-    sys.path.insert(0, root_dir)
+# Add root to path
+sys.path.append(os.getcwd())
 
 try:
-    print("Attempting to import server.config...")
-    from server.config import settings
-    print(f"Success. App Version: {settings.APP_VERSION}")
-
-    print("Attempting to import server.main...")
-    from server.main import app
-    print("Success. App loaded.")
-    
-    print("Attempting to import server.database...")
-    from server.database import Base
-    print("Success. Base loaded.")
-
+    print("Importing auth...")
+    from server.routes import auth
+    print("Importing cases...")
+    from server.routes import cases
+    print("Importing lab...")
+    from server.routes import lab
+    print("Importing pharmacy...")
+    from server.routes import pharmacy
+    print("Importing sdk...")
+    from server.routes import sdk
+    print("Importing __init__...")
+    from server.routes import init_app
+    print("All good!")
 except Exception as e:
-    print(f"Import Error: {e}")
+    print(f"Error: {e}")
     import traceback
     traceback.print_exc()

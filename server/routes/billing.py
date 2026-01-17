@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import CostEstimate, Case as CaseModel
+import server.models as models
+# models.CostEstimate, models.Case, models.SystemConfig, models.Transaction, models.User accessed via models.*
 from ..schemas import CostEstimate as CostEstimateSchema
 import uuid
 import datetime
@@ -22,7 +23,7 @@ STANDARD_PRICING = {
     "Hospital Stay (Day)": {"cost": 1200.0, "category": "Stay"}
 }
 
-from ..models import SystemConfig
+
 from pydantic import BaseModel
 
 class BillingConfig(BaseModel):
@@ -32,7 +33,7 @@ class BillingConfig(BaseModel):
 @router.get("/config")
 async def get_billing_config(db: Session = Depends(get_db)):
     # Fetch from DB or return defaults
-    config = db.query(SystemConfig).filter(SystemConfig.key == "billing_settings").first()
+    config = db.query(models.SystemConfig).filter(models.SystemConfig.key == "billing_settings").first()
     if config:
         return config.value
     return {
@@ -45,9 +46,9 @@ async def update_billing_config(config: BillingConfig, user: User = Depends(get_
     if user.role != "Admin":
          raise HTTPException(status_code=403, detail="Not authorized")
          
-    db_config = db.query(SystemConfig).filter(SystemConfig.key == "billing_settings").first()
+    db_config = db.query(models.SystemConfig).filter(models.SystemConfig.key == "billing_settings").first()
     if not db_config:
-        db_config = SystemConfig(key="billing_settings", value=config.dict())
+        db_config = models.SystemConfig(key="billing_settings", value=config.dict())
         db.add(db_config)
     else:
         db_config.value = config.dict()
@@ -60,7 +61,7 @@ async def generate_cost_estimate(case_id: str, db: Session = Depends(get_db)):
     """
     Generates a cost estimate using AI to identify CPT codes and procedures.
     """
-    case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+    case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
@@ -116,7 +117,7 @@ async def generate_cost_estimate(case_id: str, db: Session = Depends(get_db)):
     estimate_id = f"est-{uuid.uuid4()}"
     
     # Save to DB
-    estimate = CostEstimate(
+    estimate = models.CostEstimate(
         id=estimate_id,
         case_id=case_id,
         total_cost=total_cost,
@@ -134,27 +135,27 @@ async def generate_cost_estimate(case_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{case_id}", response_model=CostEstimateSchema)
 async def get_estimate(case_id: str, db: Session = Depends(get_db)):
-    estimate = db.query(CostEstimate).filter(CostEstimate.case_id == case_id).order_by(CostEstimate.created_at.desc()).first()
+    estimate = db.query(models.CostEstimate).filter(models.CostEstimate.case_id == case_id).order_by(models.CostEstimate.created_at.desc()).first()
     if not estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
     return estimate
 
 
 from typing import List
-from ..models import Transaction as TransactionModel
+# from ..models import Transaction as TransactionModel # Removed
 from ..schemas import Transaction as TransactionSchema
 
 from ..routes.auth import get_current_user
 from ..schemas import User
 
 @router.post("/estimate/{case_id}/approve")
-async def approve_estimate(case_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def approve_estimate(case_id: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Progresses the approval workflow:
     Draft -> Pending Nurse -> Pending Admin -> Pending Insurance -> Pending Patient -> Approved
     """
     # Find latest estimate for case
-    estimate = db.query(CostEstimate).filter(CostEstimate.case_id == case_id).order_by(CostEstimate.created_at.desc()).first()
+    estimate = db.query(models.CostEstimate).filter(models.CostEstimate.case_id == case_id).order_by(models.CostEstimate.created_at.desc()).first()
     if not estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
         
@@ -162,8 +163,8 @@ async def approve_estimate(case_id: str, current_user: User = Depends(get_curren
     
     # Helper to simulate email
     def send_email_notification(to_role_or_email, subject, body):
-        from ..models import SystemLog
-        log = SystemLog(
+        import server.models as models
+        log = models.SystemLog(
             event_type="notification_email",
             user_id=current_user.id,
             details={
@@ -215,12 +216,12 @@ async def approve_estimate(case_id: str, current_user: User = Depends(get_curren
         estimate.status = "Pending Patient Approval"
         
         # Find patient email
-        case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+        case = db.query(models.Case).filter(models.Case.id == case_id).first()
         to_email = "Patient"
         if case and case.patient:
              # Try to find user linked to patient
              if case.patient.user_id:
-                 user = db.query(User).filter(User.id == case.patient.user_id).first()
+                 user = db.query(models.User).filter(models.User.id == case.patient.user_id).first()
                  if user: to_email = user.email
         
         send_email_notification(to_email, f"Cost Estimate Approved by Insurance: {case_id}", "Your insurance has approved. Please review your responsibility.")
@@ -233,8 +234,8 @@ async def approve_estimate(case_id: str, current_user: User = Depends(get_curren
     return estimate
 
 @router.post("/estimate/{case_id}/reject")
-async def reject_estimate(case_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    estimate = db.query(CostEstimate).filter(CostEstimate.case_id == case_id).order_by(CostEstimate.created_at.desc()).first()
+async def reject_estimate(case_id: str, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    estimate = db.query(models.CostEstimate).filter(models.CostEstimate.case_id == case_id).order_by(models.CostEstimate.created_at.desc()).first()
     if not estimate:
         raise HTTPException(status_code=404, detail="Estimate not found")
         
@@ -243,7 +244,7 @@ async def reject_estimate(case_id: str, current_user: User = Depends(get_current
     return estimate
 
 @router.get("/admin/estimates/pending")
-async def get_pending_estimates(role: str = "Nurse", current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_pending_estimates(role: str = "Nurse", current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Fetch estimates pending review for a specific role, enriched with Case Title.
     """
@@ -254,12 +255,12 @@ async def get_pending_estimates(role: str = "Nurse", current_user: User = Depend
     else:
         status = "Pending Insurance Approval"
         
-    results = db.query(CostEstimate, CaseModel).join(CaseModel, CostEstimate.case_id == CaseModel.id).filter(CostEstimate.status == status).all()
+    results = db.query(models.CostEstimate, models.Case).join(models.Case, models.CostEstimate.case_id == models.Case.id).filter(models.CostEstimate.status == status).all()
     
     output = []
     for est, case in results:
         output.append({
-            "estimate_id": est.id,
+            "id": est.id,
             "case_id": est.case_id,
             "case_title": case.title,
             "total_cost": est.total_cost,
@@ -269,30 +270,48 @@ async def get_pending_estimates(role: str = "Nurse", current_user: User = Depend
     return output
 
 @router.get("/admin/transactions", response_model=List[TransactionSchema])
-async def get_transactions(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_transactions(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role != "Admin":
          raise HTTPException(status_code=403, detail="Not authorized")
     # Check if empty, seed a few for demo
-    count = db.query(TransactionModel).count()
+    count = db.query(models.Transaction).count()
     if count == 0:
         # Seed mock transactions
         mock_txs = [
-            TransactionModel(id="tx-001", user_id="u1", user_name="Dr. Mario Sonati", amount=120.00, type="Subscription", status="Paid", date=datetime.datetime.utcnow() - datetime.timedelta(days=1)),
-            TransactionModel(id="tx-002", user_id="u2", user_name="Aram Ghannad", amount=45.00, type="Consultation", status="Paid", date=datetime.datetime.utcnow() - datetime.timedelta(days=2)),
-            TransactionModel(id="tx-003", user_id="u3", user_name="Dr. Sarah Lee", amount=250.00, type="Subscription", status="Pending", date=datetime.datetime.utcnow() - datetime.timedelta(days=2)),
-            TransactionModel(id="tx-004", user_id="u4", user_name="Patient #442", amount=30.00, type="AI Analysis", status="Paid", date=datetime.datetime.utcnow() - datetime.timedelta(days=3))
+            models.Transaction(id="tx-001", user_id="u1", user_name="Dr. Mario Sonati", amount=120.00, type="Subscription", status="Paid", date=datetime.datetime.utcnow() - datetime.timedelta(days=1)),
+            models.Transaction(id="tx-002", user_id="u2", user_name="Aram Ghannad", amount=45.00, type="Consultation", status="Paid", date=datetime.datetime.utcnow() - datetime.timedelta(days=2)),
+            models.Transaction(id="tx-003", user_id="u3", user_name="Dr. Sarah Lee", amount=250.00, type="Subscription", status="Pending", date=datetime.datetime.utcnow() - datetime.timedelta(days=2)),
+            models.Transaction(id="tx-004", user_id="u4", user_name="Patient #442", amount=30.00, type="AI Analysis", status="Paid", date=datetime.datetime.utcnow() - datetime.timedelta(days=3))
         ]
         for tx in mock_txs:
             db.add(tx)
         db.commit()
     
-    return db.query(TransactionModel).order_by(TransactionModel.date.desc()).all()
+    return db.query(models.Transaction).order_by(models.Transaction.date.desc()).all()
 
 from ..services.paypal_service import PayPalService
-from ..models import User as UserModel
+# from ..models import User as UserModel # Removed
+
+PRICING_TIERS = {
+    "100_credits": 10.00,
+    "500_credits": 45.00,
+    "1000_credits": 80.00
+}
 
 @router.post("/paypal/create-order")
-async def create_paypal_order(amount: float, currency: str = "USD", user: UserModel = Depends(get_current_user)):
+async def create_paypal_order(package_id: str, currency: str = "USD", db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    # Check Flags
+    config = db.query(models.SystemConfig).filter(models.SystemConfig.key == "billing_settings").first()
+    if config:
+        settings = config.value
+        if not settings.get("payment_gateways", {}).get("paypal", True):
+             raise HTTPException(status_code=400, detail="PayPal is currently disabled.")
+
+    if package_id not in PRICING_TIERS:
+        raise HTTPException(status_code=400, detail="Invalid package ID")
+    
+    amount = PRICING_TIERS[package_id]
+    
     service = PayPalService()
     try:
         order = await service.create_order(amount, currency)
@@ -301,7 +320,7 @@ async def create_paypal_order(amount: float, currency: str = "USD", user: UserMo
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/paypal/capture-order")
-async def capture_paypal_order(order_id: str, db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
+async def capture_paypal_order(order_id: str, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     service = PayPalService()
     try:
         capture = await service.capture_order(order_id)
@@ -317,7 +336,7 @@ async def capture_paypal_order(order_id: str, db: Session = Depends(get_db), use
             user.credits += credits_to_add
             
             # Log transaction
-            new_tx = TransactionModel(
+            new_tx = models.Transaction(
                 id=f"tx-{order_id}",
                 user_id=user.id,
                 user_name=user.name,
@@ -337,18 +356,30 @@ async def capture_paypal_order(order_id: str, db: Session = Depends(get_db), use
 from ..services.stripe_service import StripeService
 
 @router.post("/stripe/create-payment-intent")
-async def create_stripe_payment(amount: float, currency: str = "usd", user: UserModel = Depends(get_current_user)):
+async def create_stripe_payment(package_id: str, currency: str = "usd", db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
+    # Check Flags
+    config = db.query(models.SystemConfig).filter(models.SystemConfig.key == "billing_settings").first()
+    if config:
+        settings = config.value
+        if not settings.get("payment_gateways", {}).get("stripe", True):
+             raise HTTPException(status_code=400, detail="Stripe is currently disabled.")
+
+    if package_id not in PRICING_TIERS:
+        raise HTTPException(status_code=400, detail="Invalid package ID")
+        
+    amount = PRICING_TIERS[package_id]
+    
     service = StripeService()
     return await service.create_payment_intent(amount, currency)
 
 @router.post("/stripe/verify-payment")
-async def verify_stripe_payment(intent_id: str, db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
+async def verify_stripe_payment(intent_id: str, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     service = StripeService()
     intent = await service.retrieve_payment_intent(intent_id)
     
     if intent.status == "succeeded":
         # Check if already processed to prevent duplicates (ideally lookup tx ID)
-        existing = db.query(TransactionModel).filter(TransactionModel.id == f"tx-{intent.id}").first()
+        existing = db.query(models.Transaction).filter(models.Transaction.id == f"tx-{intent.id}").first()
         if existing:
             return {"status": "success", "message": "Already processed", "new_credits": user.credits}
 
@@ -356,7 +387,7 @@ async def verify_stripe_payment(intent_id: str, db: Session = Depends(get_db), u
         credits_to_add = int(amount * 10) # 10 credits per dollar
         user.credits += credits_to_add
         
-        new_tx = TransactionModel(
+        new_tx = models.Transaction(
             id=f"tx-{intent.id}",
             user_id=user.id,
             user_name=user.name,
@@ -372,7 +403,7 @@ async def verify_stripe_payment(intent_id: str, db: Session = Depends(get_db), u
         return {"status": "pending", "message": "Payment not yet succeeded"}
 
 @router.post("/stripe/connect-account")
-async def create_connect_account(email: str = None, user: UserModel = Depends(get_current_user)):
+async def create_connect_account(email: str = None, user: models.User = Depends(get_current_user)):
     """
     Onboards a user (e.g. Pharmacy/Insurance) to Stripe Connect to receive payouts.
     """

@@ -3,7 +3,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from ..schemas import Case as CaseSchema, CaseCreate, Comment as CommentSchema, Role
 from ..database import get_db
-from ..models import Case as CaseModel, Comment as CommentModel, User as UserModel
+import server.models as models
+# Case, Comment, User, SystemLog accessed via models.*
 from ..routes.auth import get_current_user
 from datetime import datetime
 import uuid
@@ -11,24 +12,24 @@ import uuid
 router = APIRouter()
 
 @router.get("", response_model=List[CaseSchema])
-async def get_cases(db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
-    query = db.query(CaseModel).options(joinedload(CaseModel.patient))
+async def get_cases(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    query = db.query(models.Case).options(joinedload(models.Case.patient))
     
     if current_user.role == Role.Patient or current_user.role == "Patient":
         if current_user.patient_profile:
-            query = query.filter(CaseModel.patient_id == current_user.patient_profile.id)
+            query = query.filter(models.Case.patient_id == current_user.patient_profile.id)
         else:
             return []
             
-    return query.order_by(CaseModel.created_at.desc()).limit(100).all()
+    return query.order_by(models.Case.created_at.desc()).limit(100).all()
 
 @router.get("/{case_id}", response_model=CaseSchema)
-async def get_case(case_id: str, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
-    case = db.query(CaseModel).options(joinedload(CaseModel.patient)).filter(CaseModel.id == case_id).first()
+async def get_case(case_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    case = db.query(models.Case).options(joinedload(models.Case.patient)).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
         
-    # Security Check for Patients
+    # Security Check forPatients
     if current_user.role == Role.Patient or current_user.role == "Patient":
         if not current_user.patient_profile or case.patient_id != current_user.patient_profile.id:
             # Mask existence of unauthorized cases
@@ -37,11 +38,11 @@ async def get_case(case_id: str, db: Session = Depends(get_db), current_user: Us
     return case
 
 @router.post("", response_model=CaseSchema)
-async def create_case(case: CaseCreate, db: Session = Depends(get_db)):
-    new_case = CaseModel(
+async def create_case(case: CaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    new_case = models.Case(
         id=str(uuid.uuid4()),
         title=case.title,
-        creator_id=case.creator_id,
+        creator_id=current_user.id, # Use authenticated user
         patient_id=case.patient_id,
         created_at=datetime.utcnow().isoformat(),
         complaint=case.complaint,
@@ -52,13 +53,24 @@ async def create_case(case: CaseCreate, db: Session = Depends(get_db)):
         status="Open"
     )
     db.add(new_case)
+    
+    # Audit Log
+    try:
+        db.add(models.SystemLog(
+            event_type="create_case",
+            user_id=current_user.id if hasattr(current_user, 'id') else case.creator_id,
+            details={"case_id": new_case.id, "title": new_case.title}
+        ))
+    except Exception:
+        pass
+        
     db.commit()
     db.refresh(new_case)
     return new_case
 
 @router.patch("/{case_id}")
 async def update_case(case_id: str, updates: dict = Body(...), db: Session = Depends(get_db)):
-    case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+    case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     
@@ -71,14 +83,15 @@ async def update_case(case_id: str, updates: dict = Body(...), db: Session = Dep
     return {"message": "Case updated successfully"}
 
 @router.put("/{case_id}/status")
-async def update_case_status(case_id: str, status: dict = Body(...), db: Session = Depends(get_db)):
-    case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+async def update_case_status(case_id: str, status: dict = Body(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     
     new_status = status["status"]
     case.status = new_status
     db.commit()
+    
     
     # RAG Integration: Index closed cases
     if new_status == "Closed":
@@ -91,14 +104,32 @@ async def update_case_status(case_id: str, status: dict = Body(...), db: Session
                 "case_id": case.id, 
                 "diagnosis": case.diagnosis
             })
+            
+            # Agent Learning Log
+            # Record that the case was successfully closed
+            if hasattr(case, 'learning_logs'):
+                 # Could update existing log or create new one confirming outcome
+                 pass
+                 
         except Exception as e:
             print(f"RAG Indexing Error: {e}")
+            
+    # Audit Log
+    try:
+        db.add(models.SystemLog(
+             event_type="case_status_update",
+             user_id=current_user.id, 
+             details={"case_id": case_id, "old_status": case.status, "new_status": new_status}
+        ))
+        db.commit()
+    except Exception:
+        pass
             
     return {"message": "Status updated"}
 
 @router.post("/{case_id}/assign")
 async def assign_specialist(case_id: str, data: dict = Body(...), db: Session = Depends(get_db)):
-    case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+    case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     
@@ -109,11 +140,11 @@ async def assign_specialist(case_id: str, data: dict = Body(...), db: Session = 
 
 @router.get("/{case_id}/comments", response_model=List[CommentSchema])
 async def get_case_comments(case_id: str, db: Session = Depends(get_db)):
-    return db.query(CommentModel).filter(CommentModel.case_id == case_id).all()
+    return db.query(models.Comment).filter(models.Comment.case_id == case_id).all()
 
 @router.post("/comments")
-async def add_comment(comment: CommentSchema, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
-    new_comment = CommentModel(
+async def add_comment(comment: CommentSchema, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    new_comment = models.Comment(
         id=str(uuid.uuid4()),
         case_id=comment.caseId,
         user_id=current_user.id,
@@ -127,15 +158,15 @@ async def add_comment(comment: CommentSchema, current_user: UserModel = Depends(
     return {"message": "Comment added"}
 
 from ..schemas import UploadedFile as UploadedFileSchema, LabResult as LabResultSchema
-from ..models import CaseFile as CaseFileModel, LabResult as LabResultModel
+
 
 @router.post("/{case_id}/files", response_model=UploadedFileSchema)
 async def add_case_file(case_id: str, file: UploadedFileSchema, db: Session = Depends(get_db)):
-    case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+    case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
         
-    new_file = CaseFileModel(
+    new_file = models.CaseFile(
         id=file.id or str(uuid.uuid4()),
         case_id=case_id,
         name=file.name,
@@ -149,11 +180,11 @@ async def add_case_file(case_id: str, file: UploadedFileSchema, db: Session = De
 
 @router.post("/{case_id}/results", response_model=LabResultSchema)
 async def add_lab_result(case_id: str, result: LabResultSchema, db: Session = Depends(get_db)):
-    case = db.query(CaseModel).filter(CaseModel.id == case_id).first()
+    case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
         
-    new_result = LabResultModel(
+    new_result = models.LabResult(
         case_id=case_id,
         test=result.test,
         value=result.value,

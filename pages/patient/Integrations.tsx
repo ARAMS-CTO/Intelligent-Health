@@ -68,11 +68,9 @@ export const IntegrationsPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     const availableProviders = [
-        { id: 'samsung_health', name: 'Samsung Health', description: 'Sync steps, heart rate, and sleep data.', icon: '⌚' },
+        { id: 'fitbit', name: 'Fitbit', description: 'Track activity, heart rate, and sleep.', icon: '⌚' },
+        { id: 'google_health', name: 'Google Health Connect', description: 'Sync Android fitness data.', icon: '💪' },
         { id: 'apple_health', name: 'Apple Health', description: 'Connect your iPhone and Apple Watch.', icon: '🍎' },
-        { id: 'google_fit', name: 'Google Fit', description: 'Aggregate fitness data from Android.', icon: '💪' },
-        { id: 'withings', name: 'Withings', description: 'Smart scales and blood pressure monitors.', icon: '⚖️' },
-        { id: 'chatgpt_health', name: 'ChatGPT Health', description: 'Import AI-generated wellness logs.', icon: '🤖' },
     ];
 
     const fetchStatus = async () => {
@@ -93,11 +91,11 @@ export const IntegrationsPage: React.FC = () => {
     const handleConnect = async (providerId: string) => {
         setLoading(true);
         try {
-            await DataService.connectProvider(providerId);
-            await fetchStatus();
-        } catch (e) {
-            alert("Connection failed");
-        } finally {
+            // New OAuth Flow
+            const url = await DataService.getIntegrationAuthUrl(providerId);
+            window.location.href = url;
+        } catch (e: any) {
+            alert("Connection failed: " + e.message);
             setLoading(false);
         }
     };
@@ -115,11 +113,18 @@ export const IntegrationsPage: React.FC = () => {
         }
     };
 
-    const handleSync = async () => {
+    const handleSync = async (providerId?: string) => {
         setLoading(true);
         try {
-            const res = await DataService.syncIntegrations();
-            alert(`Synced ${res.synced_records} new records!`);
+            if (providerId) {
+                // Sync specific
+                await DataService.syncProvider(providerId);
+                alert("Sync started for " + providerId);
+            } else {
+                // Sync all (legacy)
+                const res = await DataService.syncIntegrations();
+                alert(`Synced ${res.synced_records || 0} new records!`);
+            }
             await fetchStatus();
         } catch (e) {
             alert("Sync failed");
@@ -159,7 +164,7 @@ export const IntegrationsPage: React.FC = () => {
                             lastSync={status?.last_sync}
                             onConnect={handleConnect}
                             onDisconnect={handleDisconnect}
-                            onSync={handleSync}
+                            onSync={() => handleSync(provider.id)}
                         />
                     );
                 })}

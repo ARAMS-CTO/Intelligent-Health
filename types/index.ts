@@ -64,6 +64,7 @@ export interface Case {
   files: UploadedFile[];
   status: 'Open' | 'Closed' | 'Under Review';
   labResults?: LabResult[];
+  vitals?: any; // Added for AI analysis context
   specialistId?: string; // Added for explicit assignment
   assignedSpecialist?: string; // Cache for display
   specialistAssignmentTimestamp?: string;
@@ -188,6 +189,7 @@ export interface PatientProfile {
   };
   medications: Medication[];
   files: PatientFile[];
+  medicalRecords: MedicalRecord[];
   visitHistory: VisitHistory[];
 }
 

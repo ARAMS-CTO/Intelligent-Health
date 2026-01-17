@@ -17,7 +17,7 @@ import ClinicalGuidelinesCard from '../components/ClinicalGuidelinesCard';
 import VoiceFormAssistant from '../components/VoiceFormAssistant';
 import { FinancialsTab } from '../components/case/FinancialsTab';
 import { ClinicalPlanSection } from '../components/case/ClinicalPlanSection';
-import CardiologyPanel from '../components/specialties/CardiologyPanel';
+import { SpecialistSupportPanel } from '../components/specialties/SpecialistSupportPanel';
 import { showToast } from '../components/Toast';
 import { AgentsConsole } from '../components/case/AgentsConsole';
 import { ResearchPanel } from '../components/case/ResearchPanel';
@@ -181,6 +181,30 @@ const LabResultsTable = React.memo(({ results, onAddResult, isOffline }: LabResu
     );
 });
 
+// --- Outcome Modal ---
+const OutcomeModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (outcome: string) => void }) => {
+    const [outcome, setOutcome] = useState('');
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-white/20 animate-fade-in relative z-50">
+                <h3 className="text-xl font-bold text-text-main mb-2">Record Clinical Outcome</h3>
+                <p className="text-sm text-text-muted mb-4">Help the AI learn by recording the actual outcome of this case.</p>
+                <textarea
+                    className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-text-main focus:ring-2 focus:ring-primary h-32 resize-none"
+                    placeholder="e.g., Patient recovered after 3 days. Treatment X was effective."
+                    value={outcome}
+                    onChange={e => setOutcome(e.target.value)}
+                />
+                <div className="flex justify-end gap-3 mt-6">
+                    <button onClick={onClose} className="px-4 py-2 text-text-muted hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
+                    <button onClick={() => { onSave(outcome); setOutcome(''); }} disabled={!outcome.trim()} className="px-6 py-2 bg-primary text-white font-bold rounded-lg hover:bg-opacity-90 transition-colors disabled:opacity-50">Save & Learn</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- AI Clinical Summary Section (Standalone) ---
 
 interface AIClinicalSummarySectionProps {
@@ -188,9 +212,10 @@ interface AIClinicalSummarySectionProps {
     isLoading: boolean;
     onGenerate: () => void;
     isOffline: boolean;
+    onRecordOutcome: () => void;
 }
 
-const AIClinicalSummarySection = React.memo(({ insights, isLoading, onGenerate, isOffline }: AIClinicalSummarySectionProps) => {
+const AIClinicalSummarySection = React.memo(({ insights, isLoading, onGenerate, isOffline, onRecordOutcome }: AIClinicalSummarySectionProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     // Automatically open when insights are generated
@@ -241,7 +266,17 @@ const AIClinicalSummarySection = React.memo(({ insights, isLoading, onGenerate, 
                                     )}
                                 </button>
 
+
+
                                 <DonateToResearchButton caseId={insights ? "current" : "unknown"} />
+
+                                <button
+                                    onClick={onRecordOutcome}
+                                    className="px-4 py-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-xl font-bold hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center gap-2"
+                                    title="Record actual outcome for AI learning"
+                                >
+                                    {ICONS.check} Record Outcome
+                                </button>
                             </div>
                         </div>
 
@@ -309,8 +344,9 @@ const AIClinicalSummarySection = React.memo(({ insights, isLoading, onGenerate, 
                         </div>
                     )}
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 });
 
@@ -329,10 +365,11 @@ interface CaseDetailsCardProps {
     onUpdateDiagnosis: (newDiagnosis: string) => void;
     onUpdateICD10: (newCode: string) => void;
     onOpenExplanation: () => void;
-    onAddVoiceNote: (note: string) => void; // New prop
+    onAddVoiceNote: (note: string) => void;
+    onRecordOutcome: () => void;
 }
 
-const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, insights, onAddLabResult, onOpenAnalysisModal, isOffline, onUpdateComplaint, onUpdateHistory, onUpdateFindings, onUpdateDiagnosis, onUpdateICD10, onOpenExplanation, onAddVoiceNote }) => {
+const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, insights, onAddLabResult, onOpenAnalysisModal, isOffline, onUpdateComplaint, onUpdateHistory, onUpdateFindings, onUpdateDiagnosis, onUpdateICD10, onOpenExplanation, onAddVoiceNote, onRecordOutcome }) => {
     // State for Collapsible Sections
     const [openSections, setOpenSections] = useState({
         complaint: true,
@@ -505,6 +542,7 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
 
             <div className="divide-y divide-white/10 dark:divide-slate-700/50">
                 <div className="mb-4">
+                    <AIClinicalSummarySection insights={insights} isLoading={false} onGenerate={() => { }} isOffline={isOffline} onRecordOutcome={onRecordOutcome} />
                     <ClinicalPlanSection caseData={caseData} isOffline={isOffline} />
                 </div>
 
@@ -541,14 +579,12 @@ const CaseDetailsCard: React.FC<CaseDetailsCardProps> = ({ caseData, onAddFile, 
                     )}
                 </CollapsibleSection>
 
-                {/* Specialty Panel - Conditional Render based on case.tags or default for demo */}
-                <CollapsibleSection title="Cardiology Specialty Panel" isOpen={openSections.specialty} onToggle={() => toggleSection('specialty')}>
+                {/* Specialist Support Panel - Dynamic Domain Support */}
+                <CollapsibleSection title="AI Specialist Support" isOpen={openSections.specialty} onToggle={() => toggleSection('specialty')}>
                     <div className="p-2">
-                        <CardiologyPanel
-                            caseId={caseData.id}
-                            patientAge={caseData.patientProfile?.age || 0}
-                            patientSex={caseData.patientProfile?.sex || 'Unknown'}
-                            history={caseData.history}
+                        <SpecialistSupportPanel
+                            caseData={caseData}
+                            isOffline={isOffline}
                         />
                     </div>
                 </CollapsibleSection>
@@ -837,6 +873,20 @@ const CaseView: React.FC = () => {
         setCaseData(prev => prev ? ({ ...prev, icd10Code: val }) : null);
     };
 
+    const [isOutcomeOpen, setOutcomeOpen] = useState(false);
+    const handleRecordOutcome = () => setOutcomeOpen(true);
+    const handleSaveOutcome = async (outcome: string) => {
+        setOutcomeOpen(false);
+        try {
+            await fetch('/api/ai/outcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ case_id: caseData?.id, outcome })
+            });
+            showToast.success("Lesson Learned & Indexed.");
+        } catch (e) { showToast.error("Failed to save outcome."); }
+    };
+
     const handlePostComment = async (comment: any) => { // Type mismatch fix as well if comment is obj
         // Wait, the previous signature was addComment(caseId, content).
         // CaseDiscussion likely returns the text or an object. Checking usage.
@@ -1003,6 +1053,7 @@ const CaseView: React.FC = () => {
                                     isLoading={isInsightsLoading}
                                     onGenerate={handleGenerateInsights}
                                     isOffline={isOffline}
+                                    onRecordOutcome={handleRecordOutcome}
                                 />
                                 <CaseDetailsCard
                                     caseData={caseData}
@@ -1011,6 +1062,7 @@ const CaseView: React.FC = () => {
                                     onAddLabResult={handleAddLabResult}
                                     onOpenAnalysisModal={() => setIsImageAnalysisOpen(true)}
                                     isOffline={isOffline}
+                                    onRecordOutcome={handleRecordOutcome}
                                     onUpdateComplaint={handleUpdateComplaint}
                                     onUpdateHistory={handleUpdateHistory}
                                     onUpdateFindings={handleUpdateFindings}
@@ -1110,7 +1162,13 @@ const CaseView: React.FC = () => {
                 isOffline={isOffline}
                 onSaveNote={handleAddVoiceNote}
             />
-        </div >
+
+            <OutcomeModal
+                isOpen={isOutcomeOpen}
+                onClose={() => setOutcomeOpen(false)}
+                onSave={handleSaveOutcome}
+            />
+        </div>
     );
 };
 

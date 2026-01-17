@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from ..models import User
+from sqlalchemy.orm import Session
+import server.models as models
+# User accessed via models.User
 
 class BaseAgent(ABC):
     """

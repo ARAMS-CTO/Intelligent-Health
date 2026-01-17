@@ -62,10 +62,12 @@ class UploadedFile(BaseSchema):
 
 class LabResult(BaseSchema):
     test: str
-    value: str
-    unit: str
-    reference_range: str
+    value: Optional[str] = None
+    unit: Optional[str] = None
+    reference_range: Optional[str] = None
     interpretation: Optional[Literal['Normal', 'Abnormal-High', 'Abnormal-Low', 'Critical']] = None
+    status: Optional[str] = "Pending"
+    id: Optional[Any] = None
 
 class CaseBase(BaseSchema):
     title: str
@@ -78,7 +80,12 @@ class CaseBase(BaseSchema):
     tags: List[str] = []
 
 class CaseCreate(CaseBase):
-    pass
+    creator_id: Optional[str] = None
+    complaint: Optional[str] = None
+    history: Optional[str] = None
+    findings: Optional[str] = None
+    diagnosis: Optional[str] = None
+    tags: Optional[List[str]] = []
 
 class Case(CaseBase):
     id: str
@@ -148,11 +155,36 @@ class PatientFile(BaseSchema):
     upload_date: Optional[str] = None
     url: str
 
+class MedicalRecord(BaseSchema):
+    id: str
+    patient_id: Optional[str] = None
+    uploader_id: str
+    type: str
+    title: str
+    file_url: str
+    content_text: str
+    ai_summary: str
+    created_at: datetime
+
 class Medication(BaseSchema):
     id: str
     name: str
     dosage: Optional[str] = None
     frequency: Optional[str] = None
+
+class Prescription(BaseSchema):
+    id: str
+    patient_id: str
+    case_id: Optional[str] = None
+    doctor_id: str
+    medication_name: str
+    dosage: str
+    frequency: str
+    duration: str
+    notes: Optional[str] = None
+    status: str
+    dispensed_at: Optional[datetime] = None
+    created_at: datetime
 
 class PersonalDetails(BaseSchema):
     dob: Optional[str] = None
@@ -184,6 +216,7 @@ class PatientProfile(BaseSchema):
     primary_care_physician: Optional[PrimaryCarePhysician] = None
     medications: List[Medication]
     files: List[PatientFile]
+    medical_records: List[MedicalRecord] = []
 
 class FullName(BaseSchema):
     first_name: str
@@ -331,16 +364,7 @@ class ChatRequest(BaseModel):
     userId: Optional[str] = None
     userRole: Optional[str] = None
 
-class MedicalRecord(BaseSchema):
-    id: str
-    patient_id: Optional[str] = None
-    uploader_id: str
-    type: str
-    title: str
-    file_url: str
-    content_text: str
-    ai_summary: str
-    created_at: datetime
+
 
 class AgentCapability(BaseSchema):
     id: str

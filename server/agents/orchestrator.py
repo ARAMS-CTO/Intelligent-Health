@@ -3,10 +3,17 @@ from sqlalchemy.orm import Session
 from .base import BaseAgent
 from .nurse import NurseAgent
 from .doctor import DoctorAgent
-from .specialists import EmergencyAgent, LaboratoryAgent, RadiologyAgent
+from .specialists import (
+    EmergencyAgent, LaboratoryAgent, RadiologyAgent, 
+    CardiologyAgent, OrthopedicsAgent, PulmonologyAgent, EndocrinologyAgent
+)
 from .support import PatientAgent, InsuranceAgent, PricingAgent, RecoveryAgent, PsychologyAgent
 from .researcher import ResearcherAgent
 from .integration_agent import IntegrationAgent
+
+from .claude_agent import ClaudeSpecialistAgent
+from .openai_agent import OpenAIAgent
+from ..services.domain_router import domain_router
 
 import google.generativeai as genai
 import json
@@ -24,7 +31,7 @@ class AgentOrchestrator:
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.router_model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.router_model = genai.GenerativeModel("gemini-1.5-flash")
             
         self.agents: List[BaseAgent] = [
             NurseAgent(),
@@ -38,7 +45,13 @@ class AgentOrchestrator:
             RecoveryAgent(),
             PsychologyAgent(),
             ResearcherAgent(),
-            IntegrationAgent()
+            IntegrationAgent(),
+            ClaudeSpecialistAgent(),
+            OpenAIAgent(),
+            CardiologyAgent(),
+            OrthopedicsAgent(),
+            PulmonologyAgent(),
+            EndocrinologyAgent()
         ]
 
     async def route_task(self, query: str) -> Dict[str, Any]:
@@ -57,7 +70,9 @@ class AgentOrchestrator:
             'augment_case', 'daily_checkin', 'vitals_check', 'monitor', 'initial_assessment',
             'check_interactions', 'check_drug_interaction', 'prior_auth', 'chat_with_patient',
             'daily_checkup', 'crash_cart_recommendation', 'rapid_triage', 'validate_results',
-            'analyze_xray', 'analyze_ct'
+            'analyze_xray', 'analyze_ct', 'consult_healthcare_data', 'find_icd10_codes', 'research_clinical_guidelines',
+            'general_consultation', 'complex_reasoning', 'second_opinion', 'analyze_medical_structured',
+            'specialist_consult'
         ]
         caps_desc = "\n".join([f"- {a.name}: {a.description} (Tasks: {[t for t in possible_tasks if a.can_handle(t)]})" for a in self.agents])
 
@@ -79,10 +94,11 @@ class AgentOrchestrator:
         - "Analyze X-Ray..." -> task: "analyze_image"
         - "Find guidelines for X..." -> task: "find_guidelines", payload: {{ "condition": "X" }}
         - "Research treatment for Y..." -> task: "research_condition", payload: {{ "query": "Y" }}
+        - "Consult specialist for..." -> task: "specialist_consult", payload: {{ "query": "...", "case_data": "..." }}
         """
         
         try:
-            response = self.router_model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            response = await self.router_model.generate_content_async(prompt, generation_config={"response_mime_type": "application/json"})
             return json.loads(response.text)
         except Exception as e:
             return {"error": f"Routing failed: {str(e)}"}
@@ -101,6 +117,31 @@ class AgentOrchestrator:
         """
         Main entry point for the backend. Handles single task execution and Result Persistence.
         """
+        # 1. SPECIAL LOGIC: Specialist Consult with Auto-Routing
+        if task == "specialist_consult":
+            domain = payload.get("domain")
+            if not domain and payload.get("case_data"):
+                # Auto-Identify Domain
+                classification = await domain_router.classify_domain(payload["case_data"])
+                domain = classification.get("domain", "General")
+            
+            # Find the specific agent for this domain
+            target_agent = None
+            for agent in self.agents:
+                if hasattr(agent, 'domain_name') and agent.domain_name == domain:
+                    target_agent = agent
+                    break
+            
+            # Fallback to General (DoctorAgent) if specialist not found
+            if not target_agent:
+                target_agent = self.get_agent_for_task("diagnose") # Default to Doctor
+                payload["query"] = f"[Domain: {domain}] {payload.get('query')}"
+                
+            agent = target_agent
+        else:
+            # Standard Lookup
+            agent = self.get_agent_for_task(task)
+
         # 1. GDPR/Consent Check
         user_id = context.get("user_id")
         if user_id:
@@ -122,7 +163,6 @@ class AgentOrchestrator:
                          "message": "Data Sharing Permission Denied: Enable 'Data Sharing' to use Research Agents."
                      }
 
-        agent = self.get_agent_for_task(task)
         if not agent:
              return {"status": "error", "message": f"No agent found capable of handling task: {task}"}
         
@@ -134,8 +174,8 @@ class AgentOrchestrator:
         
         # Log execution
         try:
-             from ..models import SystemLog
-             log = SystemLog(
+             import server.models as models
+             log = models.SystemLog(
                  event_type="ai_query", 
                  user_id=user_id if user_id else "system", 
                  details={"task": task, "agent": agent.name, "action": "dispatch", "status": "started"}
@@ -146,6 +186,7 @@ class AgentOrchestrator:
              print(f"Orchestrator Log Error: {e}")
         
         # 2. EXECUTE AGENT
+        # Some agents might need specialized method calls, but process() is the standard interface.
         result = await agent.process(task, payload, context, db)
 
         # 3. RESULT PERSISTENCE (Orchestration Layer)
@@ -190,30 +231,74 @@ class AgentOrchestrator:
         results = {}
         
         if workflow_name == "comprehensive_patient_analysis":
-            # Parallel execution of Lab, Radiology, and Doctor
-            # 1. Get Case
+            # Domain-Aware Multi-Agent Consultation
+            import asyncio
+            from ..models import Case
+
+            # 1. Get Case & Identify Domain
             case_id = payload.get("case_id")
             if not case_id: return {"error": "Missing case_id"}
-
-            # 2. Parallel tasks (simulated)
-            lab_res = await self.dispatch("analyze_labs", {"case_id": case_id}, context, db)
-            img_res = await self.dispatch("analyze_image", {"case_id": case_id}, context, db)
             
-            # 3. Aggregated Doctor Review
-            doc_payload = {
-                "case_id": case_id, 
+            case = db.query(Case).filter(Case.id == case_id).first()
+            if not case: return {"error": "Case not found"}
+
+            case_text = f"Complaint: {case.complaint}\nHistory: {case.history}\nFindings: {case.findings}"
+            classification = await domain_router.classify_domain(case_text)
+            domain = classification.get("domain", "General")
+            
+            # Helper for conditional tasks
+            async def run_task_or_skip(condition, task_name, task_payload):
+                if condition:
+                    return await self.dispatch(task_name, task_payload, context, db)
+                return {"status": "skipped", "message": "Not applicable"}
+
+            # 2. Parallel Execution of Specialists
+            # - Domain Specialist (Cardio, Ortho, etc.)
+            # - Lab Specialist (if labs exist)
+            # - Radiology Specialist (if imaging exists)
+            
+            has_labs = bool(case.lab_results)
+            has_images = any(f.type in ['CT', 'X-Ray', 'MRI', 'Photo', 'Doppler Scan'] for f in case.files)
+
+            specialist_task = self.dispatch(
+                "specialist_consult", 
+                {"query": "Please provide a comprehensive domain assessment for this case.", "case_data": case_text, "domain": domain}, 
+                context, db
+            )
+            
+            lab_task = run_task_or_skip(has_labs, "analyze_labs", {"case_id": case_id})
+            img_task = run_task_or_skip(has_images, "analyze_image", {"case_id": case_id})
+
+            results = await asyncio.gather(specialist_task, lab_task, img_task)
+            spec_res, lab_res, img_res = results
+
+            # 3. Synthesis by Doctor (Moderator)
+            # We treat the specialist outputs as "expert testimony" for the Doctor to synthesize
+            
+            synthesis_payload = {
+                "case_id": case_id,
                 "extracted_data": { 
-                    "lab_analysis": lab_res, 
-                    "image_analysis": img_res 
+                    "consultation_context": f"Multi-Disciplinary Team Review ({domain})",
+                    "specialist_opinion": spec_res.get("message"),
+                    "lab_analysis": lab_res,
+                    "radiology_analysis": img_res,
+                    "domain_actions": spec_res.get("actions", [])
                 },
-                "baseline_illnesses": [] # fetch from DB if needed
+                "baseline_illnesses": case.patientProfile.comorbidities if case.patientProfile else []
             }
-            final_res = await self.dispatch("augment_case", doc_payload, context, db)
+            
+            # Using 'augment_case' to synthesize findings
+            final_res = await self.dispatch("augment_case", synthesis_payload, context, db)
             
             return {
-                "lab_analysis": lab_res,
-                "image_analysis": img_res,
-                "clinical_synthesis": final_res
+                "status": "success",
+                "domain": domain,
+                "consultation_summary": {
+                    "specialist": spec_res,
+                    "labs": lab_res,
+                    "imaging": img_res
+                },
+                "final_recommendation": final_res
             }
             
         return {"error": "Unknown workflow"}

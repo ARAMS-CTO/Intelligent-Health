@@ -31,6 +31,16 @@ const InsuranceDashboard: React.FC = () => {
         }
     };
 
+    const handleApprove = async (caseId: string) => {
+        try {
+            await DataService.approveCostEstimate(caseId);
+            showToast.success("Claim Approved");
+            loadData();
+        } catch (e) {
+            showToast.error("Approval failed");
+        }
+    };
+
     const handleProcessClaim = (caseId: string) => {
         navigate(`/case/${caseId}`);
         // In the CaseView, logic should open the Financials tab based on status, 
@@ -103,10 +113,16 @@ const InsuranceDashboard: React.FC = () => {
                                                 {est.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right space-x-2">
+                                            <button
+                                                onClick={() => handleApprove(est.case_id)}
+                                                className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-sm font-bold hover:bg-emerald-600 shadow-sm"
+                                            >
+                                                Approve
+                                            </button>
                                             <button
                                                 onClick={() => handleProcessClaim(est.case_id)}
-                                                className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary-hover shadow-sm"
+                                                className="border border-slate-300 dark:border-slate-600 text-text-muted px-3 py-1 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
                                             >
                                                 Review
                                             </button>

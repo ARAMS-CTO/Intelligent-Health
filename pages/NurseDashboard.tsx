@@ -12,6 +12,7 @@ const NurseDashboard: React.FC = () => {
     const [myDoctors, setMyDoctors] = useState<User[]>([]);
     const [selectedDoctorId, setSelectedDoctorId] = useState<string>('all');
     const [cases, setCases] = useState<Case[]>([]);
+    const [pendingLabs, setPendingLabs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const loadData = React.useCallback(async () => {
@@ -24,6 +25,9 @@ const NurseDashboard: React.FC = () => {
 
             const allCases = await DataService.getCases();
             setCases(allCases);
+
+            const labs = await DataService.getPendingLabs();
+            setPendingLabs(labs);
         } catch (e) {
             console.error(e);
         } finally {
@@ -123,29 +127,26 @@ const NurseDashboard: React.FC = () => {
                         <NurseAssistantChat onRefresh={loadData} />
 
                         <div className="glass-card p-6 rounded-2xl">
-                            <h3 className="font-bold text-lg mb-4">Pending Orders <span className="text-xs text-gray-400 font-normal">(Coming Soon)</span></h3>
-                            {user?.role === 'Admin' ? (
-                                <ul className="space-y-3 opacity-75">
-                                    <li className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300 relative">
-                                        <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">Mock</div>
-                                        <input type="checkbox" className="rounded text-indigo-500 focus:ring-indigo-500" disabled />
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold">CBC & BMP</p>
-                                            <p className="text-xs text-gray-500">Case #1024 - Urgent</p>
-                                        </div>
-                                    </li>
-                                    <li className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-300">
-                                        <input type="checkbox" className="rounded text-indigo-500 focus:ring-indigo-500" disabled />
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold">Chest X-Ray</p>
-                                            <p className="text-xs text-gray-500">Case #1029</p>
-                                        </div>
-                                    </li>
-                                </ul>
-                            ) : (
+                            <h3 className="font-bold text-lg mb-4">Pending Lab Orders</h3>
+                            {pendingLabs.length === 0 ? (
                                 <div className="text-center py-6 text-gray-400 text-sm italic border border-dashed border-gray-200 rounded-xl">
-                                    Lab Integrations & Ordering System<br />Under Development
+                                    No pending lab orders.
                                 </div>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {pendingLabs.map(lab => (
+                                        <li key={lab.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                                            <div className="p-2 bg-purple-100 text-purple-600 rounded-lg text-xs">🧪</div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{lab.test}</p>
+                                                <p className="text-xs text-gray-500">Case #{lab.case_id?.slice(0, 8)}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded">Pending</span>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
                             )}
                         </div>
                     </div>

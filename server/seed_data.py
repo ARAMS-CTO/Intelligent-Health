@@ -1,194 +1,219 @@
 from .database import SessionLocal, engine
-from .models import Base, User, DoctorProfile, Patient
-from .database import SessionLocal, engine
-from .models import Base, User, DoctorProfile, Patient
-# from .routes.auth import get_password_hash # Removing to avoid import cycles/errors
+import server.models as models
 from .schemas import Role
 from passlib.context import CryptContext
+import datetime
+import uuid
+import random
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-Base.metadata.create_all(bind=engine)
-
-def seed_users():
-    db: Session = SessionLocal()
+def seed_users(db: SessionLocal = None):
+    # Support both passed session and new session
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+        
     try:
         # Admin
         admin_email = "aram.services.pro@gmail.com"
-        admin = db.query(User).filter(User.email == admin_email).first()
+        admin = db.query(models.User).filter(models.User.email == admin_email).first()
         if not admin:
             print(f"Creating Admin: {admin_email}")
-            admin = User(id="user-admin-real", name="Aram Services Admin", email=admin_email, role="Admin", hashed_password=get_password_hash("AdminPassword123!"), credits=9999)
+            admin = models.User(id="user-admin-real", name="Aram Services Admin", email=admin_email, role="Admin", hashed_password=get_password_hash("AdminPassword123!"), credits=9999)
             db.add(admin)
-        else:
-            admin.role = "Admin"
-            admin.hashed_password = get_password_hash("AdminPassword123!")
-            print(f"Updated Admin: {admin_email}")
-
-        # Patient
+        
+        # Patient (Aram)
         patient_email = "aram.ghannad@gmail.com"
-        patient = db.query(User).filter(User.email == patient_email).first()
+        patient = db.query(models.User).filter(models.User.email == patient_email).first()
         if not patient:
             print(f"Creating Patient: {patient_email}")
-            patient = User(id="user-patient-real", name="Aram Ghannad", email=patient_email, role="Patient", hashed_password=get_password_hash("PatientPassword123!"), credits=100)
+            patient = models.User(id="user-patient-real", name="Aram Ghannad", email=patient_email, role="Patient", hashed_password=get_password_hash("PatientPassword123!"), credits=100)
             db.add(patient)
-            
-            p_profile = Patient(id="profile-patient-real", user_id=patient.id, identifier="MRN-ARAM", name="Aram Ghannad", contact_info={"email": patient_email})
+            p_profile = models.Patient(id="profile-patient-real", user_id=patient.id, identifier="MRN-ARAM", name="Aram Ghannad", contact_info={"email": patient_email})
             db.add(p_profile)
-        else:
-            patient.role = "Patient"
-            patient.hashed_password = get_password_hash("PatientPassword123!")
-            print(f"Updated Patient: {patient_email}")
 
         # Doctor
         doctor_email = "m.sonati@intelligent-health.com"
-        doctor = db.query(User).filter(User.email == doctor_email).first()
+        doctor = db.query(models.User).filter(models.User.email == doctor_email).first()
         if not doctor:
             print(f"Creating Doctor: {doctor_email}")
-            doctor = User(id="user-doc-real", name="Mohammad Sonati", email=doctor_email, role="Doctor", hashed_password=get_password_hash("DoctorPassword123!"), credits=100)
+            doctor = models.User(id="user-doc-real", name="Mohammad Sonati", email=doctor_email, role="Doctor", hashed_password=get_password_hash("DoctorPassword123!"), credits=100)
             db.add(doctor)
-            doc_profile = DoctorProfile(id="profile-doc-real", user_id=doctor.id, specialty="Cardiology", bio="Senior Cardiologist")
+            doc_profile = models.DoctorProfile(id="profile-doc-real", user_id=doctor.id, specialty="Cardiology", bio="Senior Cardiologist")
             db.add(doc_profile)
-        else:
-            doctor.hashed_password = get_password_hash("DoctorPassword123!")
-            print(f"Updated Doctor: {doctor_email}")
 
-        # Nurse (Pharmacist mapped to Nurse/Pharmacist role)
+        # Nurse
         nurse_email = "c.redfield@intelligent-health.com"
-        nurse = db.query(User).filter(User.email == nurse_email).first()
+        nurse = db.query(models.User).filter(models.User.email == nurse_email).first()
         if not nurse:
             print(f"Creating Nurse: {nurse_email}")
-            nurse = User(id="user-nurse-real", name="Claire Redfield", email=nurse_email, role="Nurse", hashed_password=get_password_hash("NursePassword123!"), credits=100)
+            nurse = models.User(id="user-nurse-real", name="Claire Redfield", email=nurse_email, role="Nurse", hashed_password=get_password_hash("NursePassword123!"), credits=100)
             db.add(nurse)
-        else:
-            nurse.hashed_password = get_password_hash("NursePassword123!")
-            print(f"Updated Nurse: {nurse_email}")
 
         # Billing Officer
         bill_email = "bill.officer@intelligent-health.com"
-        billing_officer = db.query(User).filter(User.email == bill_email).first()
-        if not billing_officer:
+        billing = db.query(models.User).filter(models.User.email == bill_email).first()
+        if not billing:
+             # Use role 'BillingManager' or 'Admin' if 'BillingOfficer' not in simplistic Role enum? 
+             # Assuming string role is fine based on User model.
             print(f"Creating Billing Officer: {bill_email}")
-            billing_officer = User(
-                id="user-bill-real",
-                name="Bill Officer",
-                email=bill_email,
-                role=Role.BillingOfficer,
-                hashed_password=get_password_hash("BillingPassword123!"),
-                credits=100
-            )
-            db.add(billing_officer)
-        else:
-            print(f"Billing Officer exists: {bill_email}")
-            billing_officer.hashed_password = get_password_hash("BillingPassword123!")
+            billing = models.User(id="user-bill-real", name="Bill Officer", email=bill_email, role="Billing Manager", hashed_password=get_password_hash("BillingPassword123!"), credits=100)
+            db.add(billing)
 
-        # Radiologist
-        rad_email = "r.scan@intelligent-health.com"
-        radiologist = db.query(User).filter(User.email == rad_email).first()
-        if not radiologist:
-            print(f"Creating Radiologist: {rad_email}")
-            radiologist = User(
-                id="user-rad-real",
-                name="Dr. Rad Scan",
-                email=rad_email,
-                role=Role.Radiologist,
-                hashed_password=get_password_hash("RadiologyPassword123!"),
-                credits=100
-            )
-            db.add(radiologist)
-        else:
-            print(f"Radiologist exists: {rad_email}")
-            radiologist.hashed_password = get_password_hash("RadiologyPassword123!")
-
-        # Lab Technician
+        # Lab Tech
         lab_email = "l.test@intelligent-health.com"
-        lab_tech = db.query(User).filter(User.email == lab_email).first()
-        if not lab_tech:
+        lab = db.query(models.User).filter(models.User.email == lab_email).first()
+        if not lab:
             print(f"Creating Lab Tech: {lab_email}")
-            lab_tech = User(
-                id="user-lab-real",
-                name="Lab Tech Larry",
-                email=lab_email,
-                role=Role.LabTechnician,
-                hashed_password=get_password_hash("LabPassword123!"),
-                credits=100
-            )
-            db.add(lab_tech)
-        else:
-            print(f"Lab Tech exists: {lab_email}")
-            lab_tech.hashed_password = get_password_hash("LabPassword123!")
+            lab = models.User(id="user-lab-real", name="Lab Tech Larry", email=lab_email, role="Lab Technician", hashed_password=get_password_hash("LabPassword123!"), credits=100)
+            db.add(lab)
             
-        # Hospital Manager (Admin/Manager role)
-        manager_email = "h.manager@intelligent-health.com"
-        manager = db.query(User).filter(User.email == manager_email).first()
-        if not manager:
-            print(f"Creating Hospital Manager: {manager_email}")
-            manager = User(
-                id="user-manager-real",
-                name="Hospital Manager",
-                email=manager_email,
-                role=Role.HospitalManager,
-                hashed_password=get_password_hash("ManagerPassword123!"),
-                credits=500
-            )
-            db.add(manager)
-        else:
-            print(f"Manager exists: {manager_email}")
-            manager.hashed_password = get_password_hash("ManagerPassword123!")
-
-        # Insurance Representative (External/Approver)
-        ins_email = "insurance@intelligent-health.com"
-        insurer = db.query(User).filter(User.email == ins_email).first()
-        if not insurer:
-            print(f"Creating Insurance Rep: {ins_email}")
-            insurer = User(
-                id="user-insurance-real",
-                name="Global Health Insurance",
-                email=ins_email,
-                role=Role.BillingOfficer, # Using Billing Officer permissions for claims/approvals
-                hashed_password=get_password_hash("InsurancePassword123!"),
-                credits=0
-            )
-            db.add(insurer)
-        else:
-            print(f"Insurance Rep exists: {ins_email}")
-            insurer.hashed_password = get_password_hash("InsurancePassword123!")
-
-        # Finance Director (Internal)
-        fin_email = "finance@intelligent-health.com"
-        finance = db.query(User).filter(User.email == fin_email).first()
-        if not finance:
-            print(f"Creating Finance Director: {fin_email}")
-            finance = User(
-                id="user-finance-real",
-                name="Finance Director",
-                email=fin_email,
-                role=Role.HospitalManager, # Management view
-                hashed_password=get_password_hash("FinancePassword123!"),
-                credits=1000
-            )
-            db.add(finance)
-        else:
-            print(f"Finance Director exists: {fin_email}")
-            finance.hashed_password = get_password_hash("FinancePassword123!")
+        # Pharmacist
+        pharm_email = "pharm@intelligent-health.com"
+        pharm = db.query(models.User).filter(models.User.email == pharm_email).first()
+        if not pharm:
+            print(f"Creating Pharmacist: {pharm_email}")
+            pharm = models.User(id="user-pharm-real", name="Pharmer Joe", email=pharm_email, role="Pharmacist", hashed_password=get_password_hash("PharmPassword123!"), credits=100)
+            db.add(pharm)
 
         db.commit()
-        print("Seeding completed successfully with ALL Real Users (Inc. Finance & Insurance).")
-
     except Exception as e:
-        print(f"Error seeding data: {e}")
+        print(f"Error seeding users: {e}")
         db.rollback()
     finally:
-        db.close()
+        if should_close:
+            db.close()
 
-from .models import AgentCapability
-
-def seed_agents():
-    db: Session = SessionLocal()
+def seed_clinical_data(db: SessionLocal = None):
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+        
     try:
+        print("Seeding Clinical Data...")
+        
+        # Ensure Users exist first (relies on IDs from seed_users)
+        patient_id = "user-patient-real"
+        doctor_id = "user-doc-real"
+        
+        # 1. Active Case: Hypertension
+        case_id_1 = "case-htn-001"
+        existing_case = db.query(models.Case).filter(models.Case.id == case_id_1).first()
+        if not existing_case:
+            case1 = models.Case(
+                id=case_id_1,
+                title="Uncontrolled Hypertension",
+                creator_id=doctor_id,
+                patient_id="profile-patient-real", # Links to Patient Profile ID
+                status="Open",
+                complaint="Headaches and dizziness",
+                history="Diagnosed 5 years ago, non-compliant with meds",
+                findings="BP 160/100, HR 88",
+                diagnosis="Hypertension Stage 2",
+                created_at=(datetime.datetime.utcnow() - datetime.timedelta(days=2)).isoformat()
+            )
+            db.add(case1)
+            
+            # Add Comment
+            comment1 = models.Comment(
+                id=str(uuid.uuid4()),
+                case_id=case_id_1,
+                user_id=doctor_id,
+                user_name="Dr. Mohammad Sonati",
+                user_role="Doctor",
+                text="Patient requires immediate medication adjustment. Ordering labs to check kidney function.",
+                timestamp=(datetime.datetime.utcnow() - datetime.timedelta(days=2)).isoformat()
+            )
+            db.add(comment1)
+            
+            # Lab Order (Pending)
+            lab1 = models.LabResult(
+                case_id=case_id_1,
+                test="Basic Metabolic Panel",
+                status="Pending",
+                ordered_at=datetime.datetime.utcnow() - datetime.timedelta(days=1)
+            )
+            db.add(lab1)
+            
+            # Prescription (Pending)
+            rx1 = models.Prescription(
+                id=f"rx-{uuid.uuid4()}",
+                patient_id="profile-patient-real",
+                case_id=case_id_1,
+                doctor_id=doctor_id,
+                medication_name="Lisinopril",
+                dosage="10mg",
+                frequency="Daily",
+                duration="30 days",
+                status="Pending",
+                created_at=datetime.datetime.utcnow()
+            )
+            db.add(rx1)
+
+        # 2. Case needing Billing Approval: Arrhythmia
+        case_id_2 = "case-arr-002"
+        existing_case_2 = db.query(models.Case).filter(models.Case.id == case_id_2).first()
+        if not existing_case_2:
+            case2 = models.Case(
+                id=case_id_2,
+                title="Cardiac Arrhythmia Evaluation",
+                creator_id=doctor_id,
+                patient_id="profile-patient-real",
+                status="Under Review",
+                complaint="Palpitations",
+                created_at=(datetime.datetime.utcnow() - datetime.timedelta(days=5)).isoformat()
+            )
+            db.add(case2)
+            
+            # Lab Result (Completed)
+            lab2 = models.LabResult(
+                case_id=case_id_2,
+                test="ECG",
+                value="Atrial Fibrillation",
+                unit="",
+                status="Completed",
+                interpretation="Abnormal",
+                ordered_at=datetime.datetime.utcnow() - datetime.timedelta(days=5),
+                completed_at=datetime.datetime.utcnow() - datetime.timedelta(days=4)
+            )
+            db.add(lab2)
+            
+            # Cost Estimate (Pending)
+            est1 = models.CostEstimate(
+                id=str(uuid.uuid4()),
+                case_id=case_id_2,
+                total_cost=2500.00,
+                insurance_coverage=1800.00,
+                patient_responsibility=700.00,
+                status="Pending",
+                breakdown=[{"item": "ECG", "cost": 500}, {"item": "Cardiology Consult", "cost": 2000}]
+            )
+            db.add(est1)
+            
+        print("Seeding Clinical Data Completed.")
+        db.commit()
+
+    except Exception as e:
+        print(f"Error seeding clinical data: {e}")
+        db.rollback()
+    finally:
+        if should_close:
+            db.close()
+
+def seed_agents(db: SessionLocal = None):
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+        
+    try:
+        print("Seeding Agents...")
         agents = [
             {
                 "id": "agent-doctor-clinical",
@@ -238,9 +263,9 @@ def seed_agents():
         ]
         
         for agent_data in agents:
-            existing = db.query(AgentCapability).filter(AgentCapability.id == agent_data["id"]).first()
+            existing = db.query(models.AgentCapability).filter(models.AgentCapability.id == agent_data["id"]).first()
             if not existing:
-                db.add(AgentCapability(**agent_data))
+                db.add(models.AgentCapability(**agent_data))
                 print(f"Created Agent Capability: {agent_data['capability_name']}")
             else:
                 # Update basic info
@@ -254,8 +279,12 @@ def seed_agents():
         print(f"Error seeding agents: {e}")
         db.rollback()
     finally:
-        db.close()
+        if should_close:
+            db.close()
 
 if __name__ == "__main__":
-    seed_users()
-    seed_agents()
+    db = SessionLocal()
+    seed_users(db)
+    seed_clinical_data(db)
+    seed_agents(db)
+    db.close()

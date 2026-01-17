@@ -9,28 +9,38 @@ import { Case } from '../types';
 const LabDashboard: React.FC = () => {
     const { user } = useAuth();
     const { t } = useTranslation('dashboard');
-    const [cases, setCases] = useState<Case[]>([]);
+    const [labs, setLabs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedLab, setSelectedLab] = useState<any | null>(null);
+    const [resultForm, setResultForm] = useState({ value: '', unit: '', reference_range: '', interpretation: '' });
+
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const pending = await DataService.getPendingLabs();
+            setLabs(pending);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                const allCases = await DataService.getCases();
-                // Filter for Lab/Imaging related cases
-                const labCases = allCases.filter(c =>
-                    c.tags.some(tag => ['Lab', 'Blood', 'Test', 'Biospy'].includes(tag)) ||
-                    c.title.toLowerCase().includes('lab') ||
-                    c.title.toLowerCase().includes('blood')
-                );
-                setCases(labCases);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         loadData();
     }, [user]);
+
+    const handleRecordResult = async () => {
+        if (!selectedLab) return;
+        try {
+            await DataService.recordLabResult(selectedLab.id, resultForm);
+            loadData(); // Refresh
+            setSelectedLab(null);
+            setResultForm({ value: '', unit: '', reference_range: '', interpretation: '' });
+        } catch (e) {
+            alert("Failed to record result");
+        }
+    };
 
     if (!user) return null;
 
@@ -43,56 +53,109 @@ const LabDashboard: React.FC = () => {
                     </h1>
                     <p className="text-slate-500 mt-2">Test Processing & Results</p>
                 </div>
-                <button className="bg-primary text-white font-bold py-3 px-6 rounded-2xl hover:bg-primary-hover transition-colors flex items-center gap-2">
-                    {ICONS.plus} Record Results
-                </button>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="glass-card p-6 rounded-2xl border border-blue-200/50 bg-blue-50/50 dark:bg-blue-900/10">
                     <h4 className="font-bold text-blue-700 dark:text-blue-300 mb-2">Pending Samples</h4>
-                    <p className="text-3xl font-black text-slate-800 dark:text-white">{cases.length}</p>
-                </div>
-                <div className="glass-card p-6 rounded-2xl border border-green-200/50 bg-green-50/50 dark:bg-green-900/10">
-                    <h4 className="font-bold text-green-700 dark:text-green-300 mb-2">Completed Today</h4>
-                    <p className="text-3xl font-black text-slate-800 dark:text-white">14</p>
-                </div>
-                <div className="glass-card p-6 rounded-2xl border border-amber-200/50 bg-amber-50/50 dark:bg-amber-900/10">
-                    <h4 className="font-bold text-amber-700 dark:text-amber-300 mb-2">Urgent Requests</h4>
-                    <p className="text-3xl font-black text-slate-800 dark:text-white">2</p>
+                    <p className="text-3xl font-black text-slate-800 dark:text-white">{labs.length}</p>
                 </div>
             </div>
 
-            <div className="mt-12">
+            <div className="mt-8">
                 <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Test Queue</h3>
                 <div className="grid grid-cols-1 gap-4">
                     {isLoading ? (
                         <div className="text-center py-12 text-slate-400">Loading requests...</div>
-                    ) : cases.length === 0 ? (
+                    ) : labs.length === 0 ? (
                         <div className="text-center py-20 bg-white/50 dark:bg-slate-800/50 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700">
                             <div className="text-4xl mb-4 opacity-50">🧪</div>
                             <p className="font-bold text-slate-500">No pending lab requests.</p>
                         </div>
                     ) : (
-                        cases.map(c => (
-                            <div key={c.id} className="glass-card p-6 rounded-2xl border border-white/20 dark:border-slate-700/50 flex justify-between items-center hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                        labs.map(lab => (
+                            <div key={lab.id} className="glass-card p-6 rounded-2xl border border-white/20 dark:border-slate-700/50 flex justify-between items-center">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-2xl">🩸</div>
                                     <div>
-                                        <h4 className="font-bold text-slate-800 dark:text-white">{c.title}</h4>
-                                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{c.patientId.slice(0, 8)} • Urgency: Normal</p>
+                                        <h4 className="font-bold text-slate-800 dark:text-white">{lab.test}</h4>
+                                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Case #{lab.case_id?.slice(0, 8)} • Ordered: {new Date(lab.ordered_at).toLocaleDateString()}</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-3">
-                                    <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider self-center">Received</span>
-                                    <button className="text-primary font-bold hover:underline text-sm">Update Status</button>
-                                </div>
+                                <button
+                                    onClick={() => setSelectedLab(lab)}
+                                    className="bg-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-primary-hover text-sm"
+                                >
+                                    Enter Results
+                                </button>
                             </div>
                         ))
                     )}
                 </div>
             </div>
+
+            {/* Result Modal */}
+            {selectedLab && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4">Record Results: {selectedLab.test}</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Value</label>
+                                <input
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2"
+                                    value={resultForm.value}
+                                    onChange={e => setResultForm({ ...resultForm, value: e.target.value })}
+                                    placeholder="e.g. 120"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Unit</label>
+                                    <input
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2"
+                                        value={resultForm.unit}
+                                        onChange={e => setResultForm({ ...resultForm, unit: e.target.value })}
+                                        placeholder="e.g. mg/dL"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Ref Range</label>
+                                    <input
+                                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2"
+                                        value={resultForm.reference_range}
+                                        onChange={e => setResultForm({ ...resultForm, reference_range: e.target.value })}
+                                        placeholder="e.g. 70-100"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Interpretation/Notes</label>
+                                <textarea
+                                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 h-24"
+                                    value={resultForm.interpretation}
+                                    onChange={e => setResultForm({ ...resultForm, interpretation: e.target.value })}
+                                    placeholder="Normal findings..."
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 mt-6 justify-end">
+                            <button
+                                onClick={() => setSelectedLab(null)}
+                                className="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleRecordResult}
+                                className="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-hover"
+                            >
+                                Submit Results
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

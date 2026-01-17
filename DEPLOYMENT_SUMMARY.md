@@ -2,7 +2,7 @@
 
 ## 🚀 Live Application
 **Production URL:** https://intelligent-health-app-jsc5mqgzua-uc.a.run.app
-**Current Version:** v2.0.0 (NO MOCK Repaired Deployment)
+**Current Version:** v2.1.2 (Beta Readiness Release)
 
 ## ✅ Implemented Features & Infrastructure
 
@@ -145,6 +145,13 @@
 - `POST /search_icd10` - ICD-10 code search
 - `POST /form_assist` - Voice form assistance
 - `POST /auto_triage` - Automated case triage (AI Routing)
+
+#### specialized Dashboards (New)
+- **Physiotherapy**: Patient rehabilitation tracking
+- **Trainee Portal**: Educational resources and case shadowing
+- **Compliance**: Audit logging and HIPAA status
+- **AI Engineering**: Agent model configuration and status monitoring
+
 
 #### Dashboard (`/api/dashboard`)
 - `GET /stats` - User dashboard statistics

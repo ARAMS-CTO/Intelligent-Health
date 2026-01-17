@@ -7,7 +7,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from ..schemas import User as UserSchema, Role
 from ..database import get_db
-from ..models import User as UserModel, DoctorProfile, Patient, SystemLog
+from ..schemas import User as UserSchema, Role
+from ..database import get_db
+import server.models as models
+# User, DoctorProfile, Patient accessed via models.*
 from ..services.token_service import TokenService
 
 
@@ -36,10 +39,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     except JWTError:
         raise credentials_exception
     
-    user = db.query(UserModel).options(
-        joinedload(UserModel.patient_profile),
-        joinedload(UserModel.doctor_profile)
-    ).filter(UserModel.email == email).first()
+    user = db.query(models.User).options(
+        joinedload(models.User.patient_profile),
+        joinedload(models.User.doctor_profile)
+    ).filter(models.User.email == email).first()
     if user is None:
         raise credentials_exception
     return user
@@ -90,10 +93,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def login(request: LoginRequest, db: Session = Depends(get_db)):
     try:
         # Find user by email
-        user = db.query(UserModel).options(
-            joinedload(UserModel.patient_profile), 
-            joinedload(UserModel.doctor_profile)
-        ).filter(UserModel.email == request.email).first()
+        user = db.query(models.User).options(
+            joinedload(models.User.patient_profile), 
+            joinedload(models.User.doctor_profile)
+        ).filter(models.User.email == request.email).first()
         
         if not user:
             raise HTTPException(
@@ -132,7 +135,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
 
         try:
-            log = SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role})
+            log = models.SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role})
             db.add(log)
             db.commit()
         except Exception as e:
@@ -166,12 +169,12 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
 async def register(request: RegisterRequest, db: Session = Depends(get_db)):
     try:
         # Check if user exists
-        if db.query(UserModel).filter(UserModel.email == request.email).first():
+        if db.query(models.User).filter(models.User.email == request.email).first():
             raise HTTPException(status_code=400, detail="User already exists")
         
         hashed_password = get_password_hash(request.password)
         
-        new_user = UserModel(
+        new_user = models.User(
             id=f"user-{request.email}", # Simple ID generation
             name=request.name,
             email=request.email,
@@ -185,7 +188,7 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
         db.flush() # ID generation
 
         if request.role == Role.Doctor or request.role == "Doctor":
-             new_profile = DoctorProfile(
+             new_profile = models.DoctorProfile(
                  id=f"profile-{new_user.id}",
                  user_id=new_user.id,
                  specialty=request.specialty or "General Practice",
@@ -196,7 +199,7 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
              )
              db.add(new_profile)
         elif request.role == Role.Patient or request.role == "Patient":
-            new_profile = Patient(
+            new_profile = models.Patient(
                 id=f"profile-{new_user.id}",
                 user_id=new_user.id,
                 identifier=f"PAT-{new_user.id}",
@@ -252,15 +255,16 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
              request.role = "Admin"
 
         # 2. Find or create user
-        user = db.query(UserModel).options(
-            joinedload(UserModel.patient_profile),
-            joinedload(UserModel.doctor_profile)
-        ).filter(UserModel.email == email).first()
+        user = db.query(models.User).options(
+            joinedload(models.User.patient_profile),
+            joinedload(models.User.doctor_profile)
+        ).filter(models.User.email == email).first()
 
         # FIX: Upgrade existing user if role mismatch
         if user and email.lower() == "aram.services.pro@gmail.com" and user.role != "Admin":
              print(f"Upgrading user {email} to Admin.")
              user.role = "Admin"
+             db.add(user) # Check redundancy
              db.commit()
              db.refresh(user)
         
@@ -277,7 +281,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
                  
             print(f"Creating new user {email} with role {user_role}")
             
-            user = UserModel(
+            user = models.User(
                 id=f"user-{email}",
                 name=name,
                 email=email,
@@ -291,7 +295,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
             
             # Create profile if doctor
             if user_role == Role.Doctor or user_role == "Doctor":
-                new_profile = DoctorProfile(
+                new_profile = models.DoctorProfile(
                     id=f"profile-{user.id}",
                     user_id=user.id,
                     specialty="General Practice",
@@ -302,7 +306,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
                 )
                 db.add(new_profile)
             elif user_role == Role.Patient or user_role == "Patient":
-                new_profile = Patient(
+                new_profile = models.Patient(
                     id=f"profile-{user.id}",
                     user_id=user.id,
                     identifier=f"PAT-{user.id}",
@@ -322,7 +326,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
         
         # Log login event
         try:
-             log = SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role, "method": "google"})
+             log = models.SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role, "method": "google"})
              db.add(log)
              db.commit()
         except Exception as e:
@@ -342,7 +346,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=f"Google Login Error: {str(e)}")
 
 @router.get("/me", response_model=UserSchema)
-async def read_users_me(current_user: UserModel = Depends(get_current_user)):
+async def read_users_me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 @router.get("/config")
@@ -360,11 +364,16 @@ async def get_config():
     }
 
 @router.post("/seed_debug")
-async def seed_debug():
+async def seed_debug(
+    current_user: models.User = Depends(get_current_user)
+):
     """
     Debugging endpoint to seed default users.
-    WARNING: Disable in production.
+    Restricted to Admins only.
     """
+    if current_user.role != "Admin":
+         raise HTTPException(status_code=403, detail="Not authorized")
+
     try:
         from ..seed_data import seed_users
         seed_users()
