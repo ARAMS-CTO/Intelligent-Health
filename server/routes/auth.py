@@ -195,10 +195,24 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             import traceback
             traceback.print_exc()
         
+        # Serialize user with additional properties that Pydantic won't auto-resolve
+        user_data = {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "level": user.level,
+            "credits": user.credits,
+            "patient_profile_id": user.patient_profile.id if user.patient_profile else None,
+            "doctor_profile_id": user.doctor_profile.id if user.doctor_profile else None,
+            "concordium_address": user.concordium_address,
+            "doctor_profile": user.doctor_profile
+        }
+        
         return {
             "access_token": access_token, 
             "token_type": "bearer",
-            "user": user
+            "user": user_data
         }
     except HTTPException:
         raise
@@ -409,10 +423,24 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
         except Exception as e:
              logger.log("login_error_google", None, {"error": str(e)}, "ERROR")
 
+        # Serialize user with properties
+        user_data = {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "level": user.level,
+            "credits": user.credits,
+            "patient_profile_id": user.patient_profile.id if user.patient_profile else None,
+            "doctor_profile_id": user.doctor_profile.id if user.doctor_profile else None,
+            "concordium_address": user.concordium_address,
+            "doctor_profile": user.doctor_profile
+        }
+        
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "user": user
+            "user": user_data
         }
     except HTTPException:
         raise
@@ -424,7 +452,19 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
 
 @router.get("/me", response_model=UserSchema)
 async def read_users_me(current_user: models.User = Depends(get_current_user)):
-    return current_user
+    # Explicitly serialize properties that Pydantic won't auto-read from @property
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "level": current_user.level,
+        "credits": current_user.credits,
+        "patient_profile_id": current_user.patient_profile.id if current_user.patient_profile else None,
+        "doctor_profile_id": current_user.doctor_profile.id if current_user.doctor_profile else None,
+        "concordium_address": current_user.concordium_address,
+        "doctor_profile": current_user.doctor_profile
+    }
 
 @router.get("/config")
 async def get_config():
