@@ -11,6 +11,8 @@ router = APIRouter()
 from ..routes.auth import get_current_user
 from ..schemas import User
 from ..config import settings
+from ..schemas_public import PublicEstimateRequest, PublicEstimateResponse, PublicEstimateItem
+import random
 
 # Mock Standard Pricing DB
 STANDARD_PRICING = {
@@ -22,6 +24,75 @@ STANDARD_PRICING = {
     "Antibiotics": {"cost": 30.0, "category": "Medication"},
     "Hospital Stay (Day)": {"cost": 1200.0, "category": "Stay"}
 }
+
+@router.post("/estimate/public", response_model=PublicEstimateResponse)
+async def generate_public_estimate(request: PublicEstimateRequest):
+    """
+    Public endpoint for cost transparency page. No auth required.
+    """
+    
+    # Simple logic-based estimation based on keywords
+    items = []
+    total = 0.0
+    confidence = 0.85
+    
+    query = request.procedure_name.lower()
+    
+    # Direct Matches
+    matched = False
+    for key, val in STANDARD_PRICING.items():
+        if key.lower() in query:
+            items.append(PublicEstimateItem(name=key, category=val["category"], cost=val["cost"]))
+            total += val["cost"]
+            matched = True
+            
+    # Fallback heuristics
+    if not matched:
+        if "surg" in query or "operation" in query:
+            base = 5000.0
+            items.append(PublicEstimateItem(name="Surgical Procedure", category="Procedure", cost=base))
+            items.append(PublicEstimateItem(name="Anesthesia", category="Medication", cost=800.0))
+            items.append(PublicEstimateItem(name="Recovery Room", category="Stay", cost=500.0))
+            total += 6300.0
+            confidence = 0.70
+        elif "consult" in query or "visit" in query:
+             items.append(PublicEstimateItem(name="Specialist Consultation", category="Procedure", cost=150.0))
+             total += 150.0
+             confidence = 0.90
+        elif "scan" in query or "image" in query:
+             items.append(PublicEstimateItem(name="Diagnostic Imaging", category="Investigation", cost=500.0))
+             total += 500.0
+             confidence = 0.80
+        else:
+             items.append(PublicEstimateItem(name="General Assessment", category="Procedure", cost=200.0))
+             total += 200.0
+             confidence = 0.50
+             
+    # Adjust for Insurance Tier (Patient Responsibility)
+    # Platinum: 10%, Gold: 20%, Silver: 30%, None: 100%
+    tier_map = {
+        "platinum": 0.10,
+        "gold": 0.20,
+        "silver": 0.30,
+        "none": 1.00
+    }
+    
+    factor = tier_map.get(request.insurance_tier.lower(), 1.0)
+    responsibility = total * factor
+    coverage = total - responsibility
+    
+    # Add variation range
+    min_cost = round(responsibility * 0.9, 2)
+    max_cost = round(responsibility * 1.1, 2)
+    
+    return PublicEstimateResponse(
+        min=min_cost,
+        max=max_cost,
+        confidence=int(confidence * 100),
+        breakdown=items,
+        insurance_coverage_est=coverage,
+        patient_responsibility_est=responsibility
+    )
 
 
 from pydantic import BaseModel

@@ -18,3 +18,12 @@ email-validator
 openai
 usearch
 numpy
+cryptography
+aiofiles
+requests
+gunicorn
+google-cloud-storage
+google-cloud-sql-connector[pg8000]
+psycopg2-binary
+sqlalchemy-utils
+concordium-python-sdk

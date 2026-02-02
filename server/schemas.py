@@ -30,6 +30,7 @@ class Role(str):
     BillingOfficer = "Billing & Insurance Officer"
     ComplianceOfficer = "Data Protection Officer"
     AIEngineer = "AI/IT Engineer"
+    Dentist = "Dentist"
 
 # Models
 class User(BaseSchema):
@@ -41,6 +42,8 @@ class User(BaseSchema):
     credits: int
     patient_profile_id: Optional[str] = None
     doctor_profile_id: Optional[str] = None
+    doctor_profile: Optional["DoctorProfile"] = None # Include nested profile
+    concordium_address: Optional[str] = None
 
 class UserUpdate(BaseSchema):
     name: Optional[str] = None
@@ -74,9 +77,9 @@ class CaseBase(BaseSchema):
     creator_id: str
     patient_id: str
     complaint: str
-    history: str
-    findings: str
-    diagnosis: str
+    history: Optional[str] = None
+    findings: Optional[str] = None
+    diagnosis: Optional[str] = None
     tags: List[str] = []
 
 class CaseCreate(CaseBase):
@@ -189,6 +192,7 @@ class Prescription(BaseSchema):
 class PersonalDetails(BaseSchema):
     dob: Optional[str] = None
     blood_type: Optional[str] = None
+    sex: Optional[Literal['Male', 'Female', 'Other']] = None
 
 class Contact(BaseSchema):
     phone: Optional[str] = None
@@ -214,6 +218,9 @@ class PatientProfile(BaseSchema):
     contact: Optional[Contact] = None
     emergency_contact: Optional[EmergencyContact] = None
     primary_care_physician: Optional[PrimaryCarePhysician] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    concordium_address: Optional[str] = None
     medications: List[Medication]
     files: List[PatientFile]
     medical_records: List[MedicalRecord] = []
@@ -240,6 +247,9 @@ class PatientUpdate(BaseSchema):
     primary_care_physician: Optional[PrimaryCarePhysician] = None
     allergies: Optional[List[str]] = None
     baseline_illnesses: Optional[List[str]] = None
+    personal_details: Optional[PersonalDetails] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
 
 class AIActionItem(BaseSchema):
     case_id: str
@@ -281,8 +291,16 @@ class DoctorProfile(BaseSchema):
     years_of_experience: int
     bio: str
     certifications: List[Certification]
-    profile_picture_url: str
-
+    profile_picture_url: Optional[str] = None
+    clinic_name: Optional[str] = None
+    clinic_address: Optional[str] = None
+    clinic_coordinates: Optional[str] = None
+    clinic_logo_url: Optional[str] = None
+    website: Optional[str] = None
+    opening_hours: Optional[str] = None
+    sub_specialties: Optional[List[str]] = []
+    service_prices: Optional[Dict[str, str]] = {}
+    additional_specialties: Optional[List[str]] = []
 class TokenUsage(BaseModel):
     date: str
     tokens: int
@@ -309,6 +327,11 @@ class DashboardStats(BaseSchema):
 
 class SystemConfigUpdate(BaseSchema):
     features: Dict[str, bool]
+
+class AIConfig(BaseModel):
+    default_model: str
+    fallback_model: str
+    vision_model: str
 
 class CostEstimate(BaseSchema):
     id: str
@@ -374,3 +397,129 @@ class AgentCapability(BaseSchema):
     input_schema: Dict[str, Any]
     output_schema: Dict[str, Any]
     is_active: bool
+
+class FeedbackCreate(BaseSchema):
+    user_id: str
+    user_name: str
+    type: str # 'Bug', 'Feature', 'Support'
+    title: str
+    description: str
+    priority: str # 'Low', 'Medium', 'High'
+    status: Optional[str] = "Open"
+
+class FeedbackResponse(BaseSchema):
+    response: str
+
+class FeedbackTicket(BaseSchema):
+    id: str
+    user_id: str
+    user_name: str
+    type: str
+    title: str
+    description: str
+    priority: str
+    status: str
+    created_at: datetime
+    admin_response: Optional[str] = None
+
+# --- Appointments ---
+
+class AppointmentCreate(BaseSchema):
+    doctor_id: str
+    patient_id: str
+    scheduled_at: datetime
+    duration_minutes: Optional[int] = 30
+    type: Optional[str] = "In-Person"  # 'In-Person', 'Video', 'Phone'
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    service_id: Optional[str] = None
+    cost: Optional[float] = None
+    payment_status: Optional[str] = "Pending"
+
+class AppointmentUpdate(BaseSchema):
+    scheduled_at: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    type: Optional[str] = None
+    status: Optional[str] = None
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    service_id: Optional[str] = None
+    payment_status: Optional[str] = None
+    
+class AppointmentSchema(BaseSchema):
+    id: str
+    doctor_id: str
+    patient_id: str
+    scheduled_at: datetime
+    duration_minutes: int
+    type: str
+    status: str
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    service_id: Optional[str] = None
+    cost: Optional[float] = None
+    payment_status: Optional[str] = None
+    transaction_hash: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    doctor_name: Optional[str] = None  # Populated from join
+    patient_name: Optional[str] = None  # Populated from join
+
+# --- Notifications ---
+
+class NotificationCreate(BaseSchema):
+    user_id: str
+    type: str
+    title: str
+    message: str
+    link: Optional[str] = None
+
+class NotificationSchema(BaseSchema):
+    id: str
+    user_id: str
+    type: str
+    title: str
+    message: str
+    link: Optional[str] = None
+    is_read: bool
+    created_at: datetime
+
+class NotificationPreferenceSchema(BaseSchema):
+    user_id: str
+    email_enabled: bool
+    push_enabled: bool
+    sms_enabled: bool
+    types_enabled: List[str]
+    quiet_hours_start: Optional[str] = None
+    quiet_hours_end: Optional[str] = None
+
+class NotificationPreferenceUpdate(BaseSchema):
+    email_enabled: Optional[bool] = None
+    push_enabled: Optional[bool] = None
+    sms_enabled: Optional[bool] = None
+    types_enabled: Optional[List[str]] = None
+    quiet_hours_start: Optional[str] = None
+    quiet_hours_end: Optional[str] = None
+
+
+# --- Radiology ---
+
+class ImagingStudyBase(BaseSchema):
+    modality: str
+    body_part: str
+    priority: str
+    status: str
+    indication: Optional[str] = None
+    referring_physician: Optional[str] = None
+    report_content: Optional[str] = None
+    image_url: Optional[str] = None
+
+class ImagingStudyCreate(ImagingStudyBase):
+    patient_id: str
+
+class ImagingStudy(ImagingStudyBase):
+    id: str
+    patient_id: str
+    ordered_at: datetime
+    patient_name: Optional[str] = None # For convenience
+

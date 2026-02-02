@@ -1,4 +1,0 @@
-pages/CaseView.tsx(439,9): error TS2657: JSX expressions must have one parent element.
-pages/CaseView.tsx(664,9): error TS1005: ')' expected.
-pages/CaseView.tsx(665,5): error TS1109: Expression expected.
-pages/CaseView.tsx(666,1): error TS1128: Declaration or statement expected.

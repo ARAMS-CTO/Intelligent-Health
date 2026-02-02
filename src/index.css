@@ -1,0 +1,172 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-accent: #10b981;
+  --color-accent-hover: #059669;
+  --color-surface: #ffffff;
+  --color-background: #f8fafc;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+
+  --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -5px rgba(0, 0, 0, 0.02);
+  --shadow-premium-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 10px 20px -10px rgba(0, 0, 0, 0.04);
+}
+
+:root {
+  /* GitHub Light Theme */
+  --color-primary: #0969da;
+  --color-primary-hover: #0550ae;
+  --color-accent: #1a7f37;
+  --color-accent-hover: #116329;
+  --color-surface: #ffffff;
+  --color-background: #f6f8fa;
+  --color-text-main: #24292f;
+  --color-text-muted: #57606a;
+
+  --color-primary-rgb: 9, 105, 218;
+  --color-accent-rgb: 26, 127, 55;
+  --color-surface-rgb: 255, 255, 255;
+  --color-background-rgb: 246, 248, 250;
+  --color-text-main-rgb: 36, 41, 47;
+  --color-text-muted-rgb: 87, 96, 106;
+}
+
+.dark {
+  /* GitHub Dark Dimmed Theme */
+  --color-primary: #539bf5;
+  --color-primary-hover: #4493f8;
+  --color-accent: #3fb950;
+  --color-accent-hover: #2ea043;
+  --color-surface: #22272e;
+  --color-background: #1c2128;
+  --color-text-main: #adbac7;
+  --color-text-muted: #768390;
+
+  --color-primary-rgb: 83, 155, 245;
+  --color-accent-rgb: 63, 185, 80;
+  --color-surface-rgb: 34, 39, 46;
+  --color-background-rgb: 28, 33, 40;
+  --color-text-main-rgb: 173, 186, 199;
+  --color-text-muted-rgb: 118, 131, 144;
+}
+
+/* Global SVG Fix - Critical for layout stability */
+svg {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(var(--color-primary-rgb), 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(var(--color-accent-rgb), 0.05) 0px, transparent 50%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Advanced Glassmorphism */
+.glass {
+  background-color: rgba(var(--color-surface-rgb), 0.7);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(var(--color-primary-rgb), 0.1);
+}
+
+.glass-card {
+  background-color: rgba(var(--color-surface-rgb), 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--color-surface-rgb), 0.3);
+  box-shadow: var(--shadow-premium);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .glass-card {
+  background-color: rgba(var(--color-surface-rgb), 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-premium-hover);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* Modern Inputs */
+input,
+textarea,
+select {
+  @apply bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 px-4 py-3 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all;
+}
+
+/* Button Refinement */
+.btn-primary {
+  @apply bg-primary text-white font-bold py-3 px-8 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-95 transition-all;
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+  background-image: none;
+  @apply font-bold py-3 px-8 rounded-2xl border border-slate-200 shadow-sm hover:bg-slate-50 hover:-translate-y-0.5 transition-all;
+}
+
+.dark .btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-primary-rgb), 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--color-primary-rgb), 0.4);
+}

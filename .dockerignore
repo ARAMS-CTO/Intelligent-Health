@@ -25,3 +25,5 @@ coverage.xml
 .DS_Store
 .vscode
 .idea
+server/alembic
+server/create_tables.py

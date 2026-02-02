@@ -18,8 +18,8 @@ export default {
                 'accent-hover': 'rgb(var(--color-accent-hover) / <alpha-value>)',
                 'surface': 'rgb(var(--color-surface) / <alpha-value>)',
                 'background': 'rgb(var(--color-background) / <alpha-value>)',
-                'text-main': 'rgb(var(--color-text-main) / <alpha-value>)',
-                'text-muted': 'rgb(var(--color-text-muted) / <alpha-value>)',
+                'text-main': 'rgb(var(--color-text-main-rgb) / <alpha-value>)',
+                'text-muted': 'rgb(var(--color-text-muted-rgb) / <alpha-value>)',
                 'danger': {
                     DEFAULT: '#ef4444', // red-500
                     light: '#fee2e2', // red-100

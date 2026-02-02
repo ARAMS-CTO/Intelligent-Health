@@ -1,0 +1,152 @@
+{
+    "knee_replacement": {
+        "name": "Total Knee Replacement",
+        "base_cost_usd": 35000,
+        "complexity": "High",
+        "category": "Orthopedics",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.65,
+            "Germany": 0.45,
+            "UAE": 0.55,
+            "India": 0.18,
+            "Thailand": 0.22,
+            "Singapore": 0.50
+        }
+    },
+    "hip_replacement": {
+        "name": "Total Hip Replacement",
+        "base_cost_usd": 39000,
+        "complexity": "High",
+        "category": "Orthopedics",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.60,
+            "Germany": 0.48,
+            "UAE": 0.58,
+            "India": 0.19,
+            "Thailand": 0.25,
+            "Singapore": 0.52
+        }
+    },
+    "coronary_bypass": {
+        "name": "Coronary Artery Bypass Graft (CABG)",
+        "base_cost_usd": 123000,
+        "complexity": "Critical",
+        "category": "Cardiology",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.40,
+            "Germany": 0.35,
+            "UAE": 0.45,
+            "India": 0.08,
+            "Thailand": 0.15,
+            "Singapore": 0.30
+        }
+    },
+    "angioplasty": {
+        "name": "Angioplasty",
+        "base_cost_usd": 28000,
+        "complexity": "Medium",
+        "category": "Cardiology",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.35,
+            "Germany": 0.30,
+            "UAE": 0.40,
+            "India": 0.12,
+            "Thailand": 0.20,
+            "Singapore": 0.35
+        }
+    },
+    "c_section": {
+        "name": "Cesarean Section",
+        "base_cost_usd": 15000,
+        "complexity": "Medium",
+        "category": "Maternity",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.45,
+            "Germany": 0.35,
+            "UAE": 0.50,
+            "India": 0.10,
+            "Thailand": 0.20,
+            "Singapore": 0.40
+        }
+    },
+    "mri_scan": {
+        "name": "MRI Scan (General)",
+        "base_cost_usd": 2000,
+        "complexity": "Low",
+        "category": "Diagnostics",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.30,
+            "Germany": 0.25,
+            "UAE": 0.35,
+            "India": 0.10,
+            "Thailand": 0.15,
+            "Singapore": 0.30
+        }
+    },
+    "colonoscopy": {
+        "name": "Colonoscopy",
+        "base_cost_usd": 3081,
+        "complexity": "Low",
+        "category": "Gastroenterology",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.40,
+            "Germany": 0.35,
+            "UAE": 0.45,
+            "India": 0.15,
+            "Thailand": 0.25,
+            "Singapore": 0.45
+        }
+    },
+    "spinal_fusion": {
+        "name": "Spinal Fusion",
+        "base_cost_usd": 110000,
+        "complexity": "High",
+        "category": "Orthopedics",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.55,
+            "Germany": 0.45,
+            "UAE": 0.60,
+            "India": 0.20,
+            "Thailand": 0.30,
+            "Singapore": 0.55
+        }
+    },
+    "gastric_sleeve": {
+        "name": "Gastric Sleeve Surgery",
+        "base_cost_usd": 17000,
+        "complexity": "Medium",
+        "category": "Bariatric",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.60,
+            "Germany": 0.55,
+            "UAE": 0.65,
+            "India": 0.25,
+            "Thailand": 0.40,
+            "Singapore": 0.60
+        }
+    },
+    "lasik": {
+        "name": "LASIK Eye Surgery (Both Eyes)",
+        "base_cost_usd": 4200,
+        "complexity": "Low",
+        "category": "Ophthalmology",
+        "country_multipliers": {
+            "USA": 1.0,
+            "UK": 0.80,
+            "Germany": 0.75,
+            "UAE": 0.85,
+            "India": 0.25,
+            "Thailand": 0.45,
+            "Singapore": 0.70
+        }
+    }
+}

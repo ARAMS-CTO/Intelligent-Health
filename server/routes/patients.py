@@ -43,6 +43,9 @@ async def get_patient(patient_id: str, db: Session = Depends(get_db)):
         "contact": patient.contact_info, # Map contact_info -> contact
         "emergency_contact": patient.emergency_contact,
         "primary_care_physician": patient.primary_care_physician,
+        "height": patient.height,
+        "weight": patient.weight,
+        "concordium_address": patient.user.concordium_address if patient.user else None,
         "medications": patient.medications or [],
         "files": patient.files or []
     }
@@ -54,16 +57,39 @@ async def update_patient(patient_id: str, update: PatientUpdate, db: Session = D
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
+    # Robustly update JSON fields by merging existing data with updates
     if update.contact:
-        patient.contact_info = update.contact.dict()
+        # Start with existing data or empty dict
+        current_data = patient.contact_info if patient.contact_info else {}
+        # Get only the fields explicitly set in the update request
+        update_data = update.contact.dict(exclude_unset=True)
+        # Merge: update overwrites existing keys
+        patient.contact_info = {**current_data, **update_data}
+
     if update.emergency_contact:
-        patient.emergency_contact = update.emergency_contact.dict()
+        current_data = patient.emergency_contact if patient.emergency_contact else {}
+        update_data = update.emergency_contact.dict(exclude_unset=True)
+        patient.emergency_contact = {**current_data, **update_data}
+
     if update.primary_care_physician:
-        patient.primary_care_physician = update.primary_care_physician.dict()
+        current_data = patient.primary_care_physician if patient.primary_care_physician else {}
+        update_data = update.primary_care_physician.dict(exclude_unset=True)
+        patient.primary_care_physician = {**current_data, **update_data}
+
     if update.allergies is not None:
         patient.allergies = update.allergies
     if update.baseline_illnesses is not None:
         patient.baseline_illnesses = update.baseline_illnesses
+    
+    if update.personal_details:
+        pd = update.personal_details
+        # Use 'is not None' to allow clearing values if empty string is passed (and valid)
+        if pd.dob is not None: patient.dob = pd.dob
+        if pd.blood_type is not None: patient.blood_type = pd.blood_type
+        if pd.sex is not None: patient.sex = pd.sex
+        
+    if update.height is not None: patient.height = update.height
+    if update.weight is not None: patient.weight = update.weight
         
     db.commit()
     db.refresh(patient)
@@ -104,9 +130,29 @@ async def add_file(patient_id: str, file: PatientFileSchema, db: Session = Depen
     db.commit()
     return {"message": "File added"}
 
+
 @router.get("/{patient_id}/records", response_model=List[MedicalRecordSchema])
 async def get_patient_records(patient_id: str, db: Session = Depends(get_db)):
-    records = db.query(models.MedicalRecord).filter(models.MedicalRecord.patient_id == patient_id).order_by(models.MedicalRecord.created_at.desc()).all()
+    # robust query: get records for this patient_id OR uploaded by the user linked to this patient
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    
+    query = db.query(models.MedicalRecord)
+    
+    if patient and patient.user_id:
+        # Match either the patient profile ID OR the raw user ID of the patient
+        # This covers cases where the record was saved with uploader_id but patient_id=None
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(
+                models.MedicalRecord.patient_id == patient_id,
+                models.MedicalRecord.uploader_id == patient.user_id
+            )
+        )
+    else:
+        # Fallback to strict ID
+        query = query.filter(models.MedicalRecord.patient_id == patient_id)
+        
+    records = query.order_by(models.MedicalRecord.created_at.desc()).all()
     return records
 
 @router.get("/{patient_id}/health_data")

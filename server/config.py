@@ -13,7 +13,9 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://localhost:3000",
         "https://intelligent-health-app-jsc5mqgzua-uc.a.run.app", # Actual Deployed URL
-        "https://intelligent-health-ai.web.app"
+        "https://intelligent-health-ai.web.app",
+        "https://intelligenthealth.world",
+        "https://www.intelligenthealth.world"
     ]
     
     # External Services
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     
     # App Info
-    APP_VERSION: str = "2.1.2"
+    APP_VERSION: str = "2.2.0"
     
     # AI / Gemini
     GEMINI_API_KEY: Optional[str] = None
@@ -42,8 +44,6 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
     
     # Stripe
-    # Note: STRIPE_PRIVATE_KEY is aliased to STRIPE_SECRET_KEY for backward compat if needed, 
-    # but we'll stick to one naming convention in the class.
     STRIPE_SECRET_KEY: Optional[str] = None
 
     # PayPal
@@ -52,14 +52,22 @@ class Settings(BaseSettings):
     
     # Storage
     GCS_BUCKET_NAME: Optional[str] = None
+    
+    # Concordium Blockchain
+    CONCORDIUM_NODE_URL: str = "https://grpc.testnet.concordium.com:20000"
+    CONCORDIUM_CONTRACT_ADDRESS: Optional[str] = None
+    CONCORDIUM_CONTRACT_INDEX: Optional[int] = None
+    
+    # Rate Limiting
+    RATE_LIMIT_REQUESTS_PER_MINUTE: int = 100
+    RATE_LIMIT_REQUESTS_PER_HOUR: int = 2000
+    RATE_LIMIT_BURST_ALLOWANCE: int = 20
 
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,
         "extra": "ignore"
     }
-    
-    # Validation Hook to ensure critical keys exist or warn?
-    # Pydantic validates on instantiation.
 
 settings = Settings()
+

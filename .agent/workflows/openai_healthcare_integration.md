@@ -19,7 +19,7 @@ Set the `OPENAI_API_KEY` environment variable in Google Cloud Run.
 
 ```bash
 gcloud run services update intelligent-health-app \
-  --update-env-vars OPENAI_API_KEY=sk-proj-YOUR_KEY_HERE \
+  --update-env-vars OPENAI_API_KEY=<YOUR_OPENAI_KEY_HERE> \
   --region us-central1
 ```
 

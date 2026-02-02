@@ -25,6 +25,10 @@ class BaseIntegrationClient:
         """Convert provider-specific JSON to FHIR Bundles"""
         raise NotImplementedError
 
+    def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
+        """Exchange refresh_token for new access_token"""
+        raise NotImplementedError
+
 class IntegrationManager:
     _clients = {}
     

@@ -1,0 +1,8 @@
+{
+  "patient": "Patient",
+  "doctor": "Doctor",
+  "admin": "Admin",
+  "view_all": "View All",
+  "manage": "Manage",
+  "close": "Close"
+}

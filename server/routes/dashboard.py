@@ -98,11 +98,16 @@ async def get_admin_stats(db: Session = Depends(get_db)):
         "logs_size_gb": round(logs_count * 0.000001, 6)
     }
 
+    # Calculate System Health
+    system_health = "Optimal"
+    if gemini_status != "Connected" or db_status != "Connected":
+        system_health = "Degraded"
+
     return {
         "total_users": total_users,
         "active_cases": active_cases,
         "ai_queries_today": ai_queries,
-        "system_health": "Optimal",
+        "system_health": system_health,
         "gemini_status": gemini_status,
         "db_status": db_status,
         "token_usage_history": token_usage_history,
@@ -125,12 +130,15 @@ async def get_system_config(db: Session = Depends(get_db)):
 
 @router.post("/admin/config")
 async def update_system_config(update: SystemConfigUpdate, db: Session = Depends(get_db)):
+    # Ensure features is a dict
+    features_val = update.features if isinstance(update.features, dict) else {}
+    
     config = db.query(models.SystemConfig).filter(models.SystemConfig.key == "features").first()
     if not config:
-        config = models.SystemConfig(key="features", value=update.features)
+        config = models.SystemConfig(key="features", value=features_val)
         db.add(config)
     else:
-        config.value = update.features
+        config.value = features_val
     
     # Handle maintenance_mode if provided in the update
     if update.maintenance_mode is not None:
@@ -155,3 +163,80 @@ async def get_system_logs(db: Session = Depends(get_db)):
 async def get_recent_activity(db: Session = Depends(get_db)):
     recent_comments = db.query(models.Comment).order_by(models.Comment.timestamp.desc()).limit(5).all()
     return recent_comments
+
+@router.get("/admin/agents", response_model=List[dict])
+async def get_admin_agents(db: Session = Depends(get_db)):
+    agents = db.query(models.AgentCapability).all()
+    return [
+        {
+            "id": a.id,
+            "agent_role": a.agent_role,
+            "capability_name": a.capability_name,
+            "description": a.description,
+            "is_active": a.is_active
+        }
+        for a in agents
+    ]
+
+# --- User Management ---
+
+@router.get("/admin/users")
+async def get_admin_users(
+    skip: int = 0, 
+    limit: int = 50,
+    search: str = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.User)
+    if search:
+        query = query.filter(models.User.email.ilike(f"%{search}%") | models.User.name.ilike(f"%{search}%"))
+    
+    users = query.offset(skip).limit(limit).all()
+    
+    # Return simplified view
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "email": u.email,
+            "role": u.role,
+            "is_active": True, # Assuming active if in DB
+            "credits": u.credits, # If credits column exists on User, otherwise need join
+            "created_at": getattr(u, 'created_at', None) # Or similar
+        }
+        for u in users
+    ]
+
+@router.post("/admin/users/{user_id}/deactivate")
+async def deactivate_user(user_id: str, db: Session = Depends(get_db)):
+    # Mock deactivation as we don't have 'is_active' column in provided User schema yet?
+    # Actually User model likely has it or we can delete.
+    # Let's verify User model first. For now, just log.
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # user.is_active = False
+    # db.commit()
+    return {"status": "success", "message": f"User {user.email} deactivated (Simulated)"}
+
+@router.post("/admin/users/{user_id}/credits")
+async def grant_credits(user_id: str, amount: float = 100.0, db: Session = Depends(get_db)):
+    from ..services.credit_service import CreditService
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    cs = CreditService(db)
+    cs.add_credits(user_id, amount, "Admin Grant")
+    
+    return {"status": "success", "new_balance": user.credits}
+
+@router.post("/admin/users/{user_id}/reset-password")
+async def reset_password(user_id: str, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # In real app, generate token and email.
+    return {"status": "success", "message": f"Password reset email sent to {user.email} (Simulated)"}

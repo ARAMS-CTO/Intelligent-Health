@@ -30,7 +30,7 @@ class DomainRouter:
         """
         
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash", generation_config={"response_mime_type": "application/json"})
+            model = genai.GenerativeModel("gemini-2.5-flash", generation_config={"response_mime_type": "application/json"})
             response = await model.generate_content_async(prompt)
             import json
             return json.loads(response.text)

@@ -18,7 +18,7 @@ class NurseAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["triage", "vitals_check", "monitor", "initial_assessment"]
@@ -57,7 +57,7 @@ class NurseAgent(BaseAgent):
         # Override to ensure Triage Persona is dominant but includes system context (e.g. pinned protocols)
         sys_instr += "\nAct as a Senior Triage Nurse. Prioritize patient safety above all."
         
-        model = genai.GenerativeModel("gemini-2.0-flash-exp", system_instruction=sys_instr)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=sys_instr)
 
         prompt = f"""
         Rank the following patient cases by urgency (1-5, where 5 is critical/immediate).

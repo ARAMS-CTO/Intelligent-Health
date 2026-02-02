@@ -1,0 +1,82 @@
+{
+  "pageTitle": "[tr] Dashboard",
+  "newPatientIntake": "[tr] New Patient Intake",
+  "createCaseVoice": "[tr] Create Case by Voice",
+  "createNewCase": "[tr] Create New Case",
+  "myDayWidget": {
+    "title": "[tr] My Day at a Glance",
+    "overdue": "[tr] Overdue Cases",
+    "updates": "[tr] New Updates",
+    "assignments": "[tr] New Assignments"
+  },
+  "teamActivityWidget": {
+    "title": "[tr] Recent Team Activity"
+  },
+  "searchPlaceholder": "[tr] Search by title, complaint, or tag...",
+  "statusFilter": "[tr] Status:",
+  "sort": {
+    "newest": "[tr] Newest First",
+    "oldest": "[tr] Oldest First",
+    "title": "[tr] Title (A-Z)",
+    "specialist": "[tr] Specialist (A-Z)"
+  },
+  "caseCard": {
+    "patient": "[tr] Patient",
+    "comorbidities": "[tr] Comorbidities",
+    "assign": "[tr] Assign",
+    "lastActivity": "[tr] Last Activity",
+    "totalComments": "[tr] Total Comments",
+    "viewCase": "[tr] View Case",
+    "viewPatientProfile": "[tr] View Patient Profile",
+    "editCase": "[tr] Edit Case"
+  },
+  "aiAgentCard": {
+    "title": "[tr] My AI Agent",
+    "description": "[tr] Your personalized assistant learns from your feedback to provide better support.",
+    "accuracy": "[tr] Suggestion Accuracy",
+    "personalization": "[tr] Personalization Level",
+    "casesAnalyzed": "[tr] Cases Analyzed",
+    "feedbackProvided": "[tr] Feedback Provided",
+    "reviewSuggestion": "[tr] Review a Recent Suggestion",
+    "fromCase": "[tr] From case",
+    "aiSuggestedDiagnosis": "[tr] AI Suggested Diagnosis:",
+    "wasHelpful": "[tr] Was this suggestion helpful?",
+    "good": "[tr] Good",
+    "bad": "[tr] Bad",
+    "allReviewed": "[tr] All recent suggestions reviewed!"
+  },
+  "welcome_back": "Welcome back",
+  "personal_health_center": "Your personal health command center",
+  "start_telemedicine": "Start Telemedicine",
+  "my_health_records": "My Health Records",
+  "upload_record": "Upload Record",
+  "no_records": "No records uploaded yet.",
+  "ai_summary": "AI Summary",
+  "pending": "Pending...",
+  "ai_analysis_summary": "AI Analysis & Summary",
+  "no_summary": "No summary available.",
+  "download_file": "Download File",
+  "upcoming_appointments": "Upcoming Appointments",
+  "book_appointment": "Book New Appointment",
+  "medication_tracker": "Medication Tracker",
+  "todays_health_goals": "Today's Health Goals",
+  "complete_profile": "Complete Your Profile",
+  "complete_profile_desc": "We need your medical history to provide personalized AI insights.",
+  "live_vitals": "Live Vitals & Trends",
+  "view_charts": "View Charts",
+  "digital_twin": "Digital Twin",
+  "open_digital_twin": "Open Digital Twin",
+  "blockchain_security": "Blockchain Security",
+  "tabs": {
+    "overview": "Overview",
+    "records": "Records",
+    "agent": "Agent"
+  },
+  "agent": {
+    "greeting": "Hello {{name}}, I am your personal health assistant. How can I help you today?",
+    "connection_error": "Sorry, I'm having trouble connecting right now.",
+    "title": "Personal Health Agent",
+    "thinking": "Thinking...",
+    "placeholder": "Ask about your health..."
+  }
+}

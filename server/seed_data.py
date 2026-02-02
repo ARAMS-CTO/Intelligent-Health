@@ -219,7 +219,7 @@ def seed_agents(db: SessionLocal = None):
                 "id": "agent-doctor-clinical",
                 "agent_role": "Doctor",
                 "capability_name": "clinical_summary",
-                "description": "Generates clinical summaries from case data.",
+                "description": "Generates clinical summaries and insights from case data.",
                 "input_schema": {"case_id": "string"},
                 "output_schema": {"diagnosisConfidence": "float", "primaryDiagnosis": "string"},
                 "is_active": True
@@ -228,7 +228,7 @@ def seed_agents(db: SessionLocal = None):
                 "id": "agent-doctor-treatment",
                 "agent_role": "Doctor",
                 "capability_name": "treatment_plan",
-                "description": "Generates detailed treatment plans.",
+                "description": "Generates detailed, personalized treatment plans.",
                 "input_schema": {"case_id": "string"},
                 "output_schema": {"plan": "string"},
                 "is_active": True
@@ -237,7 +237,7 @@ def seed_agents(db: SessionLocal = None):
                 "id": "agent-nurse-triage",
                 "agent_role": "Nurse",
                 "capability_name": "triage",
-                "description": "Triages cases based on urgency.",
+                "description": "Prioritizes cases based on vital signs and urgency.",
                 "input_schema": {"criteria": "string"},
                 "output_schema": {"priority": "string"},
                 "is_active": True
@@ -246,7 +246,7 @@ def seed_agents(db: SessionLocal = None):
                 "id": "agent-billing-estimate",
                 "agent_role": "Billing",
                 "capability_name": "generate_estimate",
-                "description": "Generates cost estimates for cases.",
+                "description": "Calculates procedure costs and insurance coverage.",
                 "input_schema": {"case_id": "string"},
                 "output_schema": {"total_cost": "float"},
                 "is_active": True
@@ -255,9 +255,27 @@ def seed_agents(db: SessionLocal = None):
                 "id": "agent-researcher-augment",
                 "agent_role": "Researcher",
                 "capability_name": "augment_case",
-                "description": "Augments case data with medical knowledge.",
+                "description": "Augments cases with latest medical research and papers.",
                 "input_schema": {"extracted_data": "json"},
                 "output_schema": {"suggestions": "list"},
+                "is_active": True
+            },
+            {
+                "id": "agent-ocr-docs",
+                "agent_role": "OpticalCharacterRecognition",
+                "capability_name": "extract_text",
+                "description": "Extracts text and structured data from medical documents and prescriptions.",
+                "input_schema": {"file_url": "string"},
+                "output_schema": {"text": "string", "entities": "list"},
+                "is_active": True
+            },
+            {
+                "id": "agent-patient-support",
+                "agent_role": "Patient",
+                "capability_name": "support_chat",
+                "description": "24/7 AI Health Assistant for symptom checks and medication reminders.",
+                "input_schema": {"message": "string"},
+                "output_schema": {"reply": "string"},
                 "is_active": True
             }
         ]
@@ -282,9 +300,71 @@ def seed_agents(db: SessionLocal = None):
         if should_close:
             db.close()
 
+def seed_specialized_data(db: SessionLocal = None):
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
+        
+    try:
+        print("Seeding Specialized (Cardio/Eye) Data...")
+        
+        patient_id = "profile-patient-real" # Aram's profile ID
+        
+        # Check if already seeded (simple check)
+        existing = db.query(models.VitalReading).filter(models.VitalReading.patient_id == patient_id).first()
+        if existing:
+            print("Specialized Data already exists.")
+            return
+
+        # 1. Cardiology Vitals
+        vitals = [
+            models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="blood_pressure", 
+                value="120/80", unit="mmHg", systolic=120, diastolic=80, status="Normal", source="Device"
+            ),
+            models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="heart_rate", 
+                value="72", unit="bpm", status="Normal", source="Device"
+            ),
+            models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="oxygen_saturation", 
+                value="98%", unit="%", status="Normal", source="Device"
+            ),
+            # 2. Ophthalmology Vitals
+            models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="visual_acuity_od", 
+                value="20/20", unit="", status="Normal", source="Manual"
+            ),
+            models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="visual_acuity_os", 
+                value="20/25", unit="", status="Minor Correction", source="Manual"
+            ),
+             models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="iop", 
+                value="16", unit="mmHg", status="Normal", source="Tonometer"
+            ),
+             models.VitalReading(
+                id=str(uuid.uuid4()), patient_id=patient_id, type="cup_disc_ratio", 
+                value="0.3", unit="", status="Normal", source="Manual"
+            )
+        ]
+        
+        db.add_all(vitals)
+        db.commit()
+        print("Seeded Specialized Data.")
+
+    except Exception as e:
+        print(f"Error seeding specialized data: {e}")
+        db.rollback()
+    finally:
+        if should_close:
+            db.close()
+
 if __name__ == "__main__":
     db = SessionLocal()
     seed_users(db)
     seed_clinical_data(db)
     seed_agents(db)
+    seed_specialized_data(db)
     db.close()

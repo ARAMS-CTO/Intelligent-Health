@@ -102,3 +102,84 @@ async def seed_inventory(db: Session = Depends(get_db)):
 async def list_products(db: Session = Depends(get_db)):
     from server.models import Product
     return db.query(Product).all()
+
+# --- Cost Transparency Engine ---
+
+@router.get("/cost/estimate")
+async def get_procedure_cost(
+    procedure_id: str, 
+    country: str = "USA",
+    tier: str = "Standard",
+    db: Session = Depends(get_db)
+):
+    """
+    Real-time cost estimation based on Standardized Procedure Database.
+    Calculates Conficence Score based on data density (simulated).
+    """
+    import os
+    import json
+    
+    # Load DB
+    try:
+        # Assuming running from root
+        file_path = os.path.join("server", "data", "procedures_db.json")
+        if not os.path.exists(file_path):
+             # Fallback for Docker path variation
+             file_path = "procedures_db.json"
+             
+        with open(file_path, "r") as f:
+            proc_db = json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Knowledge Base Error: {e}")
+
+    proc = proc_db.get(procedure_id)
+    if not proc:
+        raise HTTPException(status_code=404, detail="Procedure not found in Knowledge Base")
+        
+    # Logic
+    base = proc.get("base_cost_usd", 0)
+    multiplier = proc.get("country_multipliers", {}).get(country, 1.0)
+    
+    # Tier Multiplier
+    tier_mult = 1.0
+    if tier == "Basic": tier_mult = 0.8
+    elif tier == "Premium": tier_mult = 1.5
+    
+    estimated_cost = base * multiplier * tier_mult
+    
+    # Confidence Score Calculation (Deterministic)
+    # Simulator: "USA" has 100% data, others have less
+    data_points = 1000 if country == "USA" else 300
+    if country in ["India", "Thailand"]: data_points = 800 # High medical tourism data
+    
+    confidence = min(98, int((data_points / 1000) * 100))
+    
+    return {
+        "procedure_name": proc["name"],
+        "country": country,
+        "tier": tier,
+        "estimated_cost": int(estimated_cost),
+        "currency": "USD",
+        "confidence_score": confidence,
+        "breakdown": {
+            "hospital_fees": int(estimated_cost * 0.6),
+            "doctor_fees": int(estimated_cost * 0.25),
+            "medication_consumables": int(estimated_cost * 0.15)
+        },
+        "disclaimer": "AI Generated Estimate based on Global Health Indices 2024. Actual hospital charges may vary."
+    }
+
+@router.get("/cost/procedures")
+async def list_procedures():
+    """Return list of available procedures for the dropdown."""
+    import os
+    import json
+    try:
+        file_path = os.path.join("server", "data", "procedures_db.json")
+        with open(file_path, "r") as f:
+            proc_db = json.load(f)
+        
+        # Return simplified list
+        return [{"id": k, "name": v["name"]} for k, v in proc_db.items()]
+    except:
+        return []

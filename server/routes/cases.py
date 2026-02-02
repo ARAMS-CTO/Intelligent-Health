@@ -68,19 +68,21 @@ async def create_case(case: CaseCreate, db: Session = Depends(get_db), current_u
     db.refresh(new_case)
     return new_case
 
+@router.put("/{case_id}")
 @router.patch("/{case_id}")
 async def update_case(case_id: str, updates: dict = Body(...), db: Session = Depends(get_db)):
     case = db.query(models.Case).filter(models.Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     
-    keys_to_ignore = ["files", "lab_results", "labResults", "comments", "patient", "creator", "specialist"]
+    keys_to_ignore = ["files", "lab_results", "labResults", "comments", "patient", "creator", "specialist", "id"]
     for key, value in updates.items():
         if key not in keys_to_ignore and hasattr(case, key):
             setattr(case, key, value)
     
     db.commit()
-    return {"message": "Case updated successfully"}
+    db.refresh(case)
+    return case
 
 @router.put("/{case_id}/status")
 async def update_case_status(case_id: str, status: dict = Body(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

@@ -1,0 +1,35 @@
+{
+  "welcome": "[hi] Welcome to Your Health Portal, {{name}}",
+  "healthSummary": {
+    "title": "[hi] Your Health Summary",
+    "patientId": "[hi] Patient ID:",
+    "dob": "[hi] Date of Birth:",
+    "bloodType": "[hi] Blood Type:",
+    "allergies": "[hi] Allergies:",
+    "illnesses": "[hi] Baseline Illnesses:"
+  },
+  "medicationTracker": {
+    "title": "[hi] Medication Tracker",
+    "headerMedication": "[hi] Medication",
+    "headerDosage": "[hi] Dosage",
+    "headerFrequency": "[hi] Frequency",
+    "addTitle": "[hi] Add New Medication",
+    "addName": "[hi] Name",
+    "addDosage": "[hi] Dosage",
+    "addFrequency": "[hi] Frequency",
+    "addButton": "[hi] Add Medication",
+    "namePlaceholder": "[hi] e.g., Atorvastatin",
+    "dosagePlaceholder": "[hi] e.g., 40mg",
+    "frequencyPlaceholder": "[hi] e.g., Once nightly"
+  },
+  "documents": {
+    "title": "[hi] Your Documents",
+    "uploadTitle": "[hi] Upload New Document",
+    "uploadButton": "[hi] Upload"
+  },
+  "aiDoctor": {
+    "title": "[hi] Your Personal AI Doctor",
+    "initialMessage": "[hi] Hello {{name}}! I'm your Personal AI Doctor. Ask me questions about medical terms, your results, or treatment options in simple language.",
+    "inputPlaceholder": "[hi] e.g., 'Explain my blood test results'"
+  }
+}

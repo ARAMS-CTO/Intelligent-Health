@@ -1,0 +1,201 @@
+{
+  "pageTitle": "Dashboard",
+  "newPatientIntake": "New Patient Intake",
+  "createCaseVoice": "Create Case by Voice",
+  "createNewCase": "Create New Case",
+  "myDayWidget": {
+    "title": "My Day at a Glance",
+    "overdue": "Overdue Cases",
+    "updates": "New Updates",
+    "assignments": "New Assignments"
+  },
+  "teamActivityWidget": {
+    "title": "Recent Team Activity"
+  },
+  "searchPlaceholder": "Search by title, complaint, or tag...",
+  "statusFilter": "Status:",
+  "filterAll": "All Statuses",
+  "sort": {
+    "newest": "Newest First",
+    "oldest": "Oldest First",
+    "title": "Title (A-Z)",
+    "specialist": "Specialist (A-Z)"
+  },
+  "caseCard": {
+    "patient": "Patient",
+    "comorbidities": "Comorbidities",
+    "assign": "Assign",
+    "lastActivity": "Last Activity",
+    "totalComments": "Total Comments",
+    "viewCase": "View Case",
+    "viewPatientProfile": "View Patient Profile",
+    "editCase": "Edit Case"
+  },
+  "aiAgentCard": {
+    "title": "My AI Agent",
+    "description": "Your personalized assistant learns from your feedback to provide better support.",
+    "accuracy": "Suggestion Accuracy",
+    "personalization": "Personalization Level",
+    "casesAnalyzed": "Cases Analyzed",
+    "feedbackProvided": "Feedback Provided",
+    "reviewSuggestion": "Review a Recent Suggestion",
+    "fromCase": "From case",
+    "aiSuggestedDiagnosis": "AI Suggested Diagnosis:",
+    "wasHelpful": "Was this suggestion helpful?",
+    "good": "Good",
+    "bad": "Bad",
+    "allReviewed": "All recent suggestions reviewed!"
+  },
+  "symptomChecker": {
+    "title": "AI Symptom Checker",
+    "placeholder": "Describe symptoms (e.g., sudden chest pain, shortness of breath)...",
+    "analyzeButton": "Analyze Symptoms",
+    "analyzing": "Analyzing...",
+    "confidence": "Likelihood"
+  },
+  "patientQueue": {
+    "title": "Patient Queue",
+    "today": "Today",
+    "waiting": "Waiting",
+    "inProgress": "In Progress",
+    "scheduled": "Scheduled",
+    "urgent": "Urgent",
+    "viewFullSchedule": "View Full Schedule"
+  },
+  "clinicalAlerts": {
+    "title": "Clinical Alerts",
+    "critical": "Critical",
+    "warning": "Warning",
+    "info": "Info",
+    "dismissAll": "Dismiss All",
+    "reviewAll": "Review All"
+  },
+  "quickStats": {
+    "patientsToday": "Patients Today",
+    "pendingLabs": "Pending Labs",
+    "messages": "Messages",
+    "criticalCases": "Critical Cases"
+  },
+  "appointments": {
+    "title": "Appointments",
+    "upcoming": "Upcoming Appointments",
+    "book": "Book Appointment",
+    "reschedule": "Reschedule",
+    "cancel": "Cancel",
+    "confirmed": "Confirmed",
+    "pending": "Pending",
+    "completed": "Completed",
+    "noAppointments": "No upcoming appointments",
+    "selectDoctor": "Select Doctor",
+    "selectDate": "Select Date",
+    "selectTime": "Select Time",
+    "reason": "Reason for Visit",
+    "bookNew": "Book New Appointment"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markRead": "Mark as Read",
+    "markAllRead": "Mark All as Read",
+    "noNotifications": "No new notifications",
+    "settings": "Notification Settings",
+    "types": {
+      "caseUpdate": "Case Update",
+      "appointment": "Appointment",
+      "system": "System",
+      "ai": "AI Alert",
+      "lab": "Lab Result"
+    }
+  },
+  "lab": {
+    "title": "Laboratory",
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "critical": "Critical",
+    "avgTurnaround": "Avg. Turnaround",
+    "testQueue": "Test Queue",
+    "completedResults": "Completed Results",
+    "enterResults": "Enter Results",
+    "submitResults": "Submit Results",
+    "categories": {
+      "all": "All Tests",
+      "blood": "Blood Work",
+      "urine": "Urinalysis",
+      "chemistry": "Chemistry Panel",
+      "microbiology": "Microbiology",
+      "imaging": "Imaging"
+    },
+    "form": {
+      "value": "Value",
+      "unit": "Unit",
+      "referenceRange": "Reference Range",
+      "interpretation": "Interpretation",
+      "generateAI": "Generate with AI",
+      "markCritical": "Mark as Critical Value"
+    }
+  },
+  "patient": {
+    "vitals": "Live Vitals & Trends",
+    "viewCharts": "View Charts",
+    "digitalTwin": "Digital Twin",
+    "blockchain": "Blockchain Security",
+    "healthRecords": "My Health Records",
+    "uploadRecord": "Upload Record",
+    "aiSummary": "AI Summary",
+    "aiAgent": "Personal Health Agent",
+    "medications": {
+      "title": "Medication Tracker",
+      "takeNow": "Take Now",
+      "taken": "Taken",
+      "nextDose": "Next Dose",
+      "manage": "Manage"
+    },
+    "healthGoals": {
+      "title": "Today's Health Goals",
+      "steps": "Daily Steps",
+      "water": "Water Intake",
+      "sleep": "Sleep",
+      "exercise": "Exercise"
+    },
+    "quickActions": {
+      "telemedicine": "Start Telemedicine",
+      "labResults": "View Lab Results",
+      "messageDoctor": "Message Doctor",
+      "emergency": "Emergency Help"
+    }
+  },
+  "welcome_back": "Welcome back",
+  "personal_health_center": "Your personal health command center",
+  "start_telemedicine": "Start Telemedicine",
+  "my_health_records": "My Health Records",
+  "upload_record": "Upload Record",
+  "no_records": "No records uploaded yet.",
+  "ai_summary": "AI Summary",
+  "pending": "Pending...",
+  "ai_analysis_summary": "AI Analysis & Summary",
+  "no_summary": "No summary available.",
+  "download_file": "Download File",
+  "upcoming_appointments": "Upcoming Appointments",
+  "book_appointment": "Book New Appointment",
+  "medication_tracker": "Medication Tracker",
+  "todays_health_goals": "Today's Health Goals",
+  "complete_profile": "Complete Your Profile",
+  "complete_profile_desc": "We need your medical history to provide personalized AI insights.",
+  "live_vitals": "Live Vitals & Trends",
+  "view_charts": "View Charts",
+  "digital_twin": "Digital Twin",
+  "open_digital_twin": "Open Digital Twin",
+  "blockchain_security": "Blockchain Security",
+  "tabs": {
+    "overview": "Overview",
+    "records": "Records",
+    "agent": "Agent"
+  },
+  "agent": {
+    "greeting": "Hello {{name}}, I am your personal health assistant. How can I help you today?",
+    "connection_error": "Sorry, I'm having trouble connecting right now.",
+    "title": "Personal Health Agent",
+    "thinking": "Thinking...",
+    "placeholder": "Ask about your health..."
+  }
+}

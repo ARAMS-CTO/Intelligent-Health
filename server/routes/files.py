@@ -1,16 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Form, BackgroundTasks
-import os
-from google.cloud import storage
-import uuid
 from typing import Optional
+from ..services.storage_service import StorageService
 from ..services.file_processor import FileProcessor
+from ..config import settings
 
 router = APIRouter()
-
-from ..config import settings
-import shutil
-
-BUCKET_NAME = settings.GCS_BUCKET_NAME
 
 @router.post("/upload")
 async def upload_file(
@@ -19,54 +13,41 @@ async def upload_file(
     patient_id: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
-    # Create a unique filename
-    ext = os.path.splitext(file.filename)[1]
-    unique_name = f"{uuid.uuid4()}{ext}"
+    # Upload via StorageService
+    # Note: upload_file expects a file-like object. 
+    # FastAPI's SpoiledTemporaryFile is file-like.
     
-    url = ""
-    gs_uri = None
-    local_path = None
-    
-    # Try GCS Upload
-    uploaded_gcs = False
-    if BUCKET_NAME:
-        try:
-            storage_client = storage.Client()
-            bucket = storage_client.bucket(BUCKET_NAME)
-            blob = bucket.blob(unique_name)
-            blob.upload_from_file(file.file, content_type=file.content_type)
-            url = f"https://storage.googleapis.com/{BUCKET_NAME}/{unique_name}"
-            gs_uri = f"gs://{BUCKET_NAME}/{unique_name}"
-            uploaded_gcs = True
-            
-            # Reset file pointer for local save if needed? No, consumed.
-            # If GCS succeeded, we are good.
-        except Exception as e:
-            print(f"GCS Upload Failed (falling back to local): {e}")
-            # Reset file pointer if we read partially?
-            await file.seek(0)
-
-    # Fallback or Local Default
-    if not uploaded_gcs:
-        local_dir = "static/uploads"
-        os.makedirs(local_dir, exist_ok=True)
-        local_path = os.path.join(local_dir, unique_name)
+    try:
+        url = StorageService.upload_file(file.file, file.filename, file.content_type)
         
-        with open(local_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        url = f"/uploads/{unique_name}"
-    
-    # Trigger Background AI Processing
-    if case_id or patient_id:
-        background_tasks.add_task(
-            FileProcessor.process_and_attach, 
-            case_id=case_id,
-            patient_id=patient_id,
-            blob_name=unique_name, 
-            bucket_name=BUCKET_NAME if uploaded_gcs else None,
-            file_type=file.content_type,
-            local_path=local_path if not uploaded_gcs else None
-        )
-    
-    return {"url": url, "name": file.filename, "type": file.content_type, "gs_uri": gs_uri}
+        # Determine GCS Context for processor
+        bucket_name = settings.GCS_BUCKET_NAME if settings.GCS_BUCKET_NAME and "googleapis" in url else None
+        blob_name = url.split('/')[-1] # Simple extraction, might need robust parsing if logic changes
+        
+        # Trigger Background AI Processing
+        # We need to be careful: if it's GCS, the Processor needs to download it or use GCS URI.
+        # If it's local, it needs the path.
+        
+        local_path = None
+        if not bucket_name:
+             # Local path reconstruction
+             local_path = f"static/uploads/{blob_name}" 
+        
+        if case_id or patient_id:
+            background_tasks.add_task(
+                FileProcessor.process_and_attach, 
+                case_id=case_id,
+                patient_id=patient_id,
+                blob_name=blob_name, 
+                bucket_name=bucket_name,
+                file_type=file.content_type,
+                local_path=local_path
+            )
+        
+        return {"url": url, "name": file.filename, "type": file.content_type}
+        
+    except Exception as e:
+        print(f"Upload Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="File Upload Failed")

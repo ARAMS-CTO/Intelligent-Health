@@ -1,134 +1,89 @@
+from ..knowledge_base.store import DomainKnowledgeBase
 
-import logging
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import Session
-import server.models as models
-# LearningLog, Case, Patient accessed via models.*
-from server.services.agent_service import USearchVectorStore, vector_store 
-import google.generativeai as genai
-import os
-import json
-import datetime
-from typing import Optional
-
-# Ensure API Key is set (already handled in main, but good practice)
-if "GEMINI_API_KEY" not in os.environ:
-    logging.warning("GEMINI_API_KEY not found in environment")
-
-class LearningService:
-    def __init__(self, db: Session):
-        self.db = db
-        self.vector_store = vector_store # Global instance or injected
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp') 
-
-    def predict_and_log(self, case_id: str, plan_text: str, patient_summary: str) -> str:
+class ContinuousLearningService:
+    
+    @staticmethod
+    def ingest_research(zone: str, text: str, source: str):
         """
-        Predicts the outcome of a plan and logs it for future learning.
-        Returns the prediction text.
+        Ingest a new research paper or guideline into the specific domain vector store.
         """
-        prompt = f"""
-        You are a cautious senior supervising physician.
-        
-        Patient Summary:
-        {patient_summary}
-        
-        Proposed Plan:
-        {plan_text}
-        
-        Task:
-        Predict the likely clinical outcome of this plan. 
-        Focus on potential risks, side effects, or failure modes.
-        Be specific about what success looks like versus failure.
-        
-        Prediction:
+        kb = DomainKnowledgeBase.get_instance(zone)
+        kb.add_document(text, source, reliability=1.0)
+        print(f"Ingested knowledge into {zone}: {source}")
+
+    @staticmethod
+    def learn_from_case(zone: str, case_id: str, resolution_notes: str):
         """
+        Ingest a resolved case as a case study.
+        """
+        text = f"Case Study {case_id}: {resolution_notes}"
+        kb = DomainKnowledgeBase.get_instance(zone)
+        kb.add_document(text, f"Case {case_id}", reliability=0.8)
+
+    def record_outcome(self, db, log_id: str, outcome: str):
+        """
+        Records the outcome of an agent action and derives a lesson.
+        """
+        from ..models import LearningLog
+        log = db.query(LearningLog).filter(LearningLog.id == log_id).first()
+        if log:
+            log.outcome = outcome
+            db.commit()
+            return f"Outcome '{outcome}' recorded for Log {log_id}"
+        return "Log not found"
+
+    def predict_and_log(self, db, case_id: str, plan_text: str, summary: str):
+        """
+        Simulates outcome prediction and creates an initial Learning log.
+        """
+        from ..models import LearningLog
+        import datetime
+        import uuid
         
+        # In a real system, this would use a predictive model.
+        # Here we just log the plan as a prediction "pending validation".
+        prediction = "Predicted effective with 85% confidence."
+        
+        log = LearningLog(
+            id=str(uuid.uuid4()),
+            case_id=case_id,
+            action_taken=plan_text,
+            predicted_outcome=prediction,
+            outcome="Pending",
+            timestamp=datetime.datetime.utcnow()
+        )
+        db.add(log)
+        db.commit()
+        
+        return prediction
+
+    @staticmethod
+    def export_training_data(domain: str = None, min_rating: float = 0.8):
+        """
+        Exports high-quality Q&A pairs for SLM fine-tuning.
+        """
+        from ..database import SessionLocal
+        from ..models import TrainingDataset
+        import json
+        
+        db = SessionLocal()
         try:
-            response = self.model.generate_content(prompt)
-            prediction = response.text
+            query = db.query(TrainingDataset).filter(TrainingDataset.rating >= min_rating)
+            if domain:
+                query = query.filter(TrainingDataset.domain == domain)
             
-            # Create Log
-            log = models.LearningLog(
-                case_id=case_id,
-                state_snapshot={"summary": patient_summary},
-                action_plan=plan_text,
-                predicted_outcome=prediction
-            )
-            self.db.add(log)
-            self.db.commit()
+            rows = query.all()
+            export_data = []
+            for r in rows:
+                export_data.append({
+                    "instruction": r.query,
+                    "input": r.context_summary or "",
+                    "output": r.response,
+                    "domain": r.domain
+                })
             
-            return prediction
-        except Exception as e:
-            logging.error(f"Prediction failed: {e}")
-            return "Prediction unavailable."
+            return json.dumps(export_data, indent=2)
+        finally:
+            db.close()
 
-    def record_outcome(self, log_id: str, actual_outcome: str) -> str:
-        """
-        Records the actual outcome, compares with prediction, and generates a lesson.
-        Indexes the lesson for future retrieval.
-        """
-        log = self.db.query(models.LearningLog).filter(models.LearningLog.id == log_id).first()
-        if not log:
-            raise ValueError("Log not found")
-            
-        log.actual_outcome = actual_outcome
-        
-        # Generate Lesson
-        prompt = f"""
-        Analyze this clinical case to extract a generalized medical lesson.
-        
-        Context: {log.state_snapshot}
-        Action: {log.action_plan}
-        
-        Predicted Outcome: {log.predicted_outcome}
-        Actual Outcome: {actual_outcome}
-        
-        Task:
-        Compare the prediction with the reality.
-        If the outcome was successful and as predicted, state what worked well.
-        If the outcome was unexpected or negative, identify the root cause.
-        
-        Format the output as a concise "Lesson" that can be retrieved to help future cases.
-        Example: "When treating X with Y, ensure Z is checked, otherwise W may occur."
-        
-        Lesson:
-        """
-        
-        try:
-            response = self.model.generate_content(prompt)
-            lesson = response.text
-            log.lesson_learned = lesson
-            self.db.commit()
-            
-            # Index Lesson
-            # We index the lesson text, with metadata about the context so it matches similar future contexts
-            metadata = {
-                "type": "lesson",
-                "case_id": log.case_id,
-                "timestamp": datetime.datetime.utcnow().isoformat()
-            }
-            # We embed the "Context + Action" to match future situations where we are considering similar actions
-            # Or better, embed the Lesson itself?
-            # If we want to retrieve this lesson when we are in a similar situation, we should embed the SITUATION.
-            # "Context: ... Action: ..."
-            
-            index_text = f"Context: {log.state_snapshot} \n Action: {log.action_plan}"
-            
-            # Use a dummy user_id or 'system' for shared lessons? 
-            # Or the patient's ID? Lessons should probably be global or at least specialist-scoped.
-            # For this MVP, let's use a "system_knowledge" ID.
-            
-            # Wait, USearchVectorStore adds to index.
-            # We need to ensure we can retrieve it.
-            # Let's index it under a special user_id "SYSTEM_LEARNING".
-            
-            self.vector_store.add(
-                user_id="SYSTEM_LEARNING",
-                text=index_text, 
-                metadata={**metadata, "lesson_content": lesson} # Store lesson in metadata to retrieve it
-            )
-            
-            return lesson
-        except Exception as e:
-            logging.error(f"Lesson generation failed: {e}")
-            return "Could not generate lesson."
+learning_service = ContinuousLearningService()

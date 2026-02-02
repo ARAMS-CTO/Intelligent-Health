@@ -16,7 +16,7 @@ class EmergencyAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-1.5-flash") 
+            self.model = genai.GenerativeModel("gemini-2.5-flash") 
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["emergency_protocol", "crash_cart_recommendation", "rapid_triage"]
@@ -54,7 +54,7 @@ class LaboratoryAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["analyze_labs", "validate_results"]
@@ -110,7 +110,7 @@ class RadiologyAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["analyze_image", "analyze_xray", "analyze_ct"]

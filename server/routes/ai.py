@@ -14,12 +14,12 @@ from ..schemas import Case, AIInsights, ExtractedCaseData, AIContextualSuggestio
 import server.models as models
 from ..models import SystemConfig, Case as CaseModel, AIFeedback, MedicalRecord, Patient as PatientModel, HealthData
 # SystemLog and LearningLog accessed via models.*
-from ..services.agent_service import agent_service
+from server.services.agent_service import agent_service
 from ..database import get_db
 
 from ..routes.auth import get_current_user
 from ..schemas import User
-from ..services.learning_service import LearningService
+from server.services.learning_service import ContinuousLearningService as LearningService
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ class OutcomeRequest(BaseModel):
 
 @router.post("/outcome")
 async def record_outcome(request: OutcomeRequest, db: Session = Depends(get_db)):
-    svc = LearningService(db)
+    svc = LearningService()
     
     log_id = request.log_id
     if not log_id:
@@ -39,7 +39,7 @@ async def record_outcome(request: OutcomeRequest, db: Session = Depends(get_db))
         if not log: return {"error": "No learning log found for case"}
         log_id = log.id
         
-    lesson = svc.record_outcome(log_id, request.outcome)
+    lesson = svc.record_outcome(db, log_id, request.outcome)
     
     # Also log event
     log_ai_event(db, "learning_outcome", "system", {"case_id": request.case_id, "lesson": lesson})
@@ -128,8 +128,8 @@ else:
         print(f"Error configuring Gemini AI: {e}")
 
 # Model Configuration
-DEFAULT_MODEL = "gemini-1.5-flash" 
-ADVANCED_MODEL = "gemini-1.5-pro"
+DEFAULT_MODEL = "gemini-2.5-flash" 
+ADVANCED_MODEL = "gemini-2.5-flash" # Fallback to same if pro not found
 MEDLM_MODEL = "medlm-large"
 
 def log_ai_event(db: Session, event_type: str, user_id: str, details: Dict[str, Any]):
@@ -236,6 +236,8 @@ async def chat(request: ChatRequest, current_user: User = Depends(get_current_us
         final_model = model_name
         if "gpt" in model_name.lower() or "claude" in model_name.lower():
             final_model = DEFAULT_MODEL
+        if final_model == "gemini-1.5-flash": # Catch old default
+             final_model = DEFAULT_MODEL
             
         chat_model = genai.GenerativeModel(final_model, system_instruction=system_instruction)
         chat = chat_model.start_chat(history=start_chat_history)
@@ -246,6 +248,16 @@ async def chat(request: ChatRequest, current_user: User = Depends(get_current_us
     except Exception as e:
         print(f"Chat Error: {e}")
         return {"response": f"AI Service Error: {str(e)}"}
+
+@router.post("/general_chat")
+async def general_chat(request: ChatRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Dedicated endpoint for general health chat (Patient Portal).
+    """
+    # Simply reuse the main chat logic for now, or customize prompt
+    # Force context or prompt customization if needed
+    request.context = "You are a helpful general health assistant. Do not provide specific medical advice or diagnosis. Advise users to consult a doctor."
+    return await chat(request, current_user, db)
 
 
 
@@ -502,14 +514,22 @@ async def analyze_symptoms(request: AnalysisRequest, current_user: User = Depend
     system_instruction = agent_service.get_system_instruction(current_user.id, current_user.role, db)
     
     try:
-        model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
         response = model.generate_content(
             f'Analyze symptoms: "{request.text}". Return JSON array of objects with "condition", "confidence" (number), "explanation".',
             generation_config={"response_mime_type": "application/json"}
         )
         log_ai_event(db, "ai_query", current_user.id, {"endpoint": "analyze_symptoms"})
-        return json.loads(response.text)
+        
+        cleaned_text = response.text.strip()
+        if cleaned_text.startswith("```json"):
+            cleaned_text = cleaned_text[7:]
+        if cleaned_text.endswith("```"):
+            cleaned_text = cleaned_text[:-3]
+            
+        return json.loads(cleaned_text)
     except Exception as e:
+        print(f"Symptom Analysis Error: {e}")
         return []
 
 from ..agents.orchestrator import orchestrator
@@ -578,12 +598,26 @@ async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str]
         Return JSON properties: document_type (MUST include 'Video' suffix, e.g., 'Surgical Video'), findings, summary.
         """
     else:
-        base_prompt = "Analyze this medical document or image. Return JSON properties: document_type, findings, summary. Be precise with medical terminology."
+        base_prompt = """
+        Analyze this medical document or image. 
+        1. Identify document_type (e.g., 'Lab Result', 'Prescription', 'Discharge Summary', 'X-Ray', 'Colonoscopy Report').
+        2. Extract key findings (e.g., dates, values, medications) into a 'findings' dictionary.
+        3. EXTRACT MEDICAL STAFF & FACILITY: 
+           - 'doctor_name': Name of the physician/doctor.
+           - 'nurse_name': Name of the nurse or technician.
+           - 'facility_name': Name of the hospital or clinic.
+           - 'patient_name': Name of the patient if visible.
+           - 'date_of_service': Date of the visit/procedure.
+        4. Generate a 'summary': A clear, patient-friendly paragraph describing what this document is and the main result.
+        5. Identify a suitable 'title' (e.g., 'Blood Test Results - CBC').
+        
+        Return pure JSON with keys: document_type, findings, summary, title, doctor_name, nurse_name, facility_name, patient_name, date_of_service.
+        """
     
     final_prompt = f"{base_prompt} Specific focus: {prompt}" if prompt else base_prompt
     
     try:
-        model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction) 
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction) 
         file_part = {"mime_type": mime_type, "data": content}
         
         # Enforce JSON structure in prompt
@@ -600,10 +634,16 @@ async def _analyze_content(content: bytes, mime_type: str, prompt: Optional[str]
         if text_resp.endswith("```"):
             text_resp = text_resp[:-3]
             
-        return json.loads(text_resp)
+        parsed_json = json.loads(text_resp)
+        return normalize_keys(parsed_json)
     except Exception as e:
         print(f"Analysis Helper Error: {e}")
         return {"error": str(e)}
+
+def normalize_keys(data):
+    if isinstance(data, dict):
+        return {k.lower(): normalize_keys(v) for k, v in data.items()}
+    return data
 
 @router.post("/analyze_file")
 async def analyze_file(
@@ -651,7 +691,7 @@ async def transcribe_audio(file: UploadFile = File(...), current_user: User = De
     # Attempt 2: Gemini Multimodal (Fallback)
     if API_KEY:
         try:
-            model = genai.GenerativeModel(DEFAULT_MODEL) # Transcribe is purely functional, maybe no system instruction needed? or "You are a transcriber"?
+            model = genai.GenerativeModel("gemini-2.5-flash") # Transcribe is purely functional, maybe no system instruction needed? or "You are a transcriber"?
             # Sending system instruction to transcribe might be weird if it tries to 'chat'.
             # Let's keep it simple for transcribe.
             audio_part = {
@@ -703,7 +743,7 @@ async def generate_daily_questions(request: DailyCheckRequest, current_user: Use
     
     prompt = f"Based on this patient profile: '{request.profile_summary}', generate 3 short, specific daily health check questions to ask them today to monitor their condition. Return JSON with key 'questions' which is a list of strings."
     try:
-        model = genai.GenerativeModel(DEFAULT_MODEL, system_instruction=system_instruction)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         log_ai_event(db, "ai_query", current_user.id, {"endpoint": "generate_daily_questions"})
         return json.loads(response.text)
@@ -733,9 +773,31 @@ async def upload_patient_record(
         file_url = f"/uploads/{filename}"
 
         # 2. Save Initial Record (Pending Analysis)
+        # 2. Save Initial Record (Pending Analysis)
         patient_id = None
-        if current_user.role == "Patient" and current_user.patient_profile:
-            patient_id = current_user.patient_profile.id
+        
+        # Robust ID Resolution
+        if current_user.patient_profile:
+             patient_id = current_user.patient_profile.id
+        else:
+             # Try to find existing profile manual query
+             from ..models import Patient
+             existing_profile = db.query(Patient).filter(Patient.user_id == current_user.id).first()
+             if existing_profile:
+                 patient_id = existing_profile.id
+             else:
+                 # Auto-create Patient Profile if missing
+                 new_profile = Patient(
+                     id=str(uuid.uuid4()),
+                     user_id=current_user.id,
+                     name=current_user.name,
+                     dob="2000-01-01", # Default
+                     gender="Unknown"
+                 )
+                 db.add(new_profile)
+                 db.commit()
+                 db.refresh(new_profile)
+                 patient_id = new_profile.id
             
         # Default Title before analysis
         title = file.filename
@@ -754,13 +816,93 @@ async def upload_patient_record(
         db.add(record)
         db.commit()
         
+        
+        # 3. Trigger Background Analysis
+        from fastapi import BackgroundTasks
+        # We need BackgroundTasks in the function signature, but for now we'll do synchronous to be safe and ensure immediate results for the demo
+        # Or better: call _analyze_content right here.
+        
+        # Read file again for analysis? We just saved it.
+        # Read file again for analysis? We just saved it.
+        with open(file_path, "rb") as f:
+             file_bytes = f.read()
+             
+        try:
+            analysis = await _analyze_content(file_bytes, file.content_type, "Analyze this medical record for a patient portal.", current_user, db)
+            
+            # Update Record with AI Results
+            if "error" not in analysis:
+                 record.type = analysis.get("document_type", "Document")
+                 record.ai_summary = analysis.get("summary", "Analysis failed")
+                 record.content_text = json.dumps(analysis.get("findings", {}))
+                 
+                 # Intelligent Title Update
+                 auto_title = analysis.get("title") or analysis.get("document_type")
+                 if auto_title:
+                     record.title = f"{auto_title} - {file.filename}"
+
+                 # Save Metadata
+                 meta = record.metadata_ or {}
+                 if analysis.get("doctor_name"): meta["doctor_name"] = analysis.get("doctor_name")
+                 if analysis.get("nurse_name"): meta["nurse_name"] = analysis.get("nurse_name")
+                 if analysis.get("facility_name"): meta["facility_name"] = analysis.get("facility_name")
+                 record.metadata_ = meta
+                     
+                 db.commit()
+
+                 # Index for RAG
+                 try:
+                     # Create a rich text representation for indexing
+                     findings_data = analysis.get("findings", {})
+                     findings_str = ""
+                     if isinstance(findings_data, dict):
+                         findings_str = ", ".join([f"{k}: {v}" for k, v in findings_data.items()])
+                     elif isinstance(findings_data, list):
+                         findings_str = ", ".join([str(f) for f in findings_data])
+                     else:
+                         findings_str = str(findings_data)
+
+                     # Add staff to RAG content
+                     staff_info = []
+                     if meta.get("doctor_name"): staff_info.append(f"Doctor: {meta['doctor_name']}")
+                     if meta.get("nurse_name"): staff_info.append(f"Nurse: {meta['nurse_name']}")
+                     if meta.get("facility_name"): staff_info.append(f"Facility: {meta['facility_name']}")
+                     staff_str = " | ".join(staff_info)
+
+                     text_content = f"Findings: {findings_str}\nSummary: {record.ai_summary}\nStaff: {staff_str}"
+                     
+                     agent_service.index_medical_record(
+                         user_id=current_user.id,
+                         record_id=record.id,
+                         content=text_content,
+                         summary=record.ai_summary
+                     )
+                     print(f"Indexed Record {record.id} for RAG")
+                 except Exception as e_rag:
+                     print(f"RAG Indexing Error: {e_rag}")
+                 
+        except Exception as ai_e:
+            print(f"Background Analysis Failed: {ai_e}")
+            # Do NOT raise. Let the upload succeed.
+            # Optionally update record status to failed?
+            record.ai_summary = "Analysis failed. Please retry later."
+            db.commit()
+            analysis = {"error": str(ai_e)}
+
+             
+        # Ensure patient_id logic is robust
+        if not patient_id:
+             # Fallback: if user uploaded but has no patient profile, maybe link it later?
+             # Or try to find patient profile via user_id again explicitly
+             pass
+             
         # Return success with pending status
         return {
             "status": "success", 
             "record_id": record.id, 
-            "message": "File uploaded. Ready for analysis.",
+            "message": "File uploaded and analyzed.",
             "file_url": file_url,
-            "analysis": {"type": "Pending", "summary": "Pending Analysis", "title": title}
+            "analysis": analysis
         }
         
     except Exception as e:
@@ -1084,3 +1226,34 @@ async def agent_chat_router(request: ChatRequest, current_user: User = Depends(g
         print(f"Agent Chat Router Error: {e}")
         # Fallback
         return await chat(request, current_user, db)
+
+@router.post("/chat_agent")
+async def chat_with_patient_agent(
+    request: ChatRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Dedicated endpoint for the patient dashboard agent.
+    Routes specifically to the PatientAgent logic.
+    """
+    try:
+        from ..agents.support import PatientAgent
+        agent = PatientAgent()
+        
+        # Prepare payload
+        payload = {
+            "message": request.message,
+            "history": request.history
+        }
+        
+        context = {"user_id": current_user.id}
+        
+        # Process
+        result = await agent.process("chat_with_patient", payload, context, db)
+        
+        return {"response": result.get("response", "I am having trouble thinking right now.")}
+        
+    except Exception as e:
+        print(f"Patient Agent Error: {e}")
+        return {"response": "Service temporarily unavailable."}

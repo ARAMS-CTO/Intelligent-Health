@@ -1,0 +1,201 @@
+{
+  "pageTitle": "Panel de Control",
+  "newPatientIntake": "Admisión de Nuevo Paciente",
+  "createCaseVoice": "Crear Caso por Voz",
+  "createNewCase": "Crear Nuevo Caso",
+  "myDayWidget": {
+    "title": "Mi Día de un Vistazo",
+    "overdue": "Casos Atrasados",
+    "updates": "Nuevas Actualizaciones",
+    "assignments": "Nuevas Asignaciones"
+  },
+  "teamActivityWidget": {
+    "title": "Actividad Reciente del Equipo"
+  },
+  "searchPlaceholder": "Buscar por título, queja o etiqueta...",
+  "statusFilter": "Estado:",
+  "filterAll": "Todos los Estados",
+  "sort": {
+    "newest": "Más Reciente",
+    "oldest": "Más Antiguo",
+    "title": "Título (A-Z)",
+    "specialist": "Especialista (A-Z)"
+  },
+  "caseCard": {
+    "patient": "Paciente",
+    "comorbidities": "Comorbilidades",
+    "assign": "Asignar",
+    "lastActivity": "Última Actividad",
+    "totalComments": "Total de Comentarios",
+    "viewCase": "Ver Caso",
+    "viewPatientProfile": "Ver Perfil del Paciente",
+    "editCase": "Editar Caso"
+  },
+  "aiAgentCard": {
+    "title": "Mi Agente IA",
+    "description": "Tu asistente personalizado aprende de tus comentarios para brindarte mejor apoyo.",
+    "accuracy": "Precisión de Sugerencias",
+    "personalization": "Nivel de Personalización",
+    "casesAnalyzed": "Casos Analizados",
+    "feedbackProvided": "Comentarios Proporcionados",
+    "reviewSuggestion": "Revisar una Sugerencia Reciente",
+    "fromCase": "Del caso",
+    "aiSuggestedDiagnosis": "Diagnóstico Sugerido por IA:",
+    "wasHelpful": "¿Fue útil esta sugerencia?",
+    "good": "Bueno",
+    "bad": "Malo",
+    "allReviewed": "¡Todas las sugerencias recientes revisadas!"
+  },
+  "symptomChecker": {
+    "title": "Verificador de Síntomas IA",
+    "placeholder": "Describe los síntomas (ej: dolor de pecho repentino, dificultad para respirar)...",
+    "analyzeButton": "Analizar Síntomas",
+    "analyzing": "Analizando...",
+    "confidence": "Probabilidad"
+  },
+  "patientQueue": {
+    "title": "Cola de Pacientes",
+    "today": "Hoy",
+    "waiting": "En Espera",
+    "inProgress": "En Progreso",
+    "scheduled": "Programado",
+    "urgent": "Urgente",
+    "viewFullSchedule": "Ver Horario Completo"
+  },
+  "clinicalAlerts": {
+    "title": "Alertas Clínicas",
+    "critical": "Crítico",
+    "warning": "Advertencia",
+    "info": "Información",
+    "dismissAll": "Descartar Todo",
+    "reviewAll": "Revisar Todo"
+  },
+  "quickStats": {
+    "patientsToday": "Pacientes Hoy",
+    "pendingLabs": "Laboratorios Pendientes",
+    "messages": "Mensajes",
+    "criticalCases": "Casos Críticos"
+  },
+  "appointments": {
+    "title": "Citas",
+    "upcoming": "Próximas Citas",
+    "book": "Reservar Cita",
+    "reschedule": "Reprogramar",
+    "cancel": "Cancelar",
+    "confirmed": "Confirmada",
+    "pending": "Pendiente",
+    "completed": "Completada",
+    "noAppointments": "No hay citas próximas",
+    "selectDoctor": "Seleccionar Doctor",
+    "selectDate": "Seleccionar Fecha",
+    "selectTime": "Seleccionar Hora",
+    "reason": "Motivo de la Visita",
+    "bookNew": "Reservar Nueva Cita"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "markRead": "Marcar como Leída",
+    "markAllRead": "Marcar Todo como Leído",
+    "noNotifications": "No hay nuevas notificaciones",
+    "settings": "Configuración de Notificaciones",
+    "types": {
+      "caseUpdate": "Actualización de Caso",
+      "appointment": "Cita",
+      "system": "Sistema",
+      "ai": "Alerta IA",
+      "lab": "Resultado de Laboratorio"
+    }
+  },
+  "lab": {
+    "title": "Laboratorio",
+    "pending": "Pendiente",
+    "inProgress": "En Progreso",
+    "completed": "Completado",
+    "critical": "Crítico",
+    "avgTurnaround": "Tiempo Promedio",
+    "testQueue": "Cola de Pruebas",
+    "completedResults": "Resultados Completados",
+    "enterResults": "Ingresar Resultados",
+    "submitResults": "Enviar Resultados",
+    "categories": {
+      "all": "Todas las Pruebas",
+      "blood": "Análisis de Sangre",
+      "urine": "Urianálisis",
+      "chemistry": "Panel Químico",
+      "microbiology": "Microbiología",
+      "imaging": "Imagenología"
+    },
+    "form": {
+      "value": "Valor",
+      "unit": "Unidad",
+      "referenceRange": "Rango de Referencia",
+      "interpretation": "Interpretación",
+      "generateAI": "Generar con IA",
+      "markCritical": "Marcar como Valor Crítico"
+    }
+  },
+  "patient": {
+    "vitals": "Signos Vitales en Vivo",
+    "viewCharts": "Ver Gráficos",
+    "digitalTwin": "Gemelo Digital",
+    "blockchain": "Seguridad Blockchain",
+    "healthRecords": "Mis Registros de Salud",
+    "uploadRecord": "Subir Registro",
+    "aiSummary": "Resumen IA",
+    "aiAgent": "Agente de Salud Personal",
+    "medications": {
+      "title": "Seguimiento de Medicamentos",
+      "takeNow": "Tomar Ahora",
+      "taken": "Tomado",
+      "nextDose": "Próxima Dosis",
+      "manage": "Administrar"
+    },
+    "healthGoals": {
+      "title": "Metas de Salud de Hoy",
+      "steps": "Pasos Diarios",
+      "water": "Consumo de Agua",
+      "sleep": "Sueño",
+      "exercise": "Ejercicio"
+    },
+    "quickActions": {
+      "telemedicine": "Iniciar Telemedicina",
+      "labResults": "Ver Resultados de Lab",
+      "messageDoctor": "Mensaje al Doctor",
+      "emergency": "Ayuda de Emergencia"
+    }
+  },
+  "welcome_back": "Welcome back",
+  "personal_health_center": "Your personal health command center",
+  "start_telemedicine": "Start Telemedicine",
+  "my_health_records": "My Health Records",
+  "upload_record": "Upload Record",
+  "no_records": "No records uploaded yet.",
+  "ai_summary": "AI Summary",
+  "pending": "Pending...",
+  "ai_analysis_summary": "AI Analysis & Summary",
+  "no_summary": "No summary available.",
+  "download_file": "Download File",
+  "upcoming_appointments": "Upcoming Appointments",
+  "book_appointment": "Book New Appointment",
+  "medication_tracker": "Medication Tracker",
+  "todays_health_goals": "Today's Health Goals",
+  "complete_profile": "Complete Your Profile",
+  "complete_profile_desc": "We need your medical history to provide personalized AI insights.",
+  "live_vitals": "Live Vitals & Trends",
+  "view_charts": "View Charts",
+  "digital_twin": "Digital Twin",
+  "open_digital_twin": "Open Digital Twin",
+  "blockchain_security": "Blockchain Security",
+  "tabs": {
+    "overview": "Overview",
+    "records": "Records",
+    "agent": "Agent"
+  },
+  "agent": {
+    "greeting": "Hello {{name}}, I am your personal health assistant. How can I help you today?",
+    "connection_error": "Sorry, I'm having trouble connecting right now.",
+    "title": "Personal Health Agent",
+    "thinking": "Thinking...",
+    "placeholder": "Ask about your health..."
+  }
+}

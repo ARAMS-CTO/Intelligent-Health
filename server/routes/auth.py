@@ -12,6 +12,7 @@ from ..database import get_db
 import server.models as models
 # User, DoctorProfile, Patient accessed via models.*
 from ..services.token_service import TokenService
+from ..services.logger import logger
 
 
 import os
@@ -47,6 +48,49 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
+def verify_token_data(token: str) -> dict:
+    """
+    Fast verification of token signature without DB lookup.
+    Used by Middleware.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except JWTError:
+        raise Exception("Invalid Token")
+
+async def get_current_user_optional(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # This dependency parses the token if present, but returns None if missing/invalid
+    # However, oauth2_scheme raises 401 if header is missing automatically. 
+    # We need a different scheme or manual header extraction for optional auth.
+    return None # Placeholder, see implementation below.
+    
+    # Actually, let's just make a manual extractor
+from fastapi import Header
+
+async def get_optional_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    if not authorization:
+        return None
+        
+    try:
+        scheme, param = authorization.split()
+        if scheme.lower() != 'bearer':
+            return None
+        token = param
+        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+            
+        user = db.query(models.User).filter(models.User.email == email).first()
+        return user
+    except Exception:
+        return None
+
 # Security Config
 # Settings imported from config.py
 
@@ -63,6 +107,7 @@ class RegisterRequest(BaseModel):
     password: str # Added password
     role: str
     specialty: Optional[str] = None
+    invite_code: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
@@ -135,11 +180,9 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
 
         try:
-            log = models.SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role})
-            db.add(log)
-            db.commit()
+            logger.log("login", user.id, {"email": user.email, "role": user.role}, "INFO")
         except Exception as e:
-            print(f"Log Error: {e}")
+            logger.log("login_error", user.id, {"error": str(e)}, "ERROR")
             # Do NOT fail login for logging error
         
         # Daily Token Reward
@@ -209,6 +252,42 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
 
         db.commit()
         db.refresh(new_user)
+        
+        # --- Referral Logic ---
+        if request.invite_code:
+            try:
+                # Find Referrer Template
+                template = db.query(models.Referral).filter(
+                    models.Referral.invite_code == request.invite_code,
+                    models.Referral.referred_user_id == None
+                ).first()
+                
+                if template and template.referrer_id != new_user.id:
+                     print(f"Processing Referral Code {request.invite_code} for {new_user.email}")
+                     import uuid
+                     # Create Verified Record
+                     redemption = models.Referral(
+                        id=str(uuid.uuid4()),
+                        referrer_id=template.referrer_id,
+                        referred_user_id=new_user.id,
+                        invite_code=request.invite_code,
+                        status="VERIFIED",
+                        reward_claimed=False
+                     )
+                     db.add(redemption)
+                     
+                     # Issue Credits
+                     from ..services.credit_service import CreditService
+                     cs = CreditService(db)
+                     # 50 Credits for Referrer
+                     cs.add_credits(template.referrer_id, 50.0, f"Referral Bonus: {new_user.name}")
+                     # 25 Credits for New User (Welcome Bonus)
+                     cs.add_credits(new_user.id, 25.0, f"Welcome Bonus (Ref: {request.invite_code})")
+                     
+                     db.commit()
+            except Exception as ref_err:
+                print(f"Referral processing error: {ref_err}")
+                # Don't fail registration
         
         # Return token immediately
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -326,11 +405,9 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
         
         # Log login event
         try:
-             log = models.SystemLog(event_type="login", user_id=user.id, details={"email": user.email, "role": user.role, "method": "google"})
-             db.add(log)
-             db.commit()
+             logger.log("login", user.id, {"email": user.email, "role": user.role, "method": "google"}, "INFO")
         except Exception as e:
-             print(f"Log Error during Google Login: {e}")
+             logger.log("login_error_google", None, {"error": str(e)}, "ERROR")
 
         return {
             "access_token": access_token,
@@ -340,7 +417,7 @@ async def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db
     except HTTPException:
         raise
     except Exception as e:
-        print(f"GOOGLE LOGIN ERROR: {e}")
+        logger.log("google_login_exception", None, {"error": str(e)}, "ERROR")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Google Login Error: {str(e)}")

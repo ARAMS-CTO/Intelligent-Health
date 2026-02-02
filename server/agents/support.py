@@ -15,7 +15,7 @@ class PatientAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp") # Fast, conversational
+            self.model = genai.GenerativeModel("gemini-2.5-flash") # Fast, conversational
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["explain_diagnosis", "chat_with_patient", "daily_checkup", "medication_reminder", "generate_health_summary"]
@@ -29,6 +29,8 @@ class PatientAgent(BaseAgent):
             return await self._medication_reminder(payload, context, db)
         elif task == "generate_health_summary":
             return await self._generate_health_summary(payload, context, db)
+        elif task == "chat_with_patient":
+            return await self._chat_with_patient(payload, context, db)
         return {"error": "Unknown task"}
 
     async def _explain(self, payload: Dict[str, Any]):
@@ -143,6 +145,40 @@ class PatientAgent(BaseAgent):
         except Exception as e:
             return {"error": str(e)}
 
+    async def _chat_with_patient(self, payload: Dict[str, Any], context: Dict[str, Any], db: Session):
+        """Conversational handler for the patient."""
+        message = payload.get("message", "")
+        history = payload.get("history", [])
+        
+        # Build context from profile
+        user_id = context.get("user_id")
+        sys_instr = "You are a helpful, empathetic medical assistant for a patient."
+        
+        if user_id:
+             # Try to get system instruction from agent service which includes profile
+             # Importing here to avoid circular dep if any, or just use agent_service
+             from ..services.agent_service import agent_service
+             sys_instr = agent_service.get_system_instruction(user_id, "Patient", db)
+
+        # Convert history to Gemini format
+        chat_history = []
+        for msg in history:
+            role = "user" if msg.get("role") == "user" else "model"
+            chat_history.append({"role": role, "parts": [msg.get("content", "")]})
+            
+        try:
+            # Re-init model with specific instruction if needed, or use self.model if generic
+            # self.model is initialized in __init__ WITHOUT system instruction usually.
+            # So we should probably create a new instance or use `start_chat` with no history if model is frozen?
+            # Gemini Python SDK: model = genai.GenerativeModel(..., system_instruction=...)
+            # If we want to CHANGE key instruction, we need new model instance.
+            model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=sys_instr)
+            chat = model.start_chat(history=chat_history)
+            response = chat.send_message(message)
+            return {"response": response.text}
+        except Exception as e:
+            return {"response": f"I'm having trouble connecting to my medical brain right now. Please try again. ({str(e)})"}
+
 class InsuranceAgent(BaseAgent):
     def __init__(self):
         super().__init__(
@@ -153,7 +189,7 @@ class InsuranceAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["check_eligibility", "prior_auth"]
@@ -195,7 +231,7 @@ class PricingAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["estimate_cost"]
@@ -235,7 +271,7 @@ class RecoveryAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["generate_rehab_plan"]
@@ -282,7 +318,7 @@ class PsychologyAgent(BaseAgent):
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["mental_health_screening", "coping_strategies"]

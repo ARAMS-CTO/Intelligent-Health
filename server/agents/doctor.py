@@ -5,8 +5,8 @@ import os
 import google.generativeai as genai
 from .base import BaseAgent
 from ..models import Case as CaseModel, Patient as PatientModel
-from ..services.agent_service import agent_service
-from ..services.learning_service import LearningService
+from server.services.agent_service import agent_service
+from server.services.learning_service import ContinuousLearningService as LearningService
 
 class DoctorAgent(BaseAgent):
     def __init__(self):
@@ -20,7 +20,7 @@ class DoctorAgent(BaseAgent):
         if self.api_key:
             genai.configure(api_key=self.api_key)
             # Use a smarter model for Doctor tasks
-            self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            self.model = genai.GenerativeModel("gemini-2.5-flash")
 
     def can_handle(self, task_type: str) -> bool:
         return task_type in ["diagnose", "treatment_plan", "review_labs", "clinical_summary", "augment_case", "daily_checkin", "specialist_consult"]
@@ -81,7 +81,7 @@ class DoctorAgent(BaseAgent):
         sys_instr = agent_service.get_system_instruction(user_id, user_role, db)
         
         # Override model with instruction
-        model = genai.GenerativeModel("gemini-1.5-pro", system_instruction=sys_instr)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=sys_instr)
 
         prompt = f"""
         Analyze the following case.
@@ -120,7 +120,7 @@ class DoctorAgent(BaseAgent):
         user_role = context.get("user_role", "Doctor")
         sys_instr = agent_service.get_system_instruction(user_id, user_role, db)
         
-        model = genai.GenerativeModel("gemini-1.5-pro", system_instruction=sys_instr)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=sys_instr)
 
         prompt = f"""
         Generate a detailed clinical treatment plan for:
@@ -135,9 +135,9 @@ class DoctorAgent(BaseAgent):
             plan_text = response.text
             
             # 3. Predict Outcome & Log (World Model Simulation)
-            learning_svc = LearningService(db)
+            learning_svc = LearningService()
             patient_summary = f"Diagnosis: {case.diagnosis}. Findings: {case.findings}"
-            prediction = learning_svc.predict_and_log(case.id, plan_text, patient_summary)
+            prediction = learning_svc.predict_and_log(db, case.id, plan_text, patient_summary)
             
             return {
                 "plan": plan_text,
@@ -156,7 +156,7 @@ class DoctorAgent(BaseAgent):
         user_role = context.get("user_role", "Doctor")
         sys_instr = agent_service.get_system_instruction(user_id, user_role, db)
         
-        model = genai.GenerativeModel("gemini-1.5-pro", system_instruction=sys_instr)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=sys_instr)
         
         prompt = f"""
         Review these extracted case details against the patient's baseline history.
@@ -180,7 +180,7 @@ class DoctorAgent(BaseAgent):
         # Check if we already asked today? (Mock logic for now)
         
         sys_instr = agent_service.get_system_instruction(user_id, "Doctor", db)
-        model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=sys_instr)
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=sys_instr)
         
         prompt = """
         You are a helpful assistant for a Doctor. 

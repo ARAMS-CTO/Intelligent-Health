@@ -19,8 +19,11 @@ from .pharmacy import router as pharmacy_router
 from .lab import router as lab_router
 from .credits import router as credits_router
 from .referrals import router as referrals_router
+from .radiology import router as radiology_router
+from .nurse import router as nurse_router
+from .dental import router as dental_router
 
-__all__ = ["auth_router", "cases_router", "patients_router", "comments_router", "ai_router", "agents_router", "billing_router", "files_router", "dashboard_router", "tokens_router", "integrations_router", "pharmacy_router", "lab_router", "credits_router", "referrals_router"]
+__all__ = ["auth_router", "cases_router", "patients_router", "comments_router", "ai_router", "agents_router", "billing_router", "files_router", "dashboard_router", "tokens_router", "integrations_router", "pharmacy_router", "lab_router", "credits_router", "referrals_router", "nurse_router"]
 
 def init_app(app):
     app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
@@ -44,8 +47,24 @@ def init_app(app):
     app.include_router(lab_router, prefix="/api/lab", tags=["Lab"])
     app.include_router(credits_router, prefix="/api/credits", tags=["Credits"])
     app.include_router(referrals_router, prefix="/api/referrals", tags=["Referrals"])
+    app.include_router(radiology_router, prefix="/api/radiology", tags=["Radiology"])
+    app.include_router(nurse_router, prefix="/api/nurse", tags=["Nurse"])
+    app.include_router(dental_router, prefix="/api/dental", tags=["Dental"])
     
+    from .concordium import router as concordium_router
+    app.include_router(concordium_router, prefix="/api/concordium", tags=["Concordium"])
+    
+    from .cardiology import router as cardiology_router
+    app.include_router(cardiology_router, prefix="/api/cardiology", tags=["Cardiology"])
+    
+    from .ophthalmology import router as ophthalmology_router
+    app.include_router(ophthalmology_router, prefix="/api/ophthalmology", tags=["Ophthalmology"])
+    
+    from .admin import router as admin_router
+    app.include_router(admin_router) # Prefix defined in router
+
     from .webhooks import router as webhooks_router
     app.include_router(webhooks_router) # Prefix defined in router
 
-
+    from .knowledge import router as knowledge_router
+    app.include_router(knowledge_router) # Medical knowledge & Master Doctor - prefix defined in router

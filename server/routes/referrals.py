@@ -138,3 +138,33 @@ async def get_stats(
         "credits_earned": earned,
         "invite_code": template.invite_code if template else None
     }
+
+@router.get("/leaderboard")
+async def get_leaderboard(
+    db: Session = Depends(get_db)
+):
+    from sqlalchemy import func
+    # Top 10 Referrers
+    results = db.query(
+        models.Referral.referrer_id, 
+        func.count(models.Referral.id).label('count')
+    ).filter(
+        models.Referral.referred_user_id != None
+    ).group_by(
+        models.Referral.referrer_id
+    ).order_by(
+        func.count(models.Referral.id).desc()
+    ).limit(10).all()
+    
+    leaderboard = []
+    for r in results:
+        user = db.query(models.User).filter(models.User.id == r.referrer_id).first()
+        if user:
+            leaderboard.append({
+                "name": user.name,
+                "role": user.role,
+                "referrals": r.count,
+                "credits": r.count * 50
+            })
+            
+    return leaderboard

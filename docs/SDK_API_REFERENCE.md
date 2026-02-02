@@ -305,6 +305,12 @@ Standard measurement types and their units:
 | `steps` | `count` | `{"steps": 10000}` |
 | `sleep_minutes` | `minutes` | `{"duration": 480}` |
 
+### Dentistry (Beta)
+| Type | ID | Example |
+|------|----|---------|
+| `tooth_status` | `tooth_number` (1-32) | `{"tooth": 14, "condition": "crown"}` |
+| `procedure` | `CDT Code` | `{"code": "D2391", "description": "Resin-based composite"}` |
+
 ---
 
 ## Error Codes
