@@ -2,6 +2,71 @@
 
 All notable changes to the Intelligent Health Platform are documented in this file.
 
+## [2.3.0] - 2026-02-02
+
+### Added
+
+#### Medical Knowledge System
+- **Medical Knowledge API** (`server/services/medical_knowledge.py`)
+  - 18+ medications with full clinical data (dosing, contraindications, interactions)
+  - 11+ conditions with pathophysiology, treatments, and diagnostics
+  - Cross-referential analysis between conditions
+  - Drug interaction checking
+
+- **Master AI Health Doctor** (`server/agents/master_doctor.py`)
+  - Multi-specialist knowledge aggregation
+  - Transparent reasoning chains for AI decisions
+  - Cross-domain analysis (Rheumatology, Hematology, Metabolic, etc.)
+  - Patient-specific treatment recommendations
+
+- **Gout Attack Protocol** (`/api/knowledge/master-doctor/gout-attack`)
+  - Complete Colchicine dosing guidance
+  - Renal dose adjustments (eGFR-based)
+  - Alternative treatments (NSAIDs, Steroids, IL-1 inhibitors)
+  - Prophylaxis planning with ULT initiation
+
+- **Knowledge API Endpoints** (`server/routes/knowledge.py`)
+  - `GET /api/knowledge/conditions` - List all conditions
+  - `GET /api/knowledge/medications` - List all medications
+  - `POST /api/knowledge/master-doctor/analyze` - Full patient analysis
+  - `POST /api/knowledge/master-doctor/gout-attack` - Gout protocol
+  - `POST /api/knowledge/master-doctor/drug-analysis` - Drug therapy analysis
+  - `GET /api/knowledge/quick-reference/gout` - Gout quick reference
+  - `GET /api/knowledge/quick-reference/anticoagulation` - Anticoagulation guide
+
+#### Specialist Dashboards
+- **Rheumatology Dashboard** (`pages/specialists/RheumatologyDashboard.tsx`)
+  - Uric acid tracker with target visualization
+  - Active flare detection
+  - Gout attack protocol with Colchicine guidance
+  - Specialist AI chat integration
+
+- **Master Doctor Page** (`pages/MasterDoctorPage.tsx`)
+  - Interactive patient data input
+  - Symptom quick-add buttons
+  - AI analysis with differential diagnoses
+  - Drug therapy evaluation tool
+  - Transparent reasoning chain display
+
+#### Frontend Services
+- **MedicalKnowledgeService** (`services/MedicalKnowledgeService.ts`)
+  - TypeScript client for Medical Knowledge API
+  - Full type definitions for conditions, medications, analyses
+  - Error handling with authentication
+
+### Changed
+- Updated specialist dashboards to use real API data
+- Footer navigation now includes Master Doctor and Specialists section
+- User Manual updated with comprehensive Medical Knowledge documentation
+- Version bumped to 2.3.0
+
+### Fixed
+- **Health Records Display** - Explicitly serialize `patient_profile_id` in auth responses
+- Login and Google login now properly return patient profile associations
+- `/me` endpoint returns complete user data including profile IDs
+
+---
+
 ## [2.2.0] - 2026-01-24
 
 ### Added
