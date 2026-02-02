@@ -1,10 +1,11 @@
+steps:
   # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA', '.']
   
   # 2. Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA']
+    args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA']
   
   # 3. Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -14,15 +15,15 @@
       - 'deploy'
       - 'intelligent-health-app'
       - '--image'
-      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
       - '--region'
-      - 'europe-west1'
+      - 'us-central1'
       - '--allow-unauthenticated'
       - '--memory'
       - '2Gi'
 
 images:
-  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
