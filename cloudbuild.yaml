@@ -1,26 +1,43 @@
 steps:
   # 1. Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    script: |
-      docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA .
+    args: 
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:latest'
+      - '.'
     
   # 2. Push the container image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    script: |
-      docker push us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA
+    args: 
+      - 'push'
+      - '--all-tags'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app'
   
-  # 3. Deploy container image to Cloud Run using script for better error visibility
+  # 3. Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    script: |
-      gcloud run deploy intelligent-health-app \
-        --image us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA \
-        --region us-central1 \
-        --platform managed \
-        --allow-unauthenticated \
-        --memory 2Gi
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'intelligent-health-app'
+      - '--image'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '2Gi'
+      - '--project'
+      - '$PROJECT_ID'
 
 images:
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/intelligent-health-app:latest'
 
 options:
   logging: CLOUD_LOGGING_ONLY
