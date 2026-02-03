@@ -4,7 +4,7 @@ import { User, Role } from '../types/index';
 import { DataService } from '../services/api';
 import { ICONS } from '../constants/index';
 import { showToast } from './Toast';
-import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
+// import { detectConcordiumProvider } from '@concordium/browser-wallet-api-helpers';
 
 interface AuthContextType {
     user: User | null;
@@ -70,6 +70,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
 
         try {
+            // detectConcordiumProvider is dynamically imported to avoid SES/Lockdown conflicts
+            // const { detectConcordiumProvider } = await import('@concordium/browser-wallet-api-helpers');
+
+            // Note: Since dynamic import might be slow, you might want to preload or handle loading state.
+            // But for now, we just fetch it.
+            let detectConcordiumProvider;
+            try {
+                const lib = await import('@concordium/browser-wallet-api-helpers');
+                detectConcordiumProvider = lib.detectConcordiumProvider;
+            } catch (e) {
+                console.error("Failed to load Concordium Lib", e);
+                await runMockLogin("Failed to load SDK");
+                return;
+            }
+
             // 1. Check if Provider Exists
             const provider = await detectConcordiumProvider().catch(() => null);
 
