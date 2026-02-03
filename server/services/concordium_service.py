@@ -52,7 +52,7 @@ class ConcordiumService:
         
         try:
             # Configure from environment settings
-            node_address = settings.CONCORDIUM_NODE_URI or "grpc.testnet.concordium.com"
+            node_address = settings.CONCORDIUM_NODE_URL or "grpc.testnet.concordium.com"
             port = settings.CONCORDIUM_NODE_PORT or 20000
             cls._client = ConcordiumClient(node_address, port)
             return cls._client
