@@ -22,7 +22,7 @@ cryptography
 aiofiles
 requests
 gunicorn
-google-cloud-storage
+
 
 psycopg2-binary
 sqlalchemy-utils
