@@ -140,7 +140,7 @@ async def add_security_headers(request: Request, call_next):
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
+        "font-src 'self' https://fonts.gstatic.com https://r2cdn.perplexity.ai data:",
         "img-src 'self' data: blob: https: http:",
         "connect-src 'self' https://accounts.google.com https://apis.google.com https://*.googleapis.com wss: ws:",
         "frame-src 'self' https://accounts.google.com",
