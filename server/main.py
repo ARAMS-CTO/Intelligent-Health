@@ -128,7 +128,8 @@ app.add_middleware(RBACMiddleware, role_map=role_permissions)
 
 # Add Security Headers Middleware (Pure ASGI to avoid Content-Length conflicts)
 from .middleware.security import SecurityHeadersMiddleware
-app.add_middleware(SecurityHeadersMiddleware)
+# app.add_middleware(SecurityHeadersMiddleware)
+
 
 
 
