@@ -8,7 +8,7 @@ from .config import settings
 from .routes import init_app
 from .database import Base, engine
 from .middleware.rate_limiter import RateLimitMiddleware, default_rate_limiter
-from .middleware.compression import CompressionMiddleware
+# from .middleware.compression import CompressionMiddleware
 
 # Import all models to register them with Base before create_all
 from . import models  # noqa: F401
@@ -112,7 +112,7 @@ app.add_middleware(
 app.add_middleware(RateLimitMiddleware, rate_limiter=default_rate_limiter)
 
 # Add Response Compression Middleware
-app.add_middleware(CompressionMiddleware, min_size=500, compression_level=6)
+# app.add_middleware(CompressionMiddleware, min_size=500, compression_level=6)
 
 # Add RBAC Middleware
 from .middleware.rbac import RBACMiddleware
