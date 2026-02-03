@@ -126,45 +126,10 @@ role_permissions = {
 app.add_middleware(RBACMiddleware, role_map=role_permissions)
 
 
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    response = await call_next(request)
-    
-    # Google Sign-In compatibility
-    response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
-    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    
-    # Content Security Policy - balanced for healthcare app with external integrations
-    csp_directives = [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://www.gstatic.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com https://r2cdn.perplexity.ai data:",
-        "img-src 'self' data: blob: https: http:",
-        "connect-src 'self' https://accounts.google.com https://apis.google.com https://*.googleapis.com wss: ws:",
-        "frame-src 'self' https://accounts.google.com",
-        "frame-ancestors 'self'",
-        "form-action 'self'",
-        "base-uri 'self'",
-    ]
-    response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
-    
-    # Additional security headers
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "SAMEORIGIN"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
+# Add Security Headers Middleware (Pure ASGI to avoid Content-Length conflicts)
+from .middleware.security import SecurityHeadersMiddleware
+app.add_middleware(SecurityHeadersMiddleware)
 
-    # Cache Control
-    path = request.url.path
-    if path.endswith("service-worker.js"):
-         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
-    elif path.endswith("index.html") or path == "/":
-         response.headers["Cache-Control"] = "no-cache, must-revalidate"
-
-    return response
 
 
 @app.get("/health", tags=["System"])
