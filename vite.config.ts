@@ -62,9 +62,7 @@ export default defineConfig(({ mode }) => {
               if (id.includes('@stripe') || id.includes('@paypal')) {
                 return 'vendor-payments';
               }
-              if (id.includes('@concordium')) {
-                return 'vendor-concordium';
-              }
+
               if (id.includes('axios') || id.includes('google')) {
                 return 'vendor-http';
               }
@@ -117,9 +115,7 @@ export default defineConfig(({ mode }) => {
         'chart.js',
         'react-chartjs-2',
       ],
-      exclude: [
-        '@concordium/browser-wallet-api-helpers'
-      ]
+
     }
   };
 });
